@@ -110,6 +110,12 @@ python check_db.py || {
   echo "Continuing anyway, but the application may not work correctly."
 }
 
+# Load data from fixtures if they exist
+if [ -d "fixtures" ] && [ -f "fixtures/all_data.json" ]; then
+  echo "Loading data from fixtures..."
+  python load_data.py || echo "Data loading failed, continuing..."
+fi
+
 # Create a superuser if not exists (using environment variables)
 if [[ -n "${DJANGO_SUPERUSER_USERNAME}" && -n "${DJANGO_SUPERUSER_EMAIL}" && -n "${DJANGO_SUPERUSER_PASSWORD}" ]]; then
   echo "Creating superuser..."
