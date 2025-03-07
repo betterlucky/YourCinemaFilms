@@ -21,25 +21,12 @@ fi
 
 # Collect static files
 echo "Collecting static files..."
-python manage.py collectstatic --no-input
-
-# Check database connection
-echo "Checking database connection..."
-python check_db.py || {
-  echo "Database check failed. Continuing with migrations anyway..."
-}
+python manage.py collectstatic --noinput
 
 # Run migrations using the Python script
 echo "Running migrations using Python script..."
 python run_migrations.py || {
   echo "Migration script failed. Continuing anyway..."
-}
-
-# Check database after migrations
-echo "Checking database after migrations..."
-python check_db.py || {
-  echo "Database check after migrations failed. This may indicate a problem with the database setup."
-  echo "Continuing anyway, but the application may not work correctly."
 }
 
 # Load data from fixtures if they exist
