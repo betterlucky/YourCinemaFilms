@@ -1,0 +1,140 @@
+{% extends 'base.html' %}
+
+{% block title %}Manage Genre Tags - Films I Want To See{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1 class="mb-0">Manage Your Genre Tags</h1>
+            <p class="lead text-muted">View and manage the genre tags you've added to films</p>
+        </div>
+        <div class="col-md-4 text-md-end">
+            <a href="{% url 'films_app:profile' %}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-1"></i>Back to Profile
+            </a>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Your Genre Tags</h4>
+                </div>
+                <div class="card-body">
+                    {% if user_tags %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Film</th>
+                                        <th>Genre Tag</th>
+                                        <th>Date Added</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for tag in user_tags %}
+                                        <tr>
+                                            <td>
+                                                <a href="{% url 'films_app:film_detail' tag.film.imdb_id %}">
+                                                    {{ tag.film.title }} ({{ tag.film.year }})
+                                                </a>
+                                            </td>
+                                            <td>{{ tag.tag }}</td>
+                                            <td>{{ tag.created_at|date:"M d, Y" }}</td>
+                                            <td>
+                                                {% if tag.is_approved %}
+                                                    <span class="badge bg-success">Approved</span>
+                                                {% else %}
+                                                    <span class="badge bg-warning text-dark">Pending</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <button class="btn btn-sm btn-outline-danger remove-tag" data-tag-id="{{ tag.id }}">
+                                                    <i class="fas fa-trash-alt me-1"></i>Remove
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <div class="mt-4">
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-2"></i>
+                                <strong>Note:</strong> Genre tags need to be approved by moderators before they appear publicly.
+                                This helps ensure that tags are accurate and appropriate.
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-tags fa-3x text-muted mb-3"></i>
+                            <h4>You haven't added any genre tags yet</h4>
+                            <p>Browse films and add genre tags to help categorize them more accurately</p>
+                            <a href="{% url 'films_app:home' %}" class="btn btn-primary mt-3">Explore Films</a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">About Genre Tags</h4>
+                </div>
+                <div class="card-body">
+                    <h5>Guidelines for Adding Genre Tags</h5>
+                    <ul>
+                        <li>Tags should accurately reflect the film's genre</li>
+                        <li>Use established genre categories when possible (e.g., "Thriller", "Romance", "Sci-Fi")</li>
+                        <li>Be specific but not too niche (e.g., "Cyberpunk" is good, "1980s Japanese Cyberpunk" is too specific)</li>
+                        <li>Avoid subjective tags (e.g., "Boring", "Amazing")</li>
+                        <li>Keep tags concise (2-50 characters)</li>
+                        <li>Inappropriate or offensive tags will be rejected</li>
+                    </ul>
+                    
+                    <h5 class="mt-4">Approval Process</h5>
+                    <p>
+                        All genre tags are reviewed by moderators before they appear publicly. This process usually takes 1-2 days.
+                        Tags that don't meet our guidelines will be rejected. You can remove your tags at any time, even if they've been approved.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // Handle remove tag button
+        $('.remove-tag').on('click', function() {
+            const tagId = $(this).data('tag-id');
+            
+            if (confirm('Are you sure you want to remove this genre tag?')) {
+                $.ajax({
+                    url: `/remove-tag/${tagId}/`,
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    success: function(response) {
+                        location.reload();
+                    },
+                    error: function(xhr) {
+                        alert('Error removing genre tag. Please try again.');
+                    }
+                });
+            }
+        });
+    });
+</script>
+{% endblock %} 

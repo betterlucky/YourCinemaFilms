@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Profile" %} | YourCinemaFilms{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card shadow">
+                <div class="card-body text-center">
+                    {% if profile.profile_picture_url %}
+                        <img src="{% url 'films_app:profile_image' %}" alt="{{ user.username }}" 
+                             class="rounded-circle mb-3" width="150" height="150" style="object-fit: cover;">
+                    {% else %}
+                        <div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center mx-auto mb-3"
+                             style="width: 150px; height: 150px;">
+                            <i class="fas fa-user text-white" style="font-size: 4rem;"></i>
+                        </div>
+                    {% endif %}
+                    
+                    <h3 class="mb-0">{{ user.get_full_name|default:user.username }}</h3>
+                    <p class="text-muted">@{{ user.username }}</p>
+                    
+                    <!-- Profile Image Options -->
+                    <div class="mt-3 mb-4">
+                        {% if has_google_account %}
+                        <!-- Google profile image button -->
+                        <a href="{% url 'films_app:google_profile_image' %}" class="btn btn-sm btn-primary mb-2 w-100">
+                            <i class="fab fa-google me-2"></i>{% trans "Use Google Profile Image" %}
+                        </a>
+                        {% else %}
+                        <!-- Connect Google account button -->
+                        <a href="{% url 'socialaccount_connections' %}" class="btn btn-sm btn-outline-danger mb-2 w-100">
+                            <i class="fab fa-google me-2"></i>{% trans "Connect Google Account" %}
+                        </a>
+                        {% endif %}
+                        
+                        <button type="button" class="btn btn-sm btn-secondary w-100" data-bs-toggle="modal" data-bs-target="#uploadImageModal">
+                            <i class="fas fa-upload me-2"></i>{% trans "Upload Custom Image" %}
+                        </button>
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'account_email' %}" class="btn btn-outline-primary">
+                            <i class="fas fa-envelope me-2"></i>{% trans "Manage Email" %}
+                        </a>
+                        <a href="{% url 'films_app:edit_profile' %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-edit me-2"></i>{% trans "Edit Profile" %}
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card shadow mt-4">
+                <div class="card-header">
+                    <h5 class="mb-0">{% trans "Account Information" %}</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>{% trans "Account Email:" %}</strong> {{ user.email }}</p>
+                    {% if profile.google_email %}
+                    <p><strong>{% trans "Google Email:" %}</strong> {{ profile.google_email }}</p>
+                    {% endif %}
+                    {% if profile.contact_email and profile.contact_email != profile.google_email and profile.contact_email != user.email %}
+                    <p><strong>{% trans "Contact Email:" %}</strong> {{ profile.contact_email }}</p>
+                    {% endif %}
+                    <p><strong>{% trans "Primary Email:" %}</strong> {{ profile.primary_email }}</p>
+                    <p><strong>{% trans "Joined:" %}</strong> {{ user.date_joined|date:"F j, Y" }}</p>
+                    <p><strong>{% trans "Last Login:" %}</strong> {{ user.last_login|date:"F j, Y" }}</p>
+                    
+                    <h6 class="mt-4 mb-2">{% trans "Connected Accounts" %}</h6>
+                    {% with social_accounts=user.socialaccount_set.all %}
+                        {% if social_accounts %}
+                            <ul class="list-group">
+                                {% for account in social_accounts %}
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        {% if account.provider == 'google' %}
+                                            <div>
+                                                <i class="fab fa-google me-2 text-danger"></i>
+                                                Google
+                                            </div>
+                                            <span class="badge bg-success">{% trans "Connected" %}</span>
+                                        {% endif %}
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        {% else %}
+                            <p class="text-muted">{% trans "No connected accounts." %}</p>
+                        {% endif %}
+                    {% endwith %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header">
+                    <h5 class="mb-0">{% trans "Profile Information" %}</h5>
+                </div>
+                <div class="card-body">
+                    {% if profile.bio %}
+                        <h6>{% trans "Bio" %}</h6>
+                        <p>{{ profile.bio }}</p>
+                        <hr>
+                    {% endif %}
+                    
+                    <div class="row">
+                        {% if profile.location %}
+                            <div class="col-md-6 mb-3">
+                                <h6>{% trans "Location" %}</h6>
+                                <p>{{ profile.location }}</p>
+                            </div>
+                        {% endif %}
+                        
+                        {% if profile.letterboxd_username %}
+                            <div class="col-md-6 mb-3">
+                                <h6>{% trans "Letterboxd" %}</h6>
+                                <p>
+                                    <a href="https://letterboxd.com/{{ profile.letterboxd_username }}/" target="_blank">
+                                        {{ profile.letterboxd_username }}
+                                    </a>
+                                </p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card shadow mt-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">{% trans "My Votes" %}</h5>
+                    <span class="badge bg-primary">{{ user.votes.count }}</span>
+                </div>
+                <div class="card-body">
+                    {% with votes=user_votes %}
+                        {% if votes %}
+                            <div class="row">
+                                {% for vote in votes %}
+                                    <div class="col-md-6 mb-3">
+                                        <div class="d-flex">
+                                            <img src="{{ vote.film.poster_url|default:'https://via.placeholder.com/50x75' }}" 
+                                                 alt="{{ vote.film.title }}" width="50" class="me-3">
+                                            <div>
+                                                <h6 class="mb-0">
+                                                    <a href="{% url 'films_app:film_detail' vote.film.imdb_id %}">{{ vote.film.title }}</a>
+                                                </h6>
+                                                <small class="text-muted">{{ vote.film.year }}</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <p class="text-center text-muted">
+                                {% trans "You haven't voted for any films yet." %}
+                            </p>
+                            <div class="text-center">
+                                <a href="{% url 'films_app:home' %}" class="btn btn-primary">
+                                    <i class="fas fa-film me-2"></i>{% trans "Discover Films" %}
+                                </a>
+                            </div>
+                        {% endif %}
+                    {% endwith %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Upload Image Modal -->
+<div class="modal fade" id="uploadImageModal" tabindex="-1" aria-labelledby="uploadImageModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="uploadImageModalLabel">{% trans "Upload Profile Image" %}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <ul class="nav nav-tabs mb-3" id="imageUploadTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="file-tab" data-bs-toggle="tab" data-bs-target="#file-upload" type="button" role="tab" aria-controls="file-upload" aria-selected="true">{% trans "Upload File" %}</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="url-tab" data-bs-toggle="tab" data-bs-target="#url-upload" type="button" role="tab" aria-controls="url-upload" aria-selected="false">{% trans "Image URL" %}</button>
+                    </li>
+                </ul>
+                
+                <div class="tab-content" id="imageUploadTabsContent">
+                    <!-- File Upload Tab -->
+                    <div class="tab-pane fade show active" id="file-upload" role="tabpanel" aria-labelledby="file-tab">
+                        <form action="{% url 'films_app:upload_profile_image' %}" method="post" enctype="multipart/form-data">
+                            {% csrf_token %}
+                            <div class="mb-3">
+                                <label for="profile-image-file" class="form-label">{% trans "Choose an image file:" %}</label>
+                                <input type="file" name="image" class="form-control" id="profile-image-file" accept="image/*" required>
+                                <div class="form-text">{% trans "Maximum file size: 5MB. Supported formats: JPG, PNG, GIF." %}</div>
+                            </div>
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-primary">{% trans "Upload Image" %}</button>
+                            </div>
+                        </form>
+                    </div>
+                    
+                    <!-- URL Upload Tab -->
+                    <div class="tab-pane fade" id="url-upload" role="tabpanel" aria-labelledby="url-tab">
+                        <form action="{% url 'films_app:set_profile_picture' %}" method="get">
+                            <div class="mb-3">
+                                <label for="profile-image-url" class="form-label">{% trans "Enter the URL of an image:" %}</label>
+                                <input type="text" name="url" class="form-control" id="profile-image-url" placeholder="https://example.com/your-image.jpg" required>
+                            </div>
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-primary">{% trans "Set Profile Image" %}</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{% trans "Cancel" %}</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

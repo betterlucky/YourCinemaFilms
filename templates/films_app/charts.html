@@ -1,0 +1,212 @@
+{% extends 'base.html' %}
+
+{% block title %}Charts - Films I Want To See{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1 class="mb-0">Film Charts</h1>
+            <p class="lead">See what films are trending based on user votes</p>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Time Period</h5>
+                </div>
+                <div class="card-body">
+                    <div class="btn-group w-100" role="group">
+                        <a href="{% url 'films_app:charts' %}?period=week" class="btn btn-outline-primary {% if period == 'week' %}active{% endif %}">Week</a>
+                        <a href="{% url 'films_app:charts' %}?period=month" class="btn btn-outline-primary {% if period == 'month' %}active{% endif %}">Month</a>
+                        <a href="{% url 'films_app:charts' %}?period=year" class="btn btn-outline-primary {% if period == 'year' %}active{% endif %}">Year</a>
+                        <a href="{% url 'films_app:charts' %}?period=all" class="btn btn-outline-primary {% if period == 'all' %}active{% endif %}">All Time</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mb-5">
+        <div class="col-md-8 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Top Films Chart</h4>
+                </div>
+                <div class="card-body">
+                    <canvas id="filmsChart" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Genre Distribution</h4>
+                </div>
+                <div class="card-body">
+                    <canvas id="genreChart" height="300"></canvas>
+                </div>
+                <div class="card-footer text-center">
+                    <a href="{% url 'films_app:genre_analysis' %}" class="btn btn-outline-primary btn-sm">
+                        <i class="fas fa-chart-pie me-1"></i>Detailed Genre Analysis
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2 class="border-bottom pb-2">Top Films</h2>
+        </div>
+    </div>
+    
+    <div class="row">
+        {% if top_films %}
+            {% for film in top_films %}
+                <div class="col-md-3 mb-4">
+                    <div class="card film-card">
+                        <div class="vote-badge">{{ film.vote_count }} vote{{ film.vote_count|pluralize }}</div>
+                        <img src="{{ film.poster_url|default:'https://via.placeholder.com/300x450?text=No+Poster' }}" 
+                             class="card-img-top film-poster" alt="{{ film.title }}">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ film.title }}</h5>
+                            <p class="card-text text-muted">{{ film.year }}</p>
+                            {% if film.genres %}
+                                <p class="card-text">
+                                    <small class="text-muted">
+                                        <strong>Genres:</strong> {{ film.genres }}
+                                    </small>
+                                </p>
+                            {% endif %}
+                            <a href="{% url 'films_app:film_detail' film.imdb_id %}" class="btn btn-sm btn-primary">View Details</a>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="col-12">
+                <div class="alert alert-info">
+                    No films have been voted for during this time period.
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // Films chart
+        const labels = {{ labels|safe }};
+        const data = {{ data|safe }};
+        
+        const ctx = document.getElementById('filmsChart').getContext('2d');
+        const filmsChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Number of Votes',
+                    data: data,
+                    backgroundColor: 'rgba(13, 110, 253, 0.7)',
+                    borderColor: 'rgba(13, 110, 253, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            precision: 0
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const value = context.raw;
+                                return `${value} vote${value !== 1 ? 's' : ''}`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Genre chart
+        const genreLabels = {{ genre_labels|safe }};
+        const genreData = {{ genre_data|safe }};
+        
+        const genreCtx = document.getElementById('genreChart').getContext('2d');
+        const genreChart = new Chart(genreCtx, {
+            type: 'pie',
+            data: {
+                labels: genreLabels,
+                datasets: [{
+                    data: genreData,
+                    backgroundColor: [
+                        'rgba(255, 99, 132, 0.7)',
+                        'rgba(54, 162, 235, 0.7)',
+                        'rgba(255, 206, 86, 0.7)',
+                        'rgba(75, 192, 192, 0.7)',
+                        'rgba(153, 102, 255, 0.7)',
+                        'rgba(255, 159, 64, 0.7)',
+                        'rgba(199, 199, 199, 0.7)',
+                        'rgba(83, 102, 255, 0.7)',
+                        'rgba(40, 159, 64, 0.7)',
+                        'rgba(210, 199, 199, 0.7)'
+                    ],
+                    borderColor: [
+                        'rgba(255, 99, 132, 1)',
+                        'rgba(54, 162, 235, 1)',
+                        'rgba(255, 206, 86, 1)',
+                        'rgba(75, 192, 192, 1)',
+                        'rgba(153, 102, 255, 1)',
+                        'rgba(255, 159, 64, 1)',
+                        'rgba(199, 199, 199, 1)',
+                        'rgba(83, 102, 255, 1)',
+                        'rgba(40, 159, 64, 1)',
+                        'rgba(210, 199, 199, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: {
+                            boxWidth: 15,
+                            font: {
+                                size: 10
+                            }
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.raw || 0;
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = Math.round((value / total) * 100);
+                                return `${label}: ${value} (${percentage}%)`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    });
+</script>
+{% endblock %} 

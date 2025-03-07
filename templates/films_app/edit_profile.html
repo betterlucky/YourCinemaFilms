@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Edit Profile" %} | YourCinemaFilms{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header">
+                    <h1 class="h3 mb-0">{% trans "Edit Profile" %}</h1>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <h5 class="mb-3">{% trans "Basic Information" %}</h5>
+                        
+                        <div class="mb-3">
+                            <label for="bio" class="form-label">{% trans "Bio" %}</label>
+                            <textarea name="bio" id="bio" class="form-control" rows="4">{{ profile.bio|default:'' }}</textarea>
+                            <div class="form-text">{% trans "Tell us about yourself and your film preferences." %}</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="letterboxd_username" class="form-label">{% trans "Letterboxd Username" %}</label>
+                            <input type="text" name="letterboxd_username" id="letterboxd_username" class="form-control" 
+                                   value="{{ profile.letterboxd_username|default:'' }}">
+                            <div class="form-text">{% trans "If you have a Letterboxd account, enter your username here." %}</div>
+                        </div>
+                        
+                        <hr class="my-4">
+                        
+                        <h5 class="mb-3">{% trans "Email Settings" %}</h5>
+                        
+                        <div class="mb-3">
+                            <p><strong>{% trans "Account Email:" %}</strong> {{ user.email }}</p>
+                            {% if profile.google_email %}
+                            <p><strong>{% trans "Google Email:" %}</strong> {{ profile.google_email }}</p>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="contact_email" class="form-label">{% trans "Contact Email" %}</label>
+                            <input type="email" name="contact_email" id="contact_email" class="form-control" 
+                                   value="{{ profile.contact_email|default:'' }}">
+                            <div class="form-text">{% trans "Email address for notifications (if different from account email)." %}</div>
+                        </div>
+                        
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" name="use_google_email_for_contact" id="use_google_email_for_contact" 
+                                   class="form-check-input" {% if profile.use_google_email_for_contact %}checked{% endif %}>
+                            <label for="use_google_email_for_contact" class="form-check-label">
+                                {% trans "Use Google email for contact purposes" %}
+                            </label>
+                        </div>
+                        
+                        <hr class="my-4">
+                        
+                        <h5 class="mb-3">{% trans "Demographic Information" %}</h5>
+                        <p class="text-muted small">{% trans "This information is optional and helps us understand our user base better." %}</p>
+                        
+                        <div class="mb-3">
+                            <label for="location" class="form-label">{% trans "Location" %}</label>
+                            <input type="text" name="location" id="location" class="form-control" 
+                                   value="{{ profile.location|default:'' }}">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="gender" class="form-label">{% trans "Gender" %}</label>
+                            <select name="gender" id="gender" class="form-select">
+                                {% for value, label in profile.GENDER_CHOICES %}
+                                    <option value="{{ value }}" {% if profile.gender == value %}selected{% endif %}>
+                                        {{ label }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="age_range" class="form-label">{% trans "Age Range" %}</label>
+                            <select name="age_range" id="age_range" class="form-select">
+                                {% for value, label in profile.AGE_RANGE_CHOICES %}
+                                    <option value="{{ value }}" {% if profile.age_range == value %}selected{% endif %}>
+                                        {{ label }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <hr class="my-4">
+                        
+                        <h5 class="mb-3">{% trans "Privacy Settings" %}</h5>
+                        <p class="text-muted small">{% trans "Control who can see your profile information." %}</p>
+                        
+                        <div class="mb-3">
+                            <label for="location_privacy" class="form-label">{% trans "Location Privacy" %}</label>
+                            <select name="location_privacy" id="location_privacy" class="form-select">
+                                {% for value, label in profile.PRIVACY_CHOICES %}
+                                    <option value="{{ value }}" {% if profile.location_privacy == value %}selected{% endif %}>
+                                        {{ label }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="gender_privacy" class="form-label">{% trans "Gender Privacy" %}</label>
+                            <select name="gender_privacy" id="gender_privacy" class="form-select">
+                                {% for value, label in profile.PRIVACY_CHOICES %}
+                                    <option value="{{ value }}" {% if profile.gender_privacy == value %}selected{% endif %}>
+                                        {{ label }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="age_privacy" class="form-label">{% trans "Age Range Privacy" %}</label>
+                            <select name="age_privacy" id="age_privacy" class="form-select">
+                                {% for value, label in profile.PRIVACY_CHOICES %}
+                                    <option value="{{ value }}" {% if profile.age_privacy == value %}selected{% endif %}>
+                                        {{ label }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="votes_privacy" class="form-label">{% trans "Votes Privacy" %}</label>
+                            <select name="votes_privacy" id="votes_privacy" class="form-select">
+                                {% for value, label in profile.PRIVACY_CHOICES %}
+                                    <option value="{{ value }}" {% if profile.votes_privacy == value %}selected{% endif %}>
+                                        {{ label }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="d-grid gap-2 mt-4">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i>{% trans "Save Changes" %}
+                            </button>
+                            <a href="{% url 'films_app:profile' %}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times me-2"></i>{% trans "Cancel" %}
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

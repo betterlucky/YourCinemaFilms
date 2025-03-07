@@ -1,0 +1,9 @@
+---
+description: Tech stack
+globs: 
+alwaysApply: false
+---
+Django for both front and back end
+Tailwind
+HTMX
+JS goes into static files not templates

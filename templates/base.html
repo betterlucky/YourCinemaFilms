@@ -1,0 +1,217 @@
+{% load static %}
+{% load i18n %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}YourCinemaFilms{% endblock %}</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    
+    <!-- Favicon -->
+    <link rel="icon" href="{% static 'img/favicon.ico' %}" type="image/x-icon">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <link rel="stylesheet" href="{% static 'css/social-buttons.css' %}">
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Simple Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="{% url 'films_app:home' %}">YourCinemaFilms</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarBasic" aria-controls="navbarBasic" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarBasic">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'films_app:home' %}">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'films_app:charts' %}">Charts</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'films_app:genre_analysis' %}">Genres</a>
+                    </li>
+                </ul>
+                <ul class="navbar-nav">
+                    {% if user.is_authenticated %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'films_app:profile' %}">Profile</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'account_logout' %}">Logout</a>
+                        </li>
+                    {% else %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'account_login' %}">Login</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'account_signup' %}">Sign Up</a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </nav>
+    
+    <!-- Messages -->
+    {% if messages %}
+    <div class="container mt-3">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    
+    <!-- Main Content -->
+    {% block content %}{% endblock %}
+    
+    <!-- Footer -->
+    <footer class="bg-dark text-white py-4 mt-5">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5>YourCinemaFilms</h5>
+                    <p>A platform to discover and vote for your favorite films.</p>
+                </div>
+                <div class="col-md-3">
+                    <h5>Links</h5>
+                    <ul class="list-unstyled">
+                        <li><a href="{% url 'films_app:home' %}" class="text-white">Home</a></li>
+                        <li><a href="{% url 'films_app:charts' %}" class="text-white">Charts</a></li>
+                        <li><a href="{% url 'films_app:genre_analysis' %}" class="text-white">Genres</a></li>
+                    </ul>
+                </div>
+                <div class="col-md-3">
+                    <h5>Account</h5>
+                    <ul class="list-unstyled">
+                        {% if user.is_authenticated %}
+                            <li><a href="{% url 'films_app:profile' %}" class="text-white">Profile</a></li>
+                            <li><a href="{% url 'account_logout' %}" class="text-white">Logout</a></li>
+                        {% else %}
+                            <li><a href="{% url 'account_login' %}" class="text-white">Login</a></li>
+                            <li><a href="{% url 'account_signup' %}" class="text-white">Sign Up</a></li>
+                        {% endif %}
+                    </ul>
+                </div>
+            </div>
+            <hr>
+            <div class="text-center">
+                <p>&copy; {% now "Y" %} YourCinemaFilms. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+    
+    <!-- Search Results Modal -->
+    <div class="modal fade" id="searchResultsModal" tabindex="-1" aria-labelledby="searchResultsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="searchResultsModalLabel">Search Results</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="search-results" class="row g-4">
+                        <!-- Search results will be displayed here -->
+                    </div>
+                    <div id="search-loading" class="text-center d-none">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                    <div id="search-no-results" class="text-center d-none">
+                        <p>No results found. Try a different search term.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    
+    <!-- Search Script -->
+    <script>
+        $(document).ready(function() {
+            const searchForm = $('#search-form');
+            const searchInput = $('#search-input');
+            const searchResults = $('#search-results');
+            const searchLoading = $('#search-loading');
+            const searchNoResults = $('#search-no-results');
+            const searchModal = new bootstrap.Modal(document.getElementById('searchResultsModal'));
+            
+            searchForm.on('submit', function(e) {
+                e.preventDefault();
+                const query = searchInput.val().trim();
+                
+                if (query.length < 3) {
+                    return;
+                }
+                
+                // Show loading spinner
+                searchResults.empty().addClass('d-none');
+                searchNoResults.addClass('d-none');
+                searchLoading.removeClass('d-none');
+                searchModal.show();
+                
+                // Make AJAX request to search API
+                $.ajax({
+                    url: '{% url "films_app:search_films" %}',
+                    data: { query: query },
+                    success: function(data) {
+                        searchLoading.addClass('d-none');
+                        
+                        if (data.results && data.results.length > 0) {
+                            searchResults.removeClass('d-none');
+                            
+                            // Display search results
+                            data.results.forEach(function(film) {
+                                const posterUrl = film.Poster !== 'N/A' ? film.Poster : 'https://via.placeholder.com/150x225?text=No+Poster';
+                                
+                                const filmCard = `
+                                    <div class="col-md-4 col-sm-6">
+                                        <div class="card h-100">
+                                            <img src="${posterUrl}" class="card-img-top" alt="${film.Title}" style="height: 300px; object-fit: cover;">
+                                            <div class="card-body">
+                                                <h5 class="card-title">${film.Title}</h5>
+                                                <p class="card-text">${film.Year}</p>
+                                                <a href="/film/${film.imdbID}/" class="btn btn-primary">View Details</a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                `;
+                                
+                                searchResults.append(filmCard);
+                            });
+                        } else {
+                            searchNoResults.removeClass('d-none');
+                        }
+                    },
+                    error: function() {
+                        searchLoading.addClass('d-none');
+                        searchNoResults.removeClass('d-none');
+                    }
+                });
+            });
+        });
+    </script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html> 

@@ -1,0 +1,298 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ film.title }} - Films I Want To See{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row">
+        <div class="col-md-4 mb-4">
+            <img src="{{ film.poster_url|default:'https://via.placeholder.com/500x750?text=No+Poster' }}" 
+                 class="img-fluid rounded shadow" alt="{{ film.title }}">
+        </div>
+        <div class="col-md-8">
+            <h1 class="mb-3">{{ film.title }} <span class="text-muted">({{ film.year }})</span></h1>
+            
+            <div class="mb-4">
+                <span class="badge bg-primary me-2">{{ film.votes.count }} vote{{ film.votes.count|pluralize }}</span>
+                {% if film.director %}
+                    <span class="text-muted">Directed by {{ film.director }}</span>
+                {% endif %}
+            </div>
+            
+            {% if all_genres %}
+                <div class="mb-4">
+                    <h5>Genres</h5>
+                    <div>
+                        {% for genre in all_genres %}
+                            <a href="{% url 'films_app:genre_analysis' %}?genre={{ genre }}" class="badge bg-secondary text-decoration-none me-1 mb-1">
+                                {{ genre }}
+                            </a>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+            
+            {% if user.is_authenticated %}
+                <div class="mb-4">
+                    <h5>Add Genre Tag</h5>
+                    <div class="input-group">
+                        <input type="text" id="genre-tag-input" class="form-control" placeholder="Enter a genre tag...">
+                        <button class="btn btn-outline-primary" id="add-genre-tag">Add Tag</button>
+                    </div>
+                    <div class="form-text">
+                        Help categorize this film by adding genre tags. Tags will be reviewed before appearing publicly.
+                    </div>
+                    <div id="tag-error" class="text-danger mt-1" style="display: none;"></div>
+                    
+                    {% if user_tags %}
+                        <div class="mt-3">
+                            <h6>Your Tags for This Film</h6>
+                            <div>
+                                {% for tag in user_tags %}
+                                    <span class="badge {% if tag.is_approved %}bg-success{% else %}bg-warning text-dark{% endif %} me-1 mb-1">
+                                        {{ tag.tag }}
+                                        {% if tag.is_approved %}
+                                            <i class="fas fa-check-circle ms-1"></i>
+                                        {% else %}
+                                            <i class="fas fa-clock ms-1"></i>
+                                        {% endif %}
+                                        <button class="btn-close btn-close-white ms-1" 
+                                                style="font-size: 0.5rem;" 
+                                                data-tag-id="{{ tag.id }}"
+                                                onclick="removeTag({{ tag.id }})"></button>
+                                    </span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+            {% endif %}
+            
+            {% if film.runtime %}
+                <div class="mb-4">
+                    <h5>Runtime</h5>
+                    <p>{{ film.runtime }}</p>
+                </div>
+            {% endif %}
+            
+            {% if film.actors %}
+                <div class="mb-4">
+                    <h5>Cast</h5>
+                    <p>{{ film.actors }}</p>
+                </div>
+            {% endif %}
+            
+            {% if film.plot %}
+                <div class="mb-4">
+                    <h5>Plot</h5>
+                    <p>{{ film.plot }}</p>
+                </div>
+            {% endif %}
+            
+            {% if user.is_authenticated %}
+                <div class="mb-4">
+                    {% if has_voted %}
+                        <button class="btn btn-success disabled">
+                            <i class="fas fa-check-circle me-2"></i>You've voted for this film
+                        </button>
+                    {% else %}
+                        {% if user.profile.can_vote %}
+                            <button id="vote-button" class="btn btn-primary">
+                                <i class="fas fa-thumbs-up me-2"></i>Vote for this film
+                            </button>
+                        {% else %}
+                            <button class="btn btn-secondary disabled">
+                                <i class="fas fa-exclamation-circle me-2"></i>You've used all your votes
+                            </button>
+                            <small class="d-block mt-2">
+                                Remove some votes from your <a href="{% url 'films_app:profile' %}">profile</a> to vote for this film.
+                            </small>
+                        {% endif %}
+                    {% endif %}
+                </div>
+            {% else %}
+                <div class="alert alert-info">
+                    <a href="{% url 'account_login' %}">Log in</a> or <a href="{% url 'account_signup' %}">sign up</a> to vote for this film.
+                </div>
+            {% endif %}
+            
+            <div class="mt-4">
+                <a href="https://www.imdb.com/title/{{ film.imdb_id }}/" target="_blank" class="btn btn-outline-secondary me-2">
+                    <i class="fab fa-imdb me-1"></i>View on IMDb
+                </a>
+                <a href="{% url 'films_app:home' %}" class="btn btn-outline-primary">
+                    <i class="fas fa-arrow-left me-1"></i>Back to Home
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mt-5">
+        <div class="col-12">
+            <h3 class="border-bottom pb-2">Similar Films</h3>
+            <div id="similar-films-container">
+                <div class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">Finding similar films...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // Handle vote button
+        {% if user.is_authenticated and not has_voted and user.profile.can_vote %}
+        $('#vote-button').on('click', function() {
+            $.ajax({
+                url: '{% url "films_app:vote_for_film" film.imdb_id %}',
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                success: function(response) {
+                    location.reload();
+                },
+                error: function(xhr) {
+                    if (xhr.responseJSON && xhr.responseJSON.error) {
+                        alert(xhr.responseJSON.error);
+                    } else {
+                        alert('Error voting for film. Please try again.');
+                    }
+                }
+            });
+        });
+        {% endif %}
+        
+        // Handle add genre tag button
+        {% if user.is_authenticated %}
+        $('#add-genre-tag').on('click', function() {
+            const tag = $('#genre-tag-input').val().trim();
+            
+            if (!tag) {
+                $('#tag-error').text('Please enter a genre tag').show();
+                return;
+            }
+            
+            $.ajax({
+                url: '{% url "films_app:add_genre_tag" film.imdb_id %}',
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                data: {
+                    tag: tag
+                },
+                success: function(response) {
+                    location.reload();
+                },
+                error: function(xhr) {
+                    if (xhr.responseJSON && xhr.responseJSON.error) {
+                        $('#tag-error').text(xhr.responseJSON.error).show();
+                    } else {
+                        $('#tag-error').text('Error adding genre tag. Please try again.').show();
+                    }
+                }
+            });
+        });
+        
+        // Clear error message when input changes
+        $('#genre-tag-input').on('input', function() {
+            $('#tag-error').hide();
+        });
+        {% endif %}
+        
+        // Load similar films based on genres
+        const genres = {{ film.genre_list|safe }};
+        if (genres && genres.length > 0) {
+            const genreParam = genres[0]; // Use the first genre for simplicity
+            
+            $.ajax({
+                url: '/api/films/',
+                data: { 
+                    genre: genreParam,
+                    exclude: '{{ film.imdb_id }}'
+                },
+                success: function(response) {
+                    let html = '';
+                    
+                    if (response.length > 0) {
+                        html += '<div class="row">';
+                        
+                        // Limit to 4 similar films
+                        const similarFilms = response.slice(0, 4);
+                        
+                        similarFilms.forEach(function(film) {
+                            html += `
+                                <div class="col-md-3 mb-3">
+                                    <div class="card film-card h-100">
+                                        <img src="${film.poster_url || 'https://via.placeholder.com/300x450?text=No+Poster'}" 
+                                             class="card-img-top film-poster" alt="${film.title}">
+                                        <div class="card-body">
+                                            <h6 class="card-title">${film.title}</h6>
+                                            <p class="card-text text-muted small">${film.year}</p>
+                                            <p class="card-text">
+                                                <small class="text-muted">
+                                                    <strong>Genres:</strong> ${film.genres}
+                                                </small>
+                                            </p>
+                                            <a href="/film/${film.imdb_id}/" class="btn btn-sm btn-outline-primary">View Details</a>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        
+                        html += '</div>';
+                    } else {
+                        html = `
+                            <div class="alert alert-info">
+                                No similar films found.
+                            </div>
+                        `;
+                    }
+                    
+                    $('#similar-films-container').html(html);
+                },
+                error: function() {
+                    $('#similar-films-container').html(`
+                        <div class="alert alert-danger">
+                            Error loading similar films.
+                        </div>
+                    `);
+                }
+            });
+        } else {
+            $('#similar-films-container').html(`
+                <div class="alert alert-info">
+                    No genre information available to find similar films.
+                </div>
+            `);
+        }
+    });
+    
+    // Function to remove a genre tag
+    function removeTag(tagId) {
+        if (confirm('Are you sure you want to remove this genre tag?')) {
+            $.ajax({
+                url: `/remove-tag/${tagId}/`,
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                success: function(response) {
+                    location.reload();
+                },
+                error: function(xhr) {
+                    alert('Error removing genre tag. Please try again.');
+                }
+            });
+        }
+    }
+</script>
+{% endblock %} 

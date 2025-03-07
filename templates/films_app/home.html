@@ -1,0 +1,145 @@
+{% extends 'base.html' %}
+
+{% block title %}Home - Films I Want To See{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row mb-5">
+        <div class="col-md-8">
+            <h1 class="display-4 mb-4">Welcome to Films I Want To See</h1>
+            <p class="lead">
+                Discover, vote, and track your favorite films. See what others are watching and explore trending movies.
+            </p>
+            {% if not user.is_authenticated %}
+                <div class="mt-4">
+                    <a href="{% url 'account_signup' %}" class="btn btn-primary me-2">Sign Up</a>
+                    <a href="{% url 'account_login' %}" class="btn btn-outline-primary">Log In</a>
+                </div>
+            {% endif %}
+        </div>
+        <div class="col-md-4 d-flex align-items-center justify-content-center">
+            <div class="text-center">
+                <i class="fas fa-film fa-5x text-primary mb-3"></i>
+                <h4>Track Your Favorites</h4>
+                <p>Vote for up to 10 films you love</p>
+            </div>
+        </div>
+    </div>
+    
+    {% if user.is_authenticated %}
+        <div class="row mb-5">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h3 class="mb-0">Your Votes</h3>
+                    </div>
+                    <div class="card-body">
+                        {% if user_votes %}
+                            <div class="row">
+                                {% for vote in user_votes %}
+                                    <div class="col-md-3 mb-4">
+                                        <div class="card film-card">
+                                            <img src="{{ vote.film.poster_url|default:'https://via.placeholder.com/300x450?text=No+Poster' }}" 
+                                                 class="card-img-top film-poster" alt="{{ vote.film.title }}">
+                                            <div class="card-body">
+                                                <h5 class="card-title">{{ vote.film.title }}</h5>
+                                                <p class="card-text text-muted">{{ vote.film.year }}</p>
+                                                <a href="{% url 'films_app:film_detail' vote.film.imdb_id %}" class="btn btn-sm btn-outline-primary">View Details</a>
+                                                <button class="btn btn-sm btn-outline-danger remove-vote" data-vote-id="{{ vote.id }}">
+                                                    Remove Vote
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                                
+                                {% if votes_remaining > 0 %}
+                                    <div class="col-md-3 mb-4">
+                                        <div class="card h-100 d-flex justify-content-center align-items-center text-center p-4">
+                                            <div>
+                                                <i class="fas fa-plus-circle fa-3x text-muted mb-3"></i>
+                                                <h5>You have {{ votes_remaining }} vote{{ votes_remaining|pluralize }} remaining</h5>
+                                                <p><a href="#" class="search-focus">Search for films to add more votes</a></p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        {% else %}
+                            <div class="text-center py-5">
+                                <i class="fas fa-film fa-3x text-muted mb-3"></i>
+                                <h4>You haven't voted for any films yet</h4>
+                                <p><a href="#" class="search-focus">Search for films to start voting</a></p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+    
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2 class="border-bottom pb-2">Top Films</h2>
+        </div>
+    </div>
+    
+    <div class="row">
+        {% if top_films %}
+            {% for film in top_films %}
+                <div class="col-md-3 mb-4">
+                    <div class="card film-card">
+                        <div class="vote-badge">{{ film.vote_count }} vote{{ film.vote_count|pluralize }}</div>
+                        <img src="{{ film.poster_url|default:'https://via.placeholder.com/300x450?text=No+Poster' }}" 
+                             class="card-img-top film-poster" alt="{{ film.title }}">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ film.title }}</h5>
+                            <p class="card-text text-muted">{{ film.year }}</p>
+                            <a href="{% url 'films_app:film_detail' film.imdb_id %}" class="btn btn-sm btn-primary">View Details</a>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="col-12">
+                <div class="alert alert-info">
+                    No films have been voted for yet. Be the first to vote!
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // Handle remove vote button
+        $('.remove-vote').on('click', function() {
+            const voteId = $(this).data('vote-id');
+            
+            if (confirm('Are you sure you want to remove this vote?')) {
+                $.ajax({
+                    url: `/remove-vote/${voteId}/`,
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    success: function(response) {
+                        location.reload();
+                    },
+                    error: function(xhr) {
+                        alert('Error removing vote. Please try again.');
+                    }
+                });
+            }
+        });
+        
+        // Handle search focus links
+        $('.search-focus').on('click', function(e) {
+            e.preventDefault();
+            $('#search-input').focus();
+        });
+    });
+</script>
+{% endblock %} 
