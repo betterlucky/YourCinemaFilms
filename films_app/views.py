@@ -21,20 +21,28 @@ from .utils import validate_genre_tag
 
 def home(request):
     """Home page view."""
-    # Get top 10 films based on votes
-    top_films = Film.objects.annotate(vote_count=Count('votes')).order_by('-vote_count')[:10]
-    
-    context = {
-        'top_films': top_films,
-    }
-    
-    if request.user.is_authenticated:
-        # Get user's votes
-        user_votes = Vote.objects.filter(user=request.user).select_related('film')
-        context['user_votes'] = user_votes
-        context['votes_remaining'] = 10 - user_votes.count()
-    
-    return render(request, 'films_app/home.html', context)
+    try:
+        # Get top 10 films based on votes
+        top_films = Film.objects.annotate(vote_count=Count('votes')).order_by('-vote_count')[:10]
+        
+        context = {
+            'top_films': top_films,
+        }
+        
+        if request.user.is_authenticated:
+            # Get user's votes
+            user_votes = Vote.objects.filter(user=request.user).select_related('film')
+            context['user_votes'] = user_votes
+            context['votes_remaining'] = 10 - user_votes.count()
+        
+        return render(request, 'films_app/home.html', context)
+    except Exception as e:
+        # If there's an error (like missing tables), show a simple page
+        error_message = str(e)
+        return render(request, 'films_app/error.html', {
+            'error_message': error_message,
+            'is_database_error': 'relation' in error_message and 'does not exist' in error_message
+        })
 
 
 @login_required

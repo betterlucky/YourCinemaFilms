@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+
+{% block title %}Error - YourCinemaFilms{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row">
+        <div class="col-12 text-center">
+            <h1 class="text-danger mb-4">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                Application Error
+            </h1>
+            
+            {% if is_database_error %}
+                <div class="alert alert-warning">
+                    <h4>Database Setup Issue</h4>
+                    <p>The application is having trouble connecting to the database or the required tables don't exist.</p>
+                    <p>This is common when deploying to a new environment or when the database has been reset.</p>
+                </div>
+                
+                <div class="card mt-4">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">Troubleshooting Steps</h5>
+                    </div>
+                    <div class="card-body">
+                        <ol class="text-start">
+                            <li>Check that the database service is running</li>
+                            <li>Verify that the DATABASE_URL environment variable is set correctly</li>
+                            <li>Make sure migrations have been applied: <code>python manage.py migrate</code></li>
+                            <li>Try redeploying the application with "Clear build cache"</li>
+                        </ol>
+                    </div>
+                </div>
+            {% else %}
+                <div class="alert alert-danger">
+                    <p>An unexpected error occurred while processing your request.</p>
+                    <p>Please try again later or contact the administrator if the problem persists.</p>
+                </div>
+            {% endif %}
+            
+            <div class="mt-4">
+                <a href="/" class="btn btn-primary">Refresh Page</a>
+            </div>
+            
+            {% if error_message %}
+                <div class="card mt-5">
+                    <div class="card-header bg-secondary text-white">
+                        <h5 class="mb-0">Technical Details</h5>
+                    </div>
+                    <div class="card-body">
+                        <pre class="text-start bg-light p-3">{{ error_message }}</pre>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %} 

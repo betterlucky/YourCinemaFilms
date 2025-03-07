@@ -139,8 +139,15 @@ if DATABASE_URL:
     }
     
     # Set a longer connection timeout for initial connection
-    DATABASES['default']['CONN_MAX_AGE'] = 600
+    DATABASES['default']['CONN_MAX_AGE'] = 60  # Reduced from 600 to handle free tier spin-down
     DATABASES['default']['CONN_HEALTH_CHECKS'] = True
+    
+    # Add connection retry logic for free tier spin-down
+    DATABASES['default']['OPTIONS']['connect_timeout'] = 10
+    DATABASES['default']['OPTIONS']['keepalives'] = 1
+    DATABASES['default']['OPTIONS']['keepalives_idle'] = 30
+    DATABASES['default']['OPTIONS']['keepalives_interval'] = 10
+    DATABASES['default']['OPTIONS']['keepalives_count'] = 5
 
 # Print database engine being used (for debugging)
 print(f"Using database engine: {DATABASES['default']['ENGINE']}")
