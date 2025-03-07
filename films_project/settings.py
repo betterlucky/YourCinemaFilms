@@ -122,15 +122,28 @@ DATABASES = {
 # Configure database using DATABASE_URL environment variable if available
 DATABASE_URL = os.getenv('DATABASE_URL')
 if DATABASE_URL:
-    DATABASES['default'] = dj_database_url.config(
-        default=DATABASE_URL,
-        conn_max_age=600,
-        conn_health_checks=True,
-    )
+    # Parse the DATABASE_URL and update the default database configuration
+    db_config = dj_database_url.parse(DATABASE_URL)
+    
+    # Log database connection info (without password)
+    db_info = dict(db_config)
+    if 'PASSWORD' in db_info:
+        db_info['PASSWORD'] = '********'  # Mask the password in logs
+    print(f"Database configuration: {db_info}")
+    
+    DATABASES['default'] = db_config
+    
     # Ensure PostgreSQL uses the correct schema
     DATABASES['default']['OPTIONS'] = {
         'options': '-c search_path=public'
     }
+    
+    # Set a longer connection timeout for initial connection
+    DATABASES['default']['CONN_MAX_AGE'] = 600
+    DATABASES['default']['CONN_HEALTH_CHECKS'] = True
+
+# Print database engine being used (for debugging)
+print(f"Using database engine: {DATABASES['default']['ENGINE']}")
 
 # Ensure migrations are created for all apps
 MIGRATION_MODULES = {
