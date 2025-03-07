@@ -40,23 +40,10 @@ def wait_for_db(max_retries=5, retry_interval=5):
     print("Failed to connect to the database after multiple attempts.")
     return False
 
-def ensure_tables_exist():
-    """Ensure all required tables exist in the database."""
-    print("Ensuring tables exist...")
+def create_all_tables_sql():
+    """Create all necessary tables using SQL."""
+    print("Creating all tables using SQL...")
     
-    # First try using Django migrations
-    try:
-        print("Running makemigrations...")
-        call_command('makemigrations', interactive=False)
-        print("Running migrate...")
-        call_command('migrate', interactive=False)
-        print("Migrations completed successfully!")
-        return True
-    except Exception as e:
-        print(f"Error during migrations: {e}")
-        print("Attempting to create tables directly...")
-    
-    # If migrations fail, try creating tables directly using SQL
     try:
         # Get the database URL from environment
         db_url = os.environ.get('DATABASE_URL')
@@ -83,7 +70,99 @@ def ensure_tables_exist():
         conn.autocommit = True
         cursor = conn.cursor()
         
-        # Create tables if they don't exist
+        # Create Django auth tables first
+        cursor.execute("""
+            -- Django auth tables
+            CREATE TABLE IF NOT EXISTS "django_migrations" (
+                "id" bigserial NOT NULL PRIMARY KEY,
+                "app" varchar(255) NOT NULL,
+                "name" varchar(255) NOT NULL,
+                "applied" timestamp with time zone NOT NULL
+            );
+            
+            CREATE TABLE IF NOT EXISTS "django_content_type" (
+                "id" bigserial NOT NULL PRIMARY KEY,
+                "app_label" varchar(100) NOT NULL,
+                "model" varchar(100) NOT NULL,
+                CONSTRAINT "django_content_type_app_label_model_uniq" UNIQUE ("app_label", "model")
+            );
+            
+            CREATE TABLE IF NOT EXISTS "auth_permission" (
+                "id" bigserial NOT NULL PRIMARY KEY,
+                "name" varchar(255) NOT NULL,
+                "content_type_id" bigint NOT NULL REFERENCES "django_content_type" ("id") DEFERRABLE INITIALLY DEFERRED,
+                "codename" varchar(100) NOT NULL,
+                CONSTRAINT "auth_permission_content_type_id_codename_uniq" UNIQUE ("content_type_id", "codename")
+            );
+            
+            CREATE TABLE IF NOT EXISTS "auth_group" (
+                "id" bigserial NOT NULL PRIMARY KEY,
+                "name" varchar(150) NOT NULL UNIQUE
+            );
+            
+            CREATE TABLE IF NOT EXISTS "auth_group_permissions" (
+                "id" bigserial NOT NULL PRIMARY KEY,
+                "group_id" bigint NOT NULL REFERENCES "auth_group" ("id") DEFERRABLE INITIALLY DEFERRED,
+                "permission_id" bigint NOT NULL REFERENCES "auth_permission" ("id") DEFERRABLE INITIALLY DEFERRED,
+                CONSTRAINT "auth_group_permissions_group_id_permission_id_uniq" UNIQUE ("group_id", "permission_id")
+            );
+            
+            CREATE TABLE IF NOT EXISTS "auth_user" (
+                "id" bigserial NOT NULL PRIMARY KEY,
+                "password" varchar(128) NOT NULL,
+                "last_login" timestamp with time zone NULL,
+                "is_superuser" boolean NOT NULL,
+                "username" varchar(150) NOT NULL UNIQUE,
+                "first_name" varchar(150) NOT NULL,
+                "last_name" varchar(150) NOT NULL,
+                "email" varchar(254) NOT NULL,
+                "is_staff" boolean NOT NULL,
+                "is_active" boolean NOT NULL,
+                "date_joined" timestamp with time zone NOT NULL
+            );
+            
+            CREATE TABLE IF NOT EXISTS "auth_user_groups" (
+                "id" bigserial NOT NULL PRIMARY KEY,
+                "user_id" bigint NOT NULL REFERENCES "auth_user" ("id") DEFERRABLE INITIALLY DEFERRED,
+                "group_id" bigint NOT NULL REFERENCES "auth_group" ("id") DEFERRABLE INITIALLY DEFERRED,
+                CONSTRAINT "auth_user_groups_user_id_group_id_uniq" UNIQUE ("user_id", "group_id")
+            );
+            
+            CREATE TABLE IF NOT EXISTS "auth_user_user_permissions" (
+                "id" bigserial NOT NULL PRIMARY KEY,
+                "user_id" bigint NOT NULL REFERENCES "auth_user" ("id") DEFERRABLE INITIALLY DEFERRED,
+                "permission_id" bigint NOT NULL REFERENCES "auth_permission" ("id") DEFERRABLE INITIALLY DEFERRED,
+                CONSTRAINT "auth_user_user_permissions_user_id_permission_id_uniq" UNIQUE ("user_id", "permission_id")
+            );
+            
+            CREATE TABLE IF NOT EXISTS "django_admin_log" (
+                "id" bigserial NOT NULL PRIMARY KEY,
+                "action_time" timestamp with time zone NOT NULL,
+                "object_id" text NULL,
+                "object_repr" varchar(200) NOT NULL,
+                "action_flag" smallint NOT NULL CHECK ("action_flag" >= 0),
+                "change_message" text NOT NULL,
+                "content_type_id" bigint NULL REFERENCES "django_content_type" ("id") DEFERRABLE INITIALLY DEFERRED,
+                "user_id" bigint NOT NULL REFERENCES "auth_user" ("id") DEFERRABLE INITIALLY DEFERRED
+            );
+            
+            CREATE TABLE IF NOT EXISTS "django_session" (
+                "session_key" varchar(40) NOT NULL PRIMARY KEY,
+                "session_data" text NOT NULL,
+                "expire_date" timestamp with time zone NOT NULL
+            );
+            
+            -- Create index on django_session.expire_date
+            CREATE INDEX IF NOT EXISTS "django_session_expire_date_idx" ON "django_session" ("expire_date");
+            
+            -- Create index on django_admin_log.content_type_id
+            CREATE INDEX IF NOT EXISTS "django_admin_log_content_type_id_idx" ON "django_admin_log" ("content_type_id");
+            
+            -- Create index on django_admin_log.user_id
+            CREATE INDEX IF NOT EXISTS "django_admin_log_user_id_idx" ON "django_admin_log" ("user_id");
+        """)
+        
+        # Now create the application tables
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS "films_app_film" (
                 "id" bigserial NOT NULL PRIMARY KEY,
@@ -137,6 +216,107 @@ def ensure_tables_exist():
                 "user_id" integer NOT NULL REFERENCES "auth_user" ("id") DEFERRABLE INITIALLY DEFERRED,
                 CONSTRAINT "films_app_genretag_film_id_user_id_tag_uniq" UNIQUE ("film_id", "user_id", "tag")
             );
+            
+            -- Create Django sites framework table (required by django-allauth)
+            CREATE TABLE IF NOT EXISTS "django_site" (
+                "id" bigserial NOT NULL PRIMARY KEY,
+                "domain" varchar(100) NOT NULL,
+                "name" varchar(50) NOT NULL
+            );
+            
+            -- Insert default site
+            INSERT INTO "django_site" ("id", "domain", "name")
+            VALUES (1, 'example.com', 'example.com')
+            ON CONFLICT (id) DO NOTHING;
+            
+            -- Create social account tables
+            CREATE TABLE IF NOT EXISTS "socialaccount_socialapp" (
+                "id" bigserial NOT NULL PRIMARY KEY,
+                "provider" varchar(30) NOT NULL,
+                "name" varchar(40) NOT NULL,
+                "client_id" varchar(191) NOT NULL,
+                "secret" varchar(191) NOT NULL,
+                "key" varchar(191) NOT NULL
+            );
+            
+            CREATE TABLE IF NOT EXISTS "socialaccount_socialaccount" (
+                "id" bigserial NOT NULL PRIMARY KEY,
+                "provider" varchar(30) NOT NULL,
+                "uid" varchar(191) NOT NULL,
+                "last_login" timestamp with time zone NOT NULL,
+                "date_joined" timestamp with time zone NOT NULL,
+                "extra_data" text NOT NULL,
+                "user_id" integer NOT NULL REFERENCES "auth_user" ("id") DEFERRABLE INITIALLY DEFERRED,
+                CONSTRAINT "socialaccount_socialaccount_provider_uid_uniq" UNIQUE ("provider", "uid")
+            );
+            
+            CREATE TABLE IF NOT EXISTS "socialaccount_socialapp_sites" (
+                "id" bigserial NOT NULL PRIMARY KEY,
+                "socialapp_id" integer NOT NULL REFERENCES "socialaccount_socialapp" ("id") DEFERRABLE INITIALLY DEFERRED,
+                "site_id" integer NOT NULL REFERENCES "django_site" ("id") DEFERRABLE INITIALLY DEFERRED,
+                CONSTRAINT "socialaccount_socialapp_sites_socialapp_id_site_id_uniq" UNIQUE ("socialapp_id", "site_id")
+            );
+            
+            CREATE TABLE IF NOT EXISTS "socialaccount_socialtoken" (
+                "id" bigserial NOT NULL PRIMARY KEY,
+                "token" text NOT NULL,
+                "token_secret" text NOT NULL,
+                "expires_at" timestamp with time zone NULL,
+                "account_id" integer NOT NULL REFERENCES "socialaccount_socialaccount" ("id") DEFERRABLE INITIALLY DEFERRED,
+                "app_id" integer NOT NULL REFERENCES "socialaccount_socialapp" ("id") DEFERRABLE INITIALLY DEFERRED,
+                CONSTRAINT "socialaccount_socialtoken_app_id_account_id_uniq" UNIQUE ("app_id", "account_id")
+            );
+            
+            -- Create account tables for django-allauth
+            CREATE TABLE IF NOT EXISTS "account_emailaddress" (
+                "id" bigserial NOT NULL PRIMARY KEY,
+                "email" varchar(254) NOT NULL,
+                "verified" boolean NOT NULL,
+                "primary" boolean NOT NULL,
+                "user_id" integer NOT NULL REFERENCES "auth_user" ("id") DEFERRABLE INITIALLY DEFERRED,
+                CONSTRAINT "account_emailaddress_user_id_email_uniq" UNIQUE ("user_id", "email")
+            );
+            
+            CREATE TABLE IF NOT EXISTS "account_emailconfirmation" (
+                "id" bigserial NOT NULL PRIMARY KEY,
+                "created" timestamp with time zone NOT NULL,
+                "sent" timestamp with time zone NULL,
+                "key" varchar(64) NOT NULL UNIQUE,
+                "email_address_id" integer NOT NULL REFERENCES "account_emailaddress" ("id") DEFERRABLE INITIALLY DEFERRED
+            );
+        """)
+        
+        # Record migrations in django_migrations table
+        cursor.execute("""
+            INSERT INTO django_migrations (app, name, applied)
+            VALUES 
+                ('contenttypes', '0001_initial', NOW()),
+                ('auth', '0001_initial', NOW()),
+                ('admin', '0001_initial', NOW()),
+                ('admin', '0002_logentry_remove_auto_add', NOW()),
+                ('admin', '0003_logentry_add_action_flag_choices', NOW()),
+                ('contenttypes', '0002_remove_content_type_name', NOW()),
+                ('auth', '0002_alter_permission_name_max_length', NOW()),
+                ('auth', '0003_alter_user_email_max_length', NOW()),
+                ('auth', '0004_alter_user_username_opts', NOW()),
+                ('auth', '0005_alter_user_last_login_null', NOW()),
+                ('auth', '0006_require_contenttypes_0002', NOW()),
+                ('auth', '0007_alter_validators_add_error_messages', NOW()),
+                ('auth', '0008_alter_user_username_max_length', NOW()),
+                ('auth', '0009_alter_user_last_name_max_length', NOW()),
+                ('auth', '0010_alter_group_name_max_length', NOW()),
+                ('auth', '0011_update_proxy_permissions', NOW()),
+                ('auth', '0012_alter_user_first_name_max_length', NOW()),
+                ('sessions', '0001_initial', NOW()),
+                ('sites', '0001_initial', NOW()),
+                ('sites', '0002_alter_domain_unique', NOW()),
+                ('account', '0001_initial', NOW()),
+                ('account', '0002_email_max_length', NOW()),
+                ('socialaccount', '0001_initial', NOW()),
+                ('socialaccount', '0002_token_max_lengths', NOW()),
+                ('socialaccount', '0003_extra_data_default_dict', NOW()),
+                ('films_app', '0001_initial', NOW())
+            ON CONFLICT DO NOTHING;
         """)
         
         print("Tables created successfully!")
@@ -146,6 +326,25 @@ def ensure_tables_exist():
     except Exception as e:
         print(f"Error creating tables directly: {e}")
         return False
+
+def ensure_tables_exist():
+    """Ensure all required tables exist in the database."""
+    print("Ensuring tables exist...")
+    
+    # First try using Django migrations
+    try:
+        print("Running makemigrations...")
+        call_command('makemigrations', interactive=False)
+        print("Running migrate...")
+        call_command('migrate', interactive=False)
+        print("Migrations completed successfully!")
+        return True
+    except Exception as e:
+        print(f"Error during migrations: {e}")
+        print("Attempting to create tables directly...")
+    
+    # If migrations fail, try creating tables directly using SQL
+    return create_all_tables_sql()
 
 def load_fixture_data():
     """Load data from fixtures."""
@@ -225,12 +424,27 @@ def verify_tables():
         print(f"Error verifying tables: {e}")
         return False
 
+def fix_migration_conflicts():
+    """Fix migration conflicts by creating a merge migration."""
+    print("Checking for migration conflicts...")
+    try:
+        # Try to create a merge migration
+        call_command('makemigrations', '--merge', interactive=False)
+        print("Created merge migration successfully!")
+        return True
+    except Exception as e:
+        print(f"Error creating merge migration: {e}")
+        return False
+
 if __name__ == "__main__":
     print("Starting database setup...")
     
     # Wait for the database to be available
     if not wait_for_db():
         sys.exit(1)
+    
+    # Try to fix migration conflicts
+    fix_migration_conflicts()
     
     # Ensure tables exist
     if not ensure_tables_exist():
