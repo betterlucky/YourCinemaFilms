@@ -46,4 +46,16 @@ python ensure_db.py || {
   echo "Database setup failed, but continuing..."
 }
 
+# Update the site domain
+echo "Updating site domain..."
+python update_site_domain.py || {
+  echo "Site domain update failed, but continuing..."
+}
+
+# Set up Google OAuth
+echo "Setting up Google OAuth..."
+python setup_google_oauth.py || {
+  echo "Google OAuth setup failed, but continuing..."
+}
+
 echo "Build process completed successfully!" 
