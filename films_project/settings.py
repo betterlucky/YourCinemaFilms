@@ -135,7 +135,8 @@ if DATABASE_URL:
     
     # Ensure PostgreSQL uses the correct schema
     DATABASES['default']['OPTIONS'] = {
-        'options': '-c search_path=public'
+        'options': '-c search_path=public',
+        'application_name': 'yourcinemafilms'  # Add application name for better logging
     }
     
     # Set a longer connection timeout for initial connection
