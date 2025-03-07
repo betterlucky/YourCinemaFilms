@@ -230,20 +230,22 @@
                         similarFilms.forEach(function(film) {
                             html += `
                                 <div class="col-md-3 mb-3">
-                                    <div class="card film-card h-100">
-                                        <img src="${film.poster_url || 'https://via.placeholder.com/300x450?text=No+Poster'}" 
-                                             class="card-img-top film-poster" alt="${film.title}">
-                                        <div class="card-body">
-                                            <h6 class="card-title">${film.title}</h6>
-                                            <p class="card-text text-muted small">${film.year}</p>
-                                            <p class="card-text">
-                                                <small class="text-muted">
-                                                    <strong>Genres:</strong> ${film.genres}
-                                                </small>
-                                            </p>
-                                            <a href="/film/${film.imdb_id}/" class="btn btn-sm btn-outline-primary">View Details</a>
+                                    <a href="/film/${film.imdb_id}/" class="card-link">
+                                        <div class="card film-card h-100">
+                                            <img src="${film.poster_url || 'https://via.placeholder.com/300x450?text=No+Poster'}" 
+                                                 class="card-img-top film-poster" alt="${film.title}">
+                                            <div class="card-body">
+                                                <h6 class="card-title">${film.title}</h6>
+                                                <p class="card-text text-muted small">${film.year}</p>
+                                                <p class="card-text">
+                                                    <small class="text-muted">
+                                                        <strong>Genres:</strong> ${film.genres}
+                                                    </small>
+                                                </p>
+                                                <span class="btn btn-sm btn-outline-primary">View Details</span>
+                                            </div>
                                         </div>
-                                    </div>
+                                    </a>
                                 </div>
                             `;
                         });

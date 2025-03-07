@@ -1,14 +1,14 @@
 {% extends 'base.html' %}
 
-{% block title %}Home - Films I Want To See{% endblock %}
+{% block title %}Home - Your Cinema Films{% endblock %}
 
 {% block content %}
 <div class="container py-5">
     <div class="row mb-5">
         <div class="col-md-8">
-            <h1 class="display-4 mb-4">Welcome to Films I Want To See</h1>
+            <h1 class="display-4 mb-4">Welcome to Your Cinema Films</h1>
             <p class="lead">
-                Discover, vote, and track your favorite films. See what others are watching and explore trending movies.
+                Vote for which films you'd most like to see on the big screen.
             </p>
             {% if not user.is_authenticated %}
                 <div class="mt-4">
@@ -39,11 +39,15 @@
                                 {% for vote in user_votes %}
                                     <div class="col-md-3 mb-4">
                                         <div class="card film-card">
-                                            <img src="{{ vote.film.poster_url|default:'https://via.placeholder.com/300x450?text=No+Poster' }}" 
-                                                 class="card-img-top film-poster" alt="{{ vote.film.title }}">
-                                            <div class="card-body">
-                                                <h5 class="card-title">{{ vote.film.title }}</h5>
-                                                <p class="card-text text-muted">{{ vote.film.year }}</p>
+                                            <a href="{% url 'films_app:film_detail' vote.film.imdb_id %}" class="card-content-link">
+                                                <img src="{{ vote.film.poster_url|default:'https://via.placeholder.com/300x450?text=No+Poster' }}" 
+                                                     class="card-img-top film-poster" alt="{{ vote.film.title }}">
+                                                <div class="card-body card-body-content">
+                                                    <h5 class="card-title">{{ vote.film.title }}</h5>
+                                                    <p class="card-text text-muted">{{ vote.film.year }}</p>
+                                                </div>
+                                            </a>
+                                            <div class="card-body card-body-actions pt-0">
                                                 <a href="{% url 'films_app:film_detail' vote.film.imdb_id %}" class="btn btn-sm btn-outline-primary">View Details</a>
                                                 <button class="btn btn-sm btn-outline-danger remove-vote" data-vote-id="{{ vote.id }}">
                                                     Remove Vote
@@ -59,7 +63,26 @@
                                             <div>
                                                 <i class="fas fa-plus-circle fa-3x text-muted mb-3"></i>
                                                 <h5>You have {{ votes_remaining }} vote{{ votes_remaining|pluralize }} remaining</h5>
-                                                <p><a href="#" class="search-focus">Search for films to add more votes</a></p>
+                                                <div class="mt-3">
+                                                    <div class="omdb-search-container">
+                                                        <input type="text" 
+                                                               class="form-control mb-2" 
+                                                               placeholder="Search for films to vote..."
+                                                               hx-get="{% url 'films_app:search_films' %}"
+                                                               hx-trigger="keyup changed delay:500ms"
+                                                               hx-target="#home-search-results-list"
+                                                               hx-indicator="#home-search-loading"
+                                                               name="query">
+                                                        <div id="home-search-results" class="search-results-dropdown">
+                                                            <div id="home-search-loading" class="text-center p-2 htmx-indicator">
+                                                                <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                                                    <span class="visually-hidden">Loading...</span>
+                                                                </div>
+                                                            </div>
+                                                            <div id="home-search-results-list"></div>
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -69,7 +92,26 @@
                             <div class="text-center py-5">
                                 <i class="fas fa-film fa-3x text-muted mb-3"></i>
                                 <h4>You haven't voted for any films yet</h4>
-                                <p><a href="#" class="search-focus">Search for films to start voting</a></p>
+                                <div class="mt-3 col-md-6 mx-auto">
+                                    <div class="omdb-search-container">
+                                        <input type="text" 
+                                               class="form-control mb-2" 
+                                               placeholder="Search for films to start voting..."
+                                               hx-get="{% url 'films_app:search_films' %}"
+                                               hx-trigger="keyup changed delay:500ms"
+                                               hx-target="#home-search-results-list-empty"
+                                               hx-indicator="#home-search-loading-empty"
+                                               name="query">
+                                        <div id="home-search-results-empty" class="search-results-dropdown">
+                                            <div id="home-search-loading-empty" class="text-center p-2 htmx-indicator">
+                                                <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                                    <span class="visually-hidden">Loading...</span>
+                                                </div>
+                                            </div>
+                                            <div id="home-search-results-list-empty"></div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         {% endif %}
                     </div>
@@ -88,16 +130,18 @@
         {% if top_films %}
             {% for film in top_films %}
                 <div class="col-md-3 mb-4">
-                    <div class="card film-card">
-                        <div class="vote-badge">{{ film.vote_count }} vote{{ film.vote_count|pluralize }}</div>
-                        <img src="{{ film.poster_url|default:'https://via.placeholder.com/300x450?text=No+Poster' }}" 
-                             class="card-img-top film-poster" alt="{{ film.title }}">
-                        <div class="card-body">
-                            <h5 class="card-title">{{ film.title }}</h5>
-                            <p class="card-text text-muted">{{ film.year }}</p>
-                            <a href="{% url 'films_app:film_detail' film.imdb_id %}" class="btn btn-sm btn-primary">View Details</a>
+                    <a href="{% url 'films_app:film_detail' film.imdb_id %}" class="card-link">
+                        <div class="card film-card">
+                            <div class="vote-badge">{{ film.vote_count }} vote{{ film.vote_count|pluralize }}</div>
+                            <img src="{{ film.poster_url|default:'https://via.placeholder.com/300x450?text=No+Poster' }}" 
+                                 class="card-img-top film-poster" alt="{{ film.title }}">
+                            <div class="card-body">
+                                <h5 class="card-title">{{ film.title }}</h5>
+                                <p class="card-text text-muted">{{ film.year }}</p>
+                                <span class="btn btn-sm btn-primary">View Details</span>
+                            </div>
                         </div>
-                    </div>
+                    </a>
                 </div>
             {% endfor %}
         {% else %}
@@ -140,6 +184,106 @@
             e.preventDefault();
             $('#search-input').focus();
         });
+
+        // OMDB Search functionality for home page
+        let searchTimeout;
+        
+        function setupOmdbSearch(inputId, resultsId, loadingId, noResultsId, resultsList) {
+            const searchInput = $(`#${inputId}`);
+            const searchResults = $(`#${resultsId}`);
+            const searchLoading = $(`#${loadingId}`);
+            const searchNoResults = $(`#${noResultsId}`);
+            const searchResultsList = $(`#${resultsList}`);
+            
+            // Handle input changes with debounce
+            searchInput.on('input', function() {
+                const query = $(this).val().trim();
+                
+                // Clear previous timeout
+                clearTimeout(searchTimeout);
+                
+                // Hide results if query is too short
+                if (query.length < 3) {
+                    searchResults.addClass('d-none');
+                    return;
+                }
+                
+                // Show loading and results container
+                searchResults.removeClass('d-none');
+                searchResultsList.empty();
+                searchNoResults.addClass('d-none');
+                searchLoading.removeClass('d-none');
+                
+                // Set timeout for debounce
+                searchTimeout = setTimeout(function() {
+                    // Make AJAX request to search API
+                    $.ajax({
+                        url: '{% url "films_app:search_films" %}',
+                        data: { query: query },
+                        success: function(data) {
+                            searchLoading.addClass('d-none');
+                            
+                            if (data.results && data.results.length > 0) {
+                                searchResultsList.empty();
+                                
+                                // Display search results
+                                data.results.forEach(function(film) {
+                                    const posterUrl = film.Poster !== 'N/A' ? film.Poster : 'https://via.placeholder.com/150x225?text=No+Poster';
+                                    
+                                    const filmItem = `
+                                        <div class="search-result-item" data-imdb-id="${film.imdbID}">
+                                            <img src="${posterUrl}" class="search-result-poster" alt="${film.Title}">
+                                            <div class="search-result-info">
+                                                <div class="search-result-title">${film.Title}</div>
+                                                <div class="search-result-year">${film.Year}</div>
+                                            </div>
+                                        </div>
+                                    `;
+                                    
+                                    searchResultsList.append(filmItem);
+                                });
+                                
+                                // Handle click on search result
+                                $('.search-result-item').on('click', function() {
+                                    const imdbId = $(this).data('imdb-id');
+                                    window.location.href = `/film/${imdbId}/`;
+                                });
+                            } else {
+                                searchNoResults.removeClass('d-none');
+                            }
+                        },
+                        error: function() {
+                            searchLoading.addClass('d-none');
+                            searchNoResults.removeClass('d-none');
+                        }
+                    });
+                }, 500); // 500ms debounce
+            });
+            
+            // Close dropdown when clicking outside
+            $(document).on('click', function(e) {
+                if (!$(e.target).closest('.omdb-search-container').length) {
+                    searchResults.addClass('d-none');
+                }
+            });
+        }
+        
+        // Setup search for both instances
+        setupOmdbSearch(
+            'home-search-input', 
+            'home-search-results', 
+            'home-search-loading', 
+            'home-search-no-results',
+            'home-search-results-list'
+        );
+        
+        setupOmdbSearch(
+            'home-search-input-empty', 
+            'home-search-results-empty', 
+            'home-search-loading-empty', 
+            'home-search-no-results-empty',
+            'home-search-results-list-empty'
+        );
     });
 </script>
 {% endblock %} 

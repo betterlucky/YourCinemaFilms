@@ -116,6 +116,11 @@ def search_films(request):
     query = request.GET.get('query', '')
     
     if not query or len(query) < 3:
+        if request.htmx:
+            # Check which target is being used
+            if request.htmx.target == 'search-results':
+                return render(request, 'films_app/partials/modal_search_results.html', {'results': []})
+            return render(request, 'films_app/partials/search_results.html', {'results': []})
         return JsonResponse({'results': []})
     
     api_key = settings.OMDB_API_KEY
@@ -127,10 +132,26 @@ def search_films(request):
         
         if data.get('Response') == 'True':
             results = data.get('Search', [])
+            
+            if request.htmx:
+                # Check which target is being used
+                if request.htmx.target == 'search-results':
+                    return render(request, 'films_app/partials/modal_search_results.html', {'results': results})
+                return render(request, 'films_app/partials/search_results.html', {'results': results})
             return JsonResponse({'results': results})
         else:
+            if request.htmx:
+                # Check which target is being used
+                if request.htmx.target == 'search-results':
+                    return render(request, 'films_app/partials/modal_search_results.html', {'results': []})
+                return render(request, 'films_app/partials/search_results.html', {'results': []})
             return JsonResponse({'results': []})
     except Exception as e:
+        if request.htmx:
+            # Check which target is being used
+            if request.htmx.target == 'search-results':
+                return render(request, 'films_app/partials/modal_search_results.html', {'results': []})
+            return render(request, 'films_app/partials/search_results.html', {'results': []})
         return JsonResponse({'error': str(e)}, status=500)
 
 

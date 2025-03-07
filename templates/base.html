@@ -21,6 +21,9 @@
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
     <link rel="stylesheet" href="{% static 'css/social-buttons.css' %}">
     
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@1.9.6" integrity="sha384-FhXw7b6AlE/jyjlZH5iHa/tTe9EpJ1Y55RjcgPbjeWMskSxZt1v9qkxLJWNJaGni" crossorigin="anonymous"></script>
+    
     {% block extra_css %}{% endblock %}
 </head>
 <body>
@@ -43,6 +46,18 @@
                         <a class="nav-link" href="{% url 'films_app:genre_analysis' %}">Genres</a>
                     </li>
                 </ul>
+                <form id="search-form" class="d-flex me-3">
+                    <input id="search-input" 
+                           class="form-control me-2" 
+                           type="search" 
+                           placeholder="Search films..." 
+                           aria-label="Search"
+                           hx-get="{% url 'films_app:search_films' %}"
+                           hx-trigger="keyup changed delay:500ms"
+                           hx-target="#search-results"
+                           name="query">
+                    <button class="btn btn-outline-light" type="submit">Search</button>
+                </form>
                 <ul class="navbar-nav">
                     {% if user.is_authenticated %}
                         <li class="nav-item">
@@ -127,13 +142,10 @@
                     <div id="search-results" class="row g-4">
                         <!-- Search results will be displayed here -->
                     </div>
-                    <div id="search-loading" class="text-center d-none">
+                    <div id="search-loading" class="text-center htmx-indicator">
                         <div class="spinner-border text-primary" role="status">
                             <span class="visually-hidden">Loading...</span>
                         </div>
-                    </div>
-                    <div id="search-no-results" class="text-center d-none">
-                        <p>No results found. Try a different search term.</p>
                     </div>
                 </div>
             </div>
@@ -151,11 +163,18 @@
         $(document).ready(function() {
             const searchForm = $('#search-form');
             const searchInput = $('#search-input');
-            const searchResults = $('#search-results');
-            const searchLoading = $('#search-loading');
-            const searchNoResults = $('#search-no-results');
             const searchModal = new bootstrap.Modal(document.getElementById('searchResultsModal'));
             
+            // Show modal when typing in the search input
+            searchInput.on('input', function() {
+                const query = $(this).val().trim();
+                
+                if (query.length >= 3) {
+                    searchModal.show();
+                }
+            });
+            
+            // Handle form submission
             searchForm.on('submit', function(e) {
                 e.preventDefault();
                 const query = searchInput.val().trim();
@@ -164,50 +183,7 @@
                     return;
                 }
                 
-                // Show loading spinner
-                searchResults.empty().addClass('d-none');
-                searchNoResults.addClass('d-none');
-                searchLoading.removeClass('d-none');
                 searchModal.show();
-                
-                // Make AJAX request to search API
-                $.ajax({
-                    url: '{% url "films_app:search_films" %}',
-                    data: { query: query },
-                    success: function(data) {
-                        searchLoading.addClass('d-none');
-                        
-                        if (data.results && data.results.length > 0) {
-                            searchResults.removeClass('d-none');
-                            
-                            // Display search results
-                            data.results.forEach(function(film) {
-                                const posterUrl = film.Poster !== 'N/A' ? film.Poster : 'https://via.placeholder.com/150x225?text=No+Poster';
-                                
-                                const filmCard = `
-                                    <div class="col-md-4 col-sm-6">
-                                        <div class="card h-100">
-                                            <img src="${posterUrl}" class="card-img-top" alt="${film.Title}" style="height: 300px; object-fit: cover;">
-                                            <div class="card-body">
-                                                <h5 class="card-title">${film.Title}</h5>
-                                                <p class="card-text">${film.Year}</p>
-                                                <a href="/film/${film.imdbID}/" class="btn btn-primary">View Details</a>
-                                            </div>
-                                        </div>
-                                    </div>
-                                `;
-                                
-                                searchResults.append(filmCard);
-                            });
-                        } else {
-                            searchNoResults.removeClass('d-none');
-                        }
-                    },
-                    error: function() {
-                        searchLoading.addClass('d-none');
-                        searchNoResults.removeClass('d-none');
-                    }
-                });
             });
         });
     </script>

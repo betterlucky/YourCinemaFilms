@@ -85,6 +85,115 @@ footer {
     gap: 1rem;
 }
 
+/* OMDB Search styles */
+.omdb-search-container {
+    position: relative;
+    width: 100%;
+}
+
+.search-results-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background-color: white;
+    border: 1px solid #dee2e6;
+    border-radius: 0.25rem;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.search-result-item {
+    display: flex;
+    padding: 0.5rem;
+    border-bottom: 1px solid #f0f0f0;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.search-result-item:hover {
+    background-color: #f8f9fa;
+}
+
+.search-result-item:last-child {
+    border-bottom: none;
+}
+
+.search-result-poster {
+    width: 50px;
+    height: 75px;
+    object-fit: cover;
+    margin-right: 0.75rem;
+}
+
+.search-result-info {
+    flex: 1;
+}
+
+.search-result-title {
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.search-result-year {
+    font-size: 0.875rem;
+    color: #6c757d;
+}
+
+.search-result-link {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+.search-result-link:hover {
+    text-decoration: none;
+    color: inherit;
+}
+
+.card-link {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+.card-link:hover {
+    text-decoration: none;
+    color: inherit;
+}
+
+.card-content-link {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+.card-content-link:hover {
+    text-decoration: none;
+    color: inherit;
+}
+
+.card-body-content {
+    padding-bottom: 0;
+}
+
+.card-body-actions {
+    padding-top: 0;
+}
+
+/* HTMX specific styles */
+.htmx-indicator {
+    display: none;
+}
+.htmx-request .htmx-indicator {
+    display: block;
+}
+.htmx-request.htmx-indicator {
+    display: block;
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
     .container {
