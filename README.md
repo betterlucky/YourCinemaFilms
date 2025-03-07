@@ -1,4 +1,4 @@
-# FilmsIWantToSee
+# YourCinemaFilms
 
 A web application for discovering, tracking, and voting for films you want to see.
 
@@ -23,8 +23,8 @@ A web application for discovering, tracking, and voting for films you want to se
 
 1. Clone the repository:
    ```
-   git clone https://github.com/yourusername/FilmsIWantToSee.git
-   cd FilmsIWantToSee
+   git clone https://github.com/yourusername/YourCinemaFilms.git
+   cd YourCinemaFilms
    ```
 
 2. Create and activate a virtual environment:
@@ -92,4 +92,4 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - [OMDB API](http://www.omdbapi.com/) for film data
 - [Bootstrap](https://getbootstrap.com/) for the UI framework
 - [Django](https://www.djangoproject.com/) for the web framework
-- [django-allauth](https://django-allauth.readthedocs.io/) for authentication 
+- [django-allauth](https://django-allauth.readthedocs.io/) for authentication
