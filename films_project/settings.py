@@ -127,6 +127,18 @@ if DATABASE_URL:
         conn_max_age=600,
         conn_health_checks=True,
     )
+    # Ensure PostgreSQL uses the correct schema
+    DATABASES['default']['OPTIONS'] = {
+        'options': '-c search_path=public'
+    }
+
+# Ensure migrations are created for all apps
+MIGRATION_MODULES = {
+    'films_app': 'films_app.migrations',
+}
+
+# Set default auto field
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
@@ -166,11 +178,6 @@ STATICFILES_DIRS = [
 # Enable WhiteNoise for serving static files in production
 if not DEBUG:
     STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
-
-# Default primary key field type
-# https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
-
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Authentication settings
 AUTHENTICATION_BACKENDS = [
