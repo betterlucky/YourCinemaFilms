@@ -7,4 +7,7 @@ django-cors-headers==4.3.1
 python-dateutil==2.8.2
 django-chartjs==2.3.0
 gunicorn==21.2.0
-whitenoise==6.6.0 
+whitenoise==6.6.0
+dj-database-url==2.1.0
+psycopg2-binary==2.9.9
+django-htmx==1.22.0 
