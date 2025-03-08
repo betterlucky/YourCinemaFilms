@@ -1,6 +1,6 @@
 import json
 import requests
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, relativedelta
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse, HttpResponse, FileResponse
@@ -18,7 +18,7 @@ from django.template.loader import render_to_string
 from django.core.cache import cache
 from django.db.models.functions import Trim
 
-from .models import Film, Vote, UserProfile, GenreTag
+from .models import Film, Vote, UserProfile, GenreTag, Tag
 from .utils import (
     validate_genre_tag, 
     fetch_and_update_film_from_omdb, 
@@ -360,7 +360,7 @@ def manage_genre_tags(request):
 
 
 def charts(request):
-    """View for displaying charts."""
+    """View for displaying the dashboard."""
     # Get time period from request
     period = request.GET.get('period', 'all')
     
@@ -377,28 +377,116 @@ def charts(request):
     
     # Query votes based on date range
     votes_query = Vote.objects.all()
+    period_votes_query = votes_query
     if start_date:
-        votes_query = votes_query.filter(created_at__gte=start_date)
+        period_votes_query = votes_query.filter(created_at__gte=start_date)
     
     # Get top films
-    top_films = Film.objects.filter(votes__in=votes_query).annotate(
+    top_films = Film.objects.filter(votes__in=period_votes_query).annotate(
         vote_count=Count('votes')
     ).order_by('-vote_count')[:10]
     
-    # Prepare data for charts
-    labels = [film.title for film in top_films]
-    data = [film.vote_count for film in top_films]
-    
     # Get genre distribution
-    genre_data = get_genre_distribution(votes_query)
+    genre_data = get_genre_distribution(period_votes_query)
+    
+    # Get activity timeline data
+    activity_dates = []
+    activity_counts = []
+    
+    if period == 'week':
+        # Daily activity for the past week
+        for i in range(7, -1, -1):
+            date = end_date - timedelta(days=i)
+            activity_dates.append(date.strftime('%a'))
+            day_start = timezone.make_aware(datetime.combine(date, datetime.min.time()))
+            day_end = timezone.make_aware(datetime.combine(date, datetime.max.time()))
+            activity_counts.append(Vote.objects.filter(created_at__range=(day_start, day_end)).count())
+    elif period == 'month':
+        # Weekly activity for the past month
+        for i in range(4, -1, -1):
+            week_end = end_date - timedelta(days=i*7)
+            week_start = week_end - timedelta(days=6)
+            activity_dates.append(f"{week_start.strftime('%d %b')}-{week_end.strftime('%d %b')}")
+            activity_counts.append(Vote.objects.filter(created_at__range=(week_start, week_end)).count())
+    elif period == 'year':
+        # Monthly activity for the past year
+        for i in range(12, -1, -1):
+            month_date = end_date - relativedelta(months=i)
+            activity_dates.append(month_date.strftime('%b'))
+            month_start = timezone.make_aware(datetime(month_date.year, month_date.month, 1))
+            if month_date.month == 12:
+                month_end = timezone.make_aware(datetime(month_date.year + 1, 1, 1)) - timedelta(seconds=1)
+            else:
+                month_end = timezone.make_aware(datetime(month_date.year, month_date.month + 1, 1)) - timedelta(seconds=1)
+            activity_counts.append(Vote.objects.filter(created_at__range=(month_start, month_end)).count())
+    else:
+        # Yearly activity for all time
+        earliest_vote = Vote.objects.order_by('created_at').first()
+        if earliest_vote:
+            earliest_year = earliest_vote.created_at.year
+            current_year = timezone.now().year
+            for year in range(earliest_year, current_year + 1):
+                activity_dates.append(str(year))
+                year_start = timezone.make_aware(datetime(year, 1, 1))
+                year_end = timezone.make_aware(datetime(year, 12, 31, 23, 59, 59))
+                activity_counts.append(Vote.objects.filter(created_at__range=(year_start, year_end)).count())
+    
+    # Get active users
+    active_users = User.objects.filter(votes__in=period_votes_query).annotate(
+        vote_count=Count('votes')
+    ).order_by('-vote_count')[:5]
+    
+    active_users_data = []
+    for i, user in enumerate(active_users):
+        active_users_data.append({
+            'user': user,
+            'vote_count': user.vote_count,
+            'rank': i + 1
+        })
+    
+    # Get recent activity
+    recent_activity = []
+    recent_votes = Vote.objects.select_related('user', 'film').order_by('-created_at')[:10]
+    
+    for vote in recent_votes:
+        recent_activity.append({
+            'user': vote.user,
+            'action': 'voted for',
+            'description': f"{vote.film.title} ({vote.film.year})",
+            'timestamp': vote.created_at
+        })
+    
+    # Get stats
+    total_films = Film.objects.count()
+    total_votes = Vote.objects.count()
+    period_votes = period_votes_query.count()
+    total_users = User.objects.count()
+    new_users = User.objects.filter(date_joined__gte=start_date).count() if start_date else total_users
+    
+    # Get genre stats
+    all_genres = set()
+    for film in Film.objects.all():
+        all_genres.update(film.genres.split(', ') if film.genres else [])
+    
+    user_tags = Tag.objects.filter(approved=True).count()
+    total_genres = len(all_genres)
     
     context = {
         'period': period,
-        'labels': json.dumps(labels),
-        'data': json.dumps(data),
-        'top_films': top_films,
         'genre_labels': json.dumps(list(genre_data.keys())),
         'genre_data': json.dumps(list(genre_data.values())),
+        'activity_dates': json.dumps(activity_dates),
+        'activity_counts': json.dumps(activity_counts),
+        'top_films': top_films,
+        'active_users': active_users_data,
+        'recent_activity': recent_activity,
+        'total_films': total_films,
+        'total_votes': total_votes,
+        'period_votes': period_votes,
+        'total_users': total_users,
+        'new_users': new_users,
+        'total_genres': total_genres,
+        'user_genres': user_tags
     }
     
     return render(request, 'films_app/charts.html', context)

@@ -1,13 +1,14 @@
 {% extends 'base.html' %}
+{% load films_tags %}
 
-{% block title %}Charts - Films I Want To See{% endblock %}
+{% block title %}Dashboard - Films I Want To See{% endblock %}
 
 {% block content %}
 <div class="container py-5">
     <div class="row mb-4">
         <div class="col-md-8">
-            <h1 class="mb-0">Film Charts</h1>
-            <p class="lead">See what films are trending based on user votes</p>
+            <h1 class="mb-0">Dashboard</h1>
+            <p class="lead">Overview of site activity and statistics</p>
         </div>
         <div class="col-md-4">
             <div class="card">
@@ -26,30 +27,102 @@
         </div>
     </div>
     
+    <!-- Stats Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3 mb-3">
+            <div class="card bg-primary text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-uppercase">Total Films</h6>
+                            <h2 class="mb-0">{{ total_films }}</h2>
+                        </div>
+                        <i class="fas fa-film fa-3x opacity-50"></i>
+                    </div>
+                </div>
+                <div class="card-footer bg-primary-dark">
+                    <small>In the database</small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-3">
+            <div class="card bg-success text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-uppercase">Total Votes</h6>
+                            <h2 class="mb-0">{{ total_votes }}</h2>
+                        </div>
+                        <i class="fas fa-thumbs-up fa-3x opacity-50"></i>
+                    </div>
+                </div>
+                <div class="card-footer bg-success-dark">
+                    <small>{{ period_votes }} in selected period</small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-3">
+            <div class="card bg-info text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-uppercase">Users</h6>
+                            <h2 class="mb-0">{{ total_users }}</h2>
+                        </div>
+                        <i class="fas fa-users fa-3x opacity-50"></i>
+                    </div>
+                </div>
+                <div class="card-footer bg-info-dark">
+                    <small>{{ new_users }} new in selected period</small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-3">
+            <div class="card bg-warning text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-uppercase">Genres</h6>
+                            <h2 class="mb-0">{{ total_genres }}</h2>
+                        </div>
+                        <i class="fas fa-tags fa-3x opacity-50"></i>
+                    </div>
+                </div>
+                <div class="card-footer bg-warning-dark">
+                    <small>Including {{ user_genres }} user tags</small>
+                </div>
+            </div>
+        </div>
+    </div>
+    
     <div class="row mb-5">
         <div class="col-md-8 mb-4">
             <div class="card h-100">
-                <div class="card-header bg-primary text-white">
-                    <h4 class="mb-0">Top Films Chart</h4>
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">Activity Timeline</h4>
+                    <a href="{% url 'films_app:genre_analysis' %}" class="btn btn-sm btn-light">
+                        <i class="fas fa-chart-bar me-1"></i>Genre Analysis
+                    </a>
                 </div>
                 <div class="card-body">
-                    <canvas id="filmsChart" height="300"></canvas>
+                    <canvas id="activityChart" height="300"></canvas>
                 </div>
             </div>
         </div>
         
         <div class="col-md-4 mb-4">
             <div class="card h-100">
-                <div class="card-header bg-primary text-white">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                     <h4 class="mb-0">Genre Distribution</h4>
+                    <a href="{% url 'films_app:genre_comparison' %}" class="btn btn-sm btn-light">
+                        <i class="fas fa-chart-pie me-1"></i>Compare
+                    </a>
                 </div>
                 <div class="card-body">
                     <canvas id="genreChart" height="300"></canvas>
-                </div>
-                <div class="card-footer text-center">
-                    <a href="{% url 'films_app:genre_analysis' %}" class="btn btn-outline-primary btn-sm">
-                        <i class="fas fa-chart-pie me-1"></i>Detailed Genre Analysis
-                    </a>
                 </div>
             </div>
         </div>
@@ -57,40 +130,95 @@
     
     <div class="row mb-4">
         <div class="col-12">
-            <h2 class="border-bottom pb-2">Top Films</h2>
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Recent Activity</h4>
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush">
+                        {% for activity in recent_activity %}
+                            <div class="list-group-item">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h6 class="mb-1">{{ activity.user.username }} {{ activity.action }}</h6>
+                                    <small>{{ activity.timestamp|timesince }} ago</small>
+                                </div>
+                                <p class="mb-1">{{ activity.description }}</p>
+                            </div>
+                        {% empty %}
+                            <div class="list-group-item text-center py-4">
+                                <p class="text-muted mb-0">No recent activity to display</p>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="card-footer text-center">
+                    <a href="#" class="btn btn-outline-primary btn-sm">View All Activity</a>
+                </div>
+            </div>
         </div>
     </div>
     
     <div class="row">
-        {% if top_films %}
-            {% for film in top_films %}
-                <div class="col-md-3 mb-4">
-                    <div class="card film-card">
-                        <div class="vote-badge">{{ film.vote_count }} vote{{ film.vote_count|pluralize }}</div>
-                        <img src="{{ film.poster_url|default:'https://via.placeholder.com/300x450?text=No+Poster' }}" 
-                             class="card-img-top film-poster" alt="{{ film.title }}">
-                        <div class="card-body">
-                            <h5 class="card-title">{{ film.title }}</h5>
-                            <p class="card-text text-muted">{{ film.year }}</p>
-                            {% if film.genres %}
-                                <p class="card-text">
-                                    <small class="text-muted">
-                                        <strong>Genres:</strong> {{ film.genres }}
-                                    </small>
-                                </p>
-                            {% endif %}
-                            <a href="{% url 'films_app:film_detail' film.imdb_id %}" class="btn btn-sm btn-primary">View Details</a>
-                        </div>
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Top Films</h4>
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush">
+                        {% for film in top_films|slice:":5" %}
+                            <a href="{% url 'films_app:film_detail' film.imdb_id %}" class="list-group-item list-group-item-action">
+                                <div class="d-flex align-items-center">
+                                    <img src="{{ film.poster_url|default:'https://via.placeholder.com/50x75?text=No+Poster' }}" 
+                                         alt="{{ film.title }}" class="me-3" style="width: 50px; height: 75px; object-fit: cover;">
+                                    <div>
+                                        <h6 class="mb-1">{{ film.title }} ({{ film.year }})</h6>
+                                        <p class="mb-0 text-muted">{{ film.vote_count }} vote{{ film.vote_count|pluralize }}</p>
+                                    </div>
+                                </div>
+                            </a>
+                        {% empty %}
+                            <div class="list-group-item text-center py-4">
+                                <p class="text-muted mb-0">No films have been voted for during this time period</p>
+                            </div>
+                        {% endfor %}
                     </div>
                 </div>
-            {% endfor %}
-        {% else %}
-            <div class="col-12">
-                <div class="alert alert-info">
-                    No films have been voted for during this time period.
+                <div class="card-footer text-center">
+                    <a href="{% url 'films_app:top_films' %}" class="btn btn-outline-primary btn-sm">View All Top Films</a>
                 </div>
             </div>
-        {% endif %}
+        </div>
+        
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Active Users</h4>
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush">
+                        {% for user_data in active_users %}
+                            <a href="{% url 'films_app:user_profile' user_data.user.username %}" class="list-group-item list-group-item-action">
+                                <div class="d-flex w-100 justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="mb-1">{{ user_data.user.username }}</h6>
+                                        <p class="mb-0 text-muted">{{ user_data.vote_count }} vote{{ user_data.vote_count|pluralize }}</p>
+                                    </div>
+                                    <span class="badge bg-primary rounded-pill">{{ user_data.rank }}</span>
+                                </div>
+                            </a>
+                        {% empty %}
+                            <div class="list-group-item text-center py-4">
+                                <p class="text-muted mb-0">No active users during this time period</p>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="card-footer text-center">
+                    <a href="#" class="btn btn-outline-primary btn-sm">View All Users</a>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}
@@ -98,21 +226,20 @@
 {% block extra_js %}
 <script>
     $(document).ready(function() {
-        // Films chart
-        const labels = {{ labels|safe }};
-        const data = {{ data|safe }};
-        
-        const ctx = document.getElementById('filmsChart').getContext('2d');
-        const filmsChart = new Chart(ctx, {
-            type: 'bar',
+        // Activity timeline chart
+        const activityCtx = document.getElementById('activityChart').getContext('2d');
+        const activityChart = new Chart(activityCtx, {
+            type: 'line',
             data: {
-                labels: labels,
+                labels: {{ activity_dates|safe }},
                 datasets: [{
-                    label: 'Number of Votes',
-                    data: data,
-                    backgroundColor: 'rgba(13, 110, 253, 0.7)',
+                    label: 'Votes',
+                    data: {{ activity_counts|safe }},
+                    backgroundColor: 'rgba(13, 110, 253, 0.1)',
                     borderColor: 'rgba(13, 110, 253, 1)',
-                    borderWidth: 1
+                    borderWidth: 2,
+                    tension: 0.3,
+                    fill: true
                 }]
             },
             options: {
@@ -154,28 +281,28 @@
                 datasets: [{
                     data: genreData,
                     backgroundColor: [
-                        'rgba(255, 99, 132, 0.7)',
-                        'rgba(54, 162, 235, 0.7)',
-                        'rgba(255, 206, 86, 0.7)',
-                        'rgba(75, 192, 192, 0.7)',
-                        'rgba(153, 102, 255, 0.7)',
-                        'rgba(255, 159, 64, 0.7)',
-                        'rgba(199, 199, 199, 0.7)',
-                        'rgba(83, 102, 255, 0.7)',
-                        'rgba(40, 159, 64, 0.7)',
-                        'rgba(210, 199, 199, 0.7)'
+                        'rgba(0, 123, 255, 0.7)',     // Blue
+                        'rgba(220, 53, 69, 0.7)',     // Red
+                        'rgba(40, 167, 69, 0.7)',     // Green
+                        'rgba(255, 193, 7, 0.7)',     // Yellow
+                        'rgba(111, 66, 193, 0.7)',    // Purple
+                        'rgba(253, 126, 20, 0.7)',    // Orange
+                        'rgba(23, 162, 184, 0.7)',    // Cyan
+                        'rgba(102, 16, 242, 0.7)',    // Indigo
+                        'rgba(32, 201, 151, 0.7)',    // Teal
+                        'rgba(52, 58, 64, 0.7)'       // Dark gray
                     ],
                     borderColor: [
-                        'rgba(255, 99, 132, 1)',
-                        'rgba(54, 162, 235, 1)',
-                        'rgba(255, 206, 86, 1)',
-                        'rgba(75, 192, 192, 1)',
-                        'rgba(153, 102, 255, 1)',
-                        'rgba(255, 159, 64, 1)',
-                        'rgba(199, 199, 199, 1)',
-                        'rgba(83, 102, 255, 1)',
-                        'rgba(40, 159, 64, 1)',
-                        'rgba(210, 199, 199, 1)'
+                        'rgba(0, 123, 255, 1)',
+                        'rgba(220, 53, 69, 1)',
+                        'rgba(40, 167, 69, 1)',
+                        'rgba(255, 193, 7, 1)',
+                        'rgba(111, 66, 193, 1)',
+                        'rgba(253, 126, 20, 1)',
+                        'rgba(23, 162, 184, 1)',
+                        'rgba(102, 16, 242, 1)',
+                        'rgba(32, 201, 151, 1)',
+                        'rgba(52, 58, 64, 1)'
                     ],
                     borderWidth: 1
                 }]
