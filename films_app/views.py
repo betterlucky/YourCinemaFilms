@@ -118,7 +118,6 @@ def edit_profile(request):
     return render(request, 'films_app/edit_profile.html', {'profile': request.user.profile})
 
 
-@login_required
 def search_films(request):
     """Search films using OMDB API."""
     query = request.GET.get('query', '')
@@ -145,6 +144,11 @@ def search_films(request):
                 # Check which target is being used
                 if request.htmx.target == 'search-results':
                     return render(request, 'films_app/partials/modal_search_results.html', {'results': results})
+                # Check for navbar or main search targets
+                if request.htmx.target == 'navbar-search-results':
+                    return render(request, 'films_app/partials/search_results.html', {'results': results})
+                if request.htmx.target == 'main-search-results':
+                    return render(request, 'films_app/partials/search_results.html', {'results': results})
                 return render(request, 'films_app/partials/search_results.html', {'results': results})
             return JsonResponse({'results': results})
         else:

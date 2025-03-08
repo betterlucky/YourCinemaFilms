@@ -32,7 +32,7 @@
             <div class="card shadow main-search-container">
                 <div class="card-body p-4">
                     <h3 class="text-center mb-4">Find Your Favorite Films</h3>
-                    <form id="main-search-form" class="d-flex">
+                    <form id="main-search-form" class="d-flex position-relative">
                         <input id="main-search-input" 
                                class="form-control form-control-lg me-2 search-input-field" 
                                type="search" 
@@ -40,15 +40,20 @@
                                aria-label="Search"
                                hx-get="{% url 'films_app:search_films' %}"
                                hx-trigger="keyup changed delay:500ms, search"
-                               hx-target="#search-results"
-                               hx-swap="innerHTML show:window:top"
-                               hx-indicator="#search-loading"
-                               hx-preserve="true"
+                               hx-target="#main-search-results"
+                               hx-swap="innerHTML"
+                               hx-indicator="#main-search-loading"
                                name="query"
                                autocomplete="off">
                         <button class="btn btn-primary btn-lg" type="submit">
                             <i class="fas fa-search"></i>
                         </button>
+                        <div id="main-search-results" class="search-results-dropdown main-search-results"></div>
+                        <div id="main-search-loading" class="htmx-indicator position-absolute" style="right: 60px; top: 15px;">
+                            <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
                     </form>
                     <p class="text-center text-muted mt-3 mb-0">
                         <small>Search by title, director, or actor</small>
@@ -168,26 +173,63 @@
             $('#search-input').focus();
         });
 
-        // Main search form handling - just show modal
-        $('#main-search-input').on('input', function() {
+        const mainSearchForm = $('#main-search-form');
+        const mainSearchInput = $('#main-search-input');
+        
+        // Main search form handling
+        mainSearchInput.on('input', function() {
             const query = $(this).val().trim();
             
-            if (query.length >= 3) {
-                const searchModal = new bootstrap.Modal(document.getElementById('searchResultsModal'));
-                searchModal.show();
+            if (query.length < 3) {
+                $('#main-search-results').empty();
             }
         });
         
         // Handle form submission
-        $('#main-search-form').on('submit', function(e) {
+        mainSearchForm.on('submit', function(e) {
             e.preventDefault();
-            const query = $('#main-search-input').val().trim();
+            const query = mainSearchInput.val().trim();
+            
+            if (query.length < 3) {
+                return;
+            }
+            
+            // If user is not logged in, redirect to login page
+            {% if not user.is_authenticated %}
+            window.location.href = "{% url 'account_login' %}?next={% url 'films_app:home' %}";
+            {% endif %}
+        });
+        
+        // Hide search results when clicking outside
+        $(document).on('click', function(e) {
+            if (!$(e.target).closest('#main-search-form').length) {
+                $('#main-search-results').empty();
+            }
+        });
+        
+        // Focus handling
+        mainSearchInput.on('focus', function() {
+            const query = $(this).val().trim();
             
             if (query.length >= 3) {
-                const searchModal = new bootstrap.Modal(document.getElementById('searchResultsModal'));
-                searchModal.show();
+                // Trigger search again to show results
+                $(this).trigger('keyup');
             }
         });
     });
 </script>
+
+<style>
+    /* Additional styles for main search results */
+    .main-search-results {
+        width: 100%;
+        max-width: 100%;
+    }
+    
+    /* Ensure the search container has proper z-index */
+    .main-search-container {
+        position: relative;
+        z-index: 1040;
+    }
+</style>
 {% endblock %} 

@@ -46,7 +46,7 @@
                         <a class="nav-link" href="{% url 'films_app:genre_analysis' %}">Genres</a>
                     </li>
                 </ul>
-                <form id="search-form" class="d-flex me-3">
+                <form id="search-form" class="d-flex me-3 position-relative">
                     <input id="search-input" 
                            class="form-control me-2 search-input-field" 
                            type="search" 
@@ -54,13 +54,18 @@
                            aria-label="Search"
                            hx-get="{% url 'films_app:search_films' %}"
                            hx-trigger="keyup changed delay:500ms, search"
-                           hx-target="#search-results"
-                           hx-swap="innerHTML show:window:top"
-                           hx-indicator="#search-loading"
-                           hx-preserve="true"
+                           hx-target="#navbar-search-results"
+                           hx-swap="innerHTML"
+                           hx-indicator="#navbar-search-loading"
                            name="query"
                            autocomplete="off">
                     <button class="btn btn-outline-light" type="submit">Search</button>
+                    <div id="navbar-search-results" class="search-results-dropdown"></div>
+                    <div id="navbar-search-loading" class="htmx-indicator position-absolute" style="right: 60px; top: 8px;">
+                        <div class="spinner-border spinner-border-sm text-light" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
                 </form>
                 <ul class="navbar-nav">
                     {% if user.is_authenticated %}
@@ -134,28 +139,6 @@
         </div>
     </footer>
     
-    <!-- Search Results Modal -->
-    <div class="modal fade" id="searchResultsModal" tabindex="-1" aria-labelledby="searchResultsModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="searchResultsModalLabel">Search Results</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <div id="search-results" class="row g-4">
-                        <!-- Search results will be displayed here -->
-                    </div>
-                    <div id="search-loading" class="text-center htmx-indicator">
-                        <div class="spinner-border text-primary" role="status">
-                            <span class="visually-hidden">Loading...</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     
@@ -167,16 +150,6 @@
         $(document).ready(function() {
             const searchForm = $('#search-form');
             const searchInput = $('#search-input');
-            const searchModal = new bootstrap.Modal(document.getElementById('searchResultsModal'));
-            
-            // Show modal when typing in the search input
-            searchInput.on('input', function() {
-                const query = $(this).val().trim();
-                
-                if (query.length >= 3) {
-                    searchModal.show();
-                }
-            });
             
             // Handle form submission
             searchForm.on('submit', function(e) {
@@ -187,24 +160,111 @@
                     return;
                 }
                 
-                searchModal.show();
+                // If user is not logged in, redirect to login page
+                {% if not user.is_authenticated %}
+                window.location.href = "{% url 'account_login' %}?next={% url 'films_app:home' %}";
+                {% endif %}
             });
             
-            // Global HTMX event handler to maintain focus
-            document.body.addEventListener('htmx:afterSwap', function(event) {
-                // Find which search input had focus before the swap
-                const activeElement = document.activeElement;
-                const searchInputs = document.querySelectorAll('.search-input-field');
+            // Hide search results when clicking outside
+            $(document).on('click', function(e) {
+                if (!$(e.target).closest('#search-form').length) {
+                    $('#navbar-search-results').empty();
+                }
+            });
+            
+            // Show/hide search results based on input
+            searchInput.on('input', function() {
+                const query = $(this).val().trim();
                 
-                // If a search input has focus, keep it focused
-                if (activeElement && activeElement.classList.contains('search-input-field')) {
-                    setTimeout(() => {
-                        activeElement.focus();
-                    }, 10);
+                if (query.length < 3) {
+                    $('#navbar-search-results').empty();
+                }
+            });
+            
+            // Focus handling
+            searchInput.on('focus', function() {
+                const query = $(this).val().trim();
+                
+                if (query.length >= 3) {
+                    // Trigger search again to show results
+                    $(this).trigger('keyup');
                 }
             });
         });
     </script>
+    
+    <!-- Add custom CSS for search results dropdown -->
+    <style>
+        .search-results-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            z-index: 1050;
+            max-height: 400px;
+            overflow-y: auto;
+            background-color: white;
+            border: 1px solid rgba(0,0,0,.125);
+            border-radius: 0.25rem;
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+            margin-top: 5px;
+            display: none;
+        }
+        
+        .search-results-dropdown:not(:empty) {
+            display: block;
+        }
+        
+        .search-result-link {
+            display: block;
+            padding: 0.5rem;
+            color: #212529;
+            text-decoration: none;
+            border-bottom: 1px solid rgba(0,0,0,.125);
+        }
+        
+        .search-result-link:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .search-result-item {
+            display: flex;
+            align-items: center;
+        }
+        
+        .search-result-poster {
+            width: 50px;
+            height: 75px;
+            object-fit: cover;
+            margin-right: 10px;
+        }
+        
+        .search-result-info {
+            flex: 1;
+        }
+        
+        .search-result-title {
+            font-weight: bold;
+        }
+        
+        .search-result-year {
+            font-size: 0.875rem;
+            color: #6c757d;
+        }
+        
+        /* Fix for navbar search dropdown */
+        #navbar-search-results {
+            width: 300px;
+            right: auto;
+        }
+        
+        @media (max-width: 576px) {
+            #navbar-search-results {
+                width: 100%;
+            }
+        }
+    </style>
     
     {% block extra_js %}{% endblock %}
 </body>
