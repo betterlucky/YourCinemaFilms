@@ -285,7 +285,7 @@
     function removeTag(tagId) {
         if (confirm('Are you sure you want to remove this genre tag?')) {
             $.ajax({
-                url: `/remove-tag/${tagId}/`,
+                url: `{% url 'films_app:remove_genre_tag' tag_id=0 %}`.replace('0', tagId),
                 method: 'POST',
                 headers: {
                     'X-CSRFToken': '{{ csrf_token }}'

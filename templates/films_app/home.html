@@ -162,7 +162,7 @@
             
             if (confirm('Are you sure you want to remove this vote?')) {
                 $.ajax({
-                    url: `/remove-vote/${voteId}/`,
+                    url: `{% url 'films_app:remove_vote' vote_id=0 %}`.replace('0', voteId),
                     method: 'POST',
                     headers: {
                         'X-CSRFToken': '{{ csrf_token }}'
