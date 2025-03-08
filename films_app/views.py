@@ -1048,8 +1048,8 @@ def get_user_vote_status(request):
     })
 
 
-def get_top_films(request):
-    """Get the top films."""
+def get_top_films_partial(request):
+    """Get the top films partial HTML."""
     top_films = get_top_films_data()
     return render(request, 'films_app/partials/top_films.html', {'top_films': top_films})
 

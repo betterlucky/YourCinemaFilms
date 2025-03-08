@@ -26,5 +26,5 @@ urlpatterns = [
     path('demographics/', views.demographic_analysis, name='demographic_analysis'),
     path('user/<str:username>/', views.user_profile_view, name='user_profile'),
     path('user-vote-status/', views.get_user_vote_status, name='get_user_vote_status'),
-    path('top-films/', views.get_top_films, name='get_top_films'),
+    path('top-films/', views.get_top_films_partial, name='get_top_films'),
 ] 
