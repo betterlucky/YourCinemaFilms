@@ -150,7 +150,7 @@ def charts_data(request):
     votes_query = filter_votes_by_period(period)
     
     # Get top films
-    films_query = Film.objects.filter(votes__in=votes_query)
+    films_query = Film.objects.filter(votes__in=votes_query).distinct()
     
     # Filter by genre if specified
     if genre:
@@ -194,7 +194,20 @@ def genre_data(request):
     
     # Count genres (including approved user tags)
     for film in films:
-        for genre in film.all_genres:
+        # Make sure all_genres property is available
+        if not hasattr(film, 'all_genres'):
+            film_genres = []
+            # Add official genres
+            if film.genres:
+                film_genres.extend([g.strip() for g in film.genres.split(',')])
+            # Add approved user tags
+            film_genres.extend([tag.tag for tag in film.tags.filter(is_approved=True)])
+            # Remove duplicates
+            film_genres = list(set(film_genres))
+        else:
+            film_genres = film.all_genres
+            
+        for genre in film_genres:
             if genre in genre_counts:
                 genre_counts[genre] += 1
             else:

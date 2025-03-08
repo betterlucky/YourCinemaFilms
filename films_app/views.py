@@ -481,7 +481,7 @@ def get_films_by_genre(genre, period=None):
     # Filter by period if specified
     if period and period != 'all':
         votes = filter_votes_by_period(period)
-        films = films.filter(votes__in=votes)
+        films = films.filter(votes__in=votes).distinct()
     
     # Annotate with vote count and order by votes
     return films.annotate(vote_count=Count('votes')).order_by('-vote_count')

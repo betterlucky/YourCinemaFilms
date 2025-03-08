@@ -260,6 +260,10 @@ def filter_votes_by_period(period):
     """
     from .models import Vote
     
+    # For 'all' period, return all votes without filtering
+    if period == 'all':
+        return Vote.objects.all()
+    
     start_date, _ = get_date_range_from_period(period)
     votes_query = Vote.objects.all()
     
