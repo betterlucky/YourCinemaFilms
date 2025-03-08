@@ -22,7 +22,7 @@ from .utils import (
     fetch_and_update_film_from_omdb, 
     require_http_method, 
     validate_and_format_genre_tag,
-    get_film_vote_count
+    count_film_votes
 )
 
 
@@ -192,7 +192,7 @@ def film_detail(request, imdb_id):
             has_voted = user_vote is not None
         
         # Get vote count
-        vote_count = get_film_vote_count(film)
+        vote_count = count_film_votes(film)
         
         # Get user tags for this film
         user_tags = GenreTag.objects.filter(film=film, user=request.user)
@@ -244,7 +244,7 @@ def vote_for_film(request, imdb_id):
     vote.save()
     
     # Get updated vote count for the film
-    vote_count = get_film_vote_count(film)
+    vote_count = count_film_votes(film)
     
     # Return the success button with updated vote count
     response_html = f"""
@@ -1034,7 +1034,7 @@ def update_film_from_omdb(request, imdb_id):
 def get_film_vote_count(request, imdb_id):
     """Get the vote count for a film."""
     film = get_object_or_404(Film, imdb_id=imdb_id)
-    vote_count = get_film_vote_count(film)
+    vote_count = count_film_votes(film)
     return render(request, 'films_app/partials/vote_count_badge.html', {'vote_count': vote_count})
 
 

@@ -211,7 +211,7 @@ def validate_and_format_genre_tag(tag, user, film):
     
     return True, formatted_tag
 
-def get_film_vote_count(film):
+def count_film_votes(film):
     """
     Get the vote count for a film.
     
