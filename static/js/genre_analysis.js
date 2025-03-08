@@ -5,78 +5,58 @@
  * including chart initialization, genre comparison, and export functionality.
  */
 
+// Global chart instances
+let genreChart = null;
+let genreDistributionChart = null;
+
 // Initialize charts when the DOM is ready
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM loaded, initializing genre analysis page');
+    
     // Show loading indicators for charts
     showLoadingIndicators();
     
-    // Initialize the comparison functionality
-    initGenreComparison();
-    
-    // Initialize export functionality
-    initExportFunctionality();
-    
-    // Check if Chart.js is loaded and initialize content charts
-    ensureChartJsLoaded();
+    // Wait a short time to ensure DOM is fully rendered
+    setTimeout(function() {
+        // Initialize charts
+        initializeCharts();
+    }, 500);
 });
 
 /**
  * Show loading indicators for charts
  */
 function showLoadingIndicators() {
-    if (document.getElementById('genre-chart-container')) {
-        document.getElementById('genre-chart-container').innerHTML = 
+    console.log('Showing loading indicators');
+    
+    const genreChartContainer = document.getElementById('genre-chart-container');
+    const genresChartContainer = document.getElementById('genres-chart-container');
+    
+    if (genreChartContainer) {
+        genreChartContainer.innerHTML = 
             '<div class="text-center py-3"><div class="spinner-border text-primary" role="status"></div><p class="mt-2">Loading chart...</p></div>';
     }
-    if (document.getElementById('genres-chart-container')) {
-        document.getElementById('genres-chart-container').innerHTML = 
+    
+    if (genresChartContainer) {
+        genresChartContainer.innerHTML = 
             '<div class="text-center py-3"><div class="spinner-border text-primary" role="status"></div><p class="mt-2">Loading chart...</p></div>';
     }
 }
 
 /**
- * Make sure Chart.js is loaded before initializing charts
+ * Initialize the charts
  */
-function ensureChartJsLoaded() {
+function initializeCharts() {
+    console.log('Initializing charts');
+    
+    // Check if Chart.js is available
     if (typeof Chart === 'undefined') {
         console.error('Chart.js is not loaded. Loading it now...');
-        // Create a script element to load Chart.js
-        var script = document.createElement('script');
-        script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
-        script.onload = function() {
-            console.log('Chart.js loaded successfully. Initializing charts...');
-            initializeContentCharts();
-        };
-        script.onerror = function() {
-            console.error('Failed to load Chart.js. Displaying fallback content.');
-            showChartLoadError();
-        };
-        document.head.appendChild(script);
-    } else {
-        // Chart.js is already loaded, initialize charts
-        initializeContentCharts();
+        loadChartJs();
+        return;
     }
-}
-
-/**
- * Show error message when Chart.js fails to load
- */
-function showChartLoadError() {
-    if (document.getElementById('genre-chart-container')) {
-        document.getElementById('genre-chart-container').innerHTML = 
-            '<div class="alert alert-warning">Unable to load chart library. Please refresh the page or try again later.</div>';
-    }
-    if (document.getElementById('genres-chart-container')) {
-        document.getElementById('genres-chart-container').innerHTML = 
-            '<div class="alert alert-warning">Unable to load chart library. Please refresh the page or try again later.</div>';
-    }
-}
-
-/**
- * Initialize the charts in the content area
- */
-function initializeContentCharts() {
-    // Get the selected genre and period from the page
+    
+    // Get the selected genre and period
     const genreSelect = document.getElementById('genre-select');
     const periodSelect = document.getElementById('period-select');
     
@@ -88,32 +68,91 @@ function initializeContentCharts() {
     const selectedGenre = genreSelect.value;
     const period = periodSelect.value;
     
-    console.log('Initializing charts with genre:', selectedGenre, 'period:', period);
+    console.log('Selected genre:', selectedGenre, 'period:', period);
     
+    // Load the appropriate chart
     if (selectedGenre) {
-        // Load genre-specific chart
-        loadGenreChart(selectedGenre, period);
+        loadGenreSpecificChart(selectedGenre, period);
     } else {
-        // Load overall genre distribution
         loadGenreDistributionChart(period);
+    }
+    
+    // Set up event listeners for the dropdowns
+    setupEventListeners();
+}
+
+/**
+ * Load Chart.js dynamically
+ */
+function loadChartJs() {
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
+    script.onload = function() {
+        console.log('Chart.js loaded successfully');
+        initializeCharts();
+    };
+    script.onerror = function() {
+        console.error('Failed to load Chart.js');
+        showChartLoadError();
+    };
+    document.head.appendChild(script);
+}
+
+/**
+ * Show error message when Chart.js fails to load
+ */
+function showChartLoadError() {
+    const genreChartContainer = document.getElementById('genre-chart-container');
+    const genresChartContainer = document.getElementById('genres-chart-container');
+    
+    if (genreChartContainer) {
+        genreChartContainer.innerHTML = 
+            '<div class="alert alert-warning">Unable to load chart library. Please refresh the page or try again later.</div>';
+    }
+    
+    if (genresChartContainer) {
+        genresChartContainer.innerHTML = 
+            '<div class="alert alert-warning">Unable to load chart library. Please refresh the page or try again later.</div>';
+    }
+}
+
+/**
+ * Set up event listeners for the dropdowns
+ */
+function setupEventListeners() {
+    // These are handled by HTMX, but we'll add them here for completeness
+    const genreSelect = document.getElementById('genre-select');
+    const periodSelect = document.getElementById('period-select');
+    
+    if (genreSelect) {
+        genreSelect.addEventListener('change', function() {
+            console.log('Genre changed to:', this.value);
+        });
+    }
+    
+    if (periodSelect) {
+        periodSelect.addEventListener('change', function() {
+            console.log('Period changed to:', this.value);
+        });
     }
 }
 
 /**
  * Load the genre-specific chart
  */
-function loadGenreChart(genre, period) {
+function loadGenreSpecificChart(genre, period) {
+    console.log('Loading genre-specific chart for:', genre, 'period:', period);
+    
     const chartContainer = document.getElementById('genre-chart-container');
     if (!chartContainer) {
-        console.error('Chart container not found');
+        console.error('Genre chart container not found');
         return;
     }
     
     // Show loading indicator
     chartContainer.innerHTML = '<div class="text-center py-3"><div class="spinner-border text-primary" role="status"></div><p class="mt-2">Loading chart data...</p></div>';
     
-    console.log('Loading genre chart for:', genre, 'period:', period);
-    
+    // Make the AJAX request
     $.ajax({
         url: '/api/charts/data/',
         data: { 
@@ -123,16 +162,21 @@ function loadGenreChart(genre, period) {
         success: function(response) {
             console.log('Chart data received:', response);
             
+            // Check if we have valid data
             if (response && response.labels && response.labels.length > 0) {
                 try {
-                    const ctx = chartContainer.getContext('2d');
+                    // Get the canvas context
+                    chartContainer.innerHTML = '<canvas id="genre-chart"></canvas>';
+                    const canvas = document.getElementById('genre-chart');
+                    const ctx = canvas.getContext('2d');
                     
-                    // Check if there's an existing chart and destroy it
-                    if (window.genreChart) {
-                        window.genreChart.destroy();
+                    // Destroy existing chart if it exists
+                    if (genreChart) {
+                        genreChart.destroy();
                     }
                     
-                    window.genreChart = new Chart(ctx, {
+                    // Create the new chart
+                    genreChart = new Chart(ctx, {
                         type: 'bar',
                         data: {
                             labels: response.labels,
@@ -166,6 +210,8 @@ function loadGenreChart(genre, period) {
                             }
                         }
                     });
+                    
+                    console.log('Genre chart created successfully');
                 } catch (error) {
                     console.error('Error creating chart:', error);
                     chartContainer.innerHTML = '<div class="alert alert-danger">Error creating chart. Please try again later.</div>';
@@ -183,58 +229,64 @@ function loadGenreChart(genre, period) {
 }
 
 /**
- * Load the overall genre distribution chart
+ * Load the genre distribution chart
  */
 function loadGenreDistributionChart(period) {
+    console.log('Loading genre distribution chart for period:', period);
+    
     const chartContainer = document.getElementById('genres-chart-container');
     if (!chartContainer) {
-        console.error('Chart container not found');
+        console.error('Genres chart container not found');
         return;
     }
     
     // Show loading indicator
     chartContainer.innerHTML = '<div class="text-center py-3"><div class="spinner-border text-primary" role="status"></div><p class="mt-2">Loading chart data...</p></div>';
     
-    console.log('Loading genre distribution chart for period:', period);
-    
+    // Make the AJAX request
     $.ajax({
         url: '/api/genres/data/',
         data: { period: period },
         success: function(response) {
-            console.log('Chart data received:', response);
+            console.log('Genre distribution data received:', response);
             
+            // Check if we have valid data
             if (response && response.labels && response.labels.length > 0) {
                 try {
-                    const ctx = chartContainer.getContext('2d');
+                    // Get the canvas context
+                    chartContainer.innerHTML = '<canvas id="genres-chart"></canvas>';
+                    const canvas = document.getElementById('genres-chart');
+                    const ctx = canvas.getContext('2d');
                     
-                    // Check if there's an existing chart and destroy it
-                    if (window.genreDistributionChart) {
-                        window.genreDistributionChart.destroy();
+                    // Destroy existing chart if it exists
+                    if (genreDistributionChart) {
+                        genreDistributionChart.destroy();
                     }
                     
-                    window.genreDistributionChart = new Chart(ctx, {
+                    // Create the new chart
+                    genreDistributionChart = new Chart(ctx, {
                         type: 'pie',
                         data: {
                             labels: response.labels,
                             datasets: [{
                                 data: response.data,
                                 backgroundColor: [
-                                    'rgba(0, 123, 255, 0.7)',    // Blue (better contrast)
-                                    'rgba(220, 53, 69, 0.7)',    // Red (better contrast)
+                                    'rgba(0, 123, 255, 0.7)',    // Blue
+                                    'rgba(220, 53, 69, 0.7)',    // Red
+                                    'rgba(40, 167, 69, 0.7)',    // Green
                                     'rgba(255, 193, 7, 0.7)',    // Yellow
-                                    'rgba(40, 167, 69, 0.7)',    // Green (better contrast)
-                                    'rgba(111, 66, 193, 0.7)',   // Purple (better contrast)
-                                    'rgba(253, 126, 20, 0.7)',   // Orange (better contrast)
-                                    'rgba(23, 162, 184, 0.7)',   // Cyan (better contrast)
-                                    'rgba(102, 16, 242, 0.7)',   // Indigo (better contrast)
-                                    'rgba(32, 201, 151, 0.7)',   // Teal (better contrast)
-                                    'rgba(52, 58, 64, 0.7)'      // Dark gray (better contrast)
+                                    'rgba(111, 66, 193, 0.7)',   // Purple
+                                    'rgba(253, 126, 20, 0.7)',   // Orange
+                                    'rgba(23, 162, 184, 0.7)',   // Cyan
+                                    'rgba(102, 16, 242, 0.7)',   // Indigo
+                                    'rgba(32, 201, 151, 0.7)',   // Teal
+                                    'rgba(52, 58, 64, 0.7)'      // Dark gray
                                 ],
                                 borderColor: [
                                     'rgba(0, 123, 255, 1)',
                                     'rgba(220, 53, 69, 1)',
-                                    'rgba(255, 193, 7, 1)',
                                     'rgba(40, 167, 69, 1)',
+                                    'rgba(255, 193, 7, 1)',
                                     'rgba(111, 66, 193, 1)',
                                     'rgba(253, 126, 20, 1)',
                                     'rgba(23, 162, 184, 1)',
@@ -270,6 +322,8 @@ function loadGenreDistributionChart(period) {
                             }
                         }
                     });
+                    
+                    console.log('Genre distribution chart created successfully');
                 } catch (error) {
                     console.error('Error creating chart:', error);
                     chartContainer.innerHTML = '<div class="alert alert-danger">Error creating chart. Please try again later.</div>';

@@ -61,9 +61,20 @@
 {% endblock %}
 
 {% block extra_js %}
-<!-- Chart.js is needed for both the main page and the partial -->
+<!-- jQuery (required for AJAX) -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <!-- Genre Analysis JavaScript -->
 <script src="{% static 'js/genre_analysis.js' %}"></script>
+
+<!-- Debug script to check if Chart.js is loaded -->
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('Chart.js loaded:', typeof Chart !== 'undefined');
+        console.log('jQuery loaded:', typeof $ !== 'undefined');
+    });
+</script>
 {% endblock %} 
