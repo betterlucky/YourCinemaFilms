@@ -57,6 +57,7 @@
                            hx-target="#search-results"
                            hx-swap="innerHTML show:window:top"
                            hx-indicator="#search-loading"
+                           hx-preserve="true"
                            name="query"
                            autocomplete="off">
                     <button class="btn btn-outline-light" type="submit">Search</button>
@@ -168,24 +169,12 @@
             const searchInput = $('#search-input');
             const searchModal = new bootstrap.Modal(document.getElementById('searchResultsModal'));
             
-            // Initialize the active search input variable
-            window.activeSearchInput = '';
-            
-            // Set active search input when navbar search is focused
-            searchInput.on('focus', function() {
-                window.activeSearchInput = 'search-input';
-            });
-            
             // Show modal when typing in the search input
             searchInput.on('input', function() {
                 const query = $(this).val().trim();
                 
                 if (query.length >= 3) {
                     searchModal.show();
-                    // Maintain focus on the search input after modal shows
-                    setTimeout(() => {
-                        searchInput.focus();
-                    }, 100);
                 }
             });
             
@@ -199,32 +188,6 @@
                 }
                 
                 searchModal.show();
-                // Maintain focus on the search input after modal shows
-                setTimeout(() => {
-                    searchInput.focus();
-                }, 100);
-            });
-            
-            // Keep focus on search input when modal is shown
-            $('#searchResultsModal').on('shown.bs.modal', function() {
-                // Determine which search input was used based on stored value
-                if (window.activeSearchInput === 'main-search-input') {
-                    $('#main-search-input').focus();
-                } else if (window.activeSearchInput === 'search-input') {
-                    searchInput.focus();
-                }
-            });
-            
-            // Prevent search results from stealing focus
-            $(document).on('htmx:afterSwap', function(e) {
-                if ($(e.target).attr('id') === 'search-results') {
-                    // Determine which search input was used based on stored value
-                    if (window.activeSearchInput === 'main-search-input') {
-                        $('#main-search-input').focus();
-                    } else if (window.activeSearchInput === 'search-input') {
-                        searchInput.focus();
-                    }
-                }
             });
         });
     </script>
