@@ -3,6 +3,24 @@
 
 {% block title %}{% trans "Profile" %} | YourCinemaFilms{% endblock %}
 
+{% block extra_css %}
+<style>
+    .hover-effect {
+        transition: all 0.3s ease;
+    }
+    .hover-effect:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 .5rem 1rem rgba(0,0,0,.15) !important;
+    }
+    .badge {
+        font-weight: 500;
+    }
+    .card-header {
+        border-bottom: 2px solid rgba(0,0,0,.05);
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container py-5">
     <div class="row">
@@ -48,6 +66,12 @@
                         <a href="{% url 'films_app:edit_profile' %}" class="btn btn-outline-secondary">
                             <i class="fas fa-edit me-2"></i>{% trans "Edit Profile" %}
                         </a>
+                        
+                        {% if user.is_superuser %}
+                        <a href="{% url 'films_app:debug_profile' username=user.username %}" class="btn btn-outline-warning mt-2">
+                            <i class="fas fa-bug me-2"></i>{% trans "Debug Profile" %}
+                        </a>
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -94,58 +118,248 @@
         
         <div class="col-md-8">
             <div class="card shadow">
-                <div class="card-header">
-                    <h5 class="mb-0">{% trans "Profile Information" %}</h5>
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="fas fa-user-circle me-2"></i>{% trans "Profile Information" %}</h5>
                 </div>
                 <div class="card-body">
                     {% if profile.bio %}
-                        <h6>{% trans "Bio" %}</h6>
-                        <p>{{ profile.bio }}</p>
+                        <div class="mb-4">
+                            <h6 class="text-primary"><i class="fas fa-quote-left me-2"></i>{% trans "Bio" %}</h6>
+                            <p class="ps-4 border-start border-3 border-light">{{ profile.bio }}</p>
+                        </div>
                         <hr>
                     {% endif %}
                     
                     <div class="row">
                         {% if profile.location %}
-                            <div class="col-md-6 mb-3">
-                                <h6>{% trans "Location" %}</h6>
-                                <p>{{ profile.location }}</p>
+                            <div class="col-md-6 mb-4">
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="fas fa-map-marker-alt text-danger me-2"></i>
+                                    <h6 class="mb-0">
+                                        {% trans "Location" %}
+                                        <span class="badge {% if profile.location_privacy == 'public' %}bg-success{% elif profile.location_privacy == 'users' %}bg-info{% else %}bg-secondary{% endif %} ms-2 small">
+                                            {{ profile.get_location_privacy_display }}
+                                        </span>
+                                    </h6>
+                                </div>
+                                <p class="ps-4 mb-0">{{ profile.location }}</p>
                             </div>
                         {% endif %}
                         
                         {% if profile.letterboxd_username %}
-                            <div class="col-md-6 mb-3">
-                                <h6>{% trans "Letterboxd" %}</h6>
-                                <p>
-                                    <a href="https://letterboxd.com/{{ profile.letterboxd_username }}/" target="_blank">
-                                        {{ profile.letterboxd_username }}
+                            <div class="col-md-6 mb-4">
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="fas fa-film text-info me-2"></i>
+                                    <h6 class="mb-0">{% trans "Letterboxd" %}</h6>
+                                </div>
+                                <p class="ps-4 mb-0">
+                                    <a href="https://letterboxd.com/{{ profile.letterboxd_username }}/" target="_blank" class="text-decoration-none">
+                                        <i class="fas fa-external-link-alt me-1"></i>{{ profile.letterboxd_username }}
                                     </a>
                                 </p>
+                            </div>
+                        {% endif %}
+                        
+                        {% if profile.gender != 'NS' %}
+                            <div class="col-md-6 mb-4">
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="fas fa-venus-mars text-primary me-2"></i>
+                                    <h6 class="mb-0">
+                                        {% trans "Gender" %}
+                                        <span class="badge {% if profile.gender_privacy == 'public' %}bg-success{% elif profile.gender_privacy == 'users' %}bg-info{% else %}bg-secondary{% endif %} ms-2 small">
+                                            {{ profile.get_gender_privacy_display }}
+                                        </span>
+                                    </h6>
+                                </div>
+                                <p class="ps-4 mb-0">{{ profile.get_gender_display }}</p>
+                            </div>
+                        {% endif %}
+                        
+                        {% if profile.age_range != 'NS' %}
+                            <div class="col-md-6 mb-4">
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="fas fa-child text-secondary me-2"></i>
+                                    <h6 class="mb-0">
+                                        {% trans "Age Range" %}
+                                        <span class="badge {% if profile.age_privacy == 'public' %}bg-success{% elif profile.age_privacy == 'users' %}bg-info{% else %}bg-secondary{% endif %} ms-2 small">
+                                            {{ profile.get_age_privacy_display }}
+                                        </span>
+                                    </h6>
+                                </div>
+                                <p class="ps-4 mb-0">{{ profile.get_age_range_display }}</p>
                             </div>
                         {% endif %}
                     </div>
                 </div>
             </div>
             
+            <!-- Cinema Preferences Section -->
+            {% if profile.favorite_cinema or profile.cinema_frequency != 'NS' or profile.viewing_companions != 'NS' or profile.viewing_time != 'NS' or profile.price_sensitivity != 'NS' or profile.format_preference != 'NS' or profile.travel_distance or profile.cinema_amenities or profile.film_genres %}
+            <div class="card shadow mt-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="fas fa-film me-2"></i>{% trans "Cinema Preferences" %}</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% if profile.favorite_cinema %}
+                            <div class="col-md-6 mb-4">
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="fas fa-building text-warning me-2"></i>
+                                    <h6 class="mb-0">
+                                        {% trans "Favorite Cinema" %}
+                                        <span class="badge {% if profile.favorite_cinema_privacy == 'public' %}bg-success{% elif profile.favorite_cinema_privacy == 'users' %}bg-info{% else %}bg-secondary{% endif %} ms-2 small">
+                                            {{ profile.get_favorite_cinema_privacy_display }}
+                                        </span>
+                                    </h6>
+                                </div>
+                                <p class="ps-4 mb-0">{{ profile.favorite_cinema }}</p>
+                            </div>
+                        {% endif %}
+                        
+                        {% if profile.cinema_frequency != 'NS' %}
+                            <div class="col-md-6 mb-4">
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="fas fa-calendar-alt text-primary me-2"></i>
+                                    <h6 class="mb-0">
+                                        {% trans "Cinema Frequency" %}
+                                        <span class="badge {% if profile.cinema_frequency_privacy == 'public' %}bg-success{% elif profile.cinema_frequency_privacy == 'users' %}bg-info{% else %}bg-secondary{% endif %} ms-2 small">
+                                            {{ profile.get_cinema_frequency_privacy_display }}
+                                        </span>
+                                    </h6>
+                                </div>
+                                <p class="ps-4 mb-0">{{ profile.get_cinema_frequency_display }}</p>
+                            </div>
+                        {% endif %}
+                        
+                        {% if profile.viewing_companions != 'NS' %}
+                            <div class="col-md-6 mb-4">
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="fas fa-users text-info me-2"></i>
+                                    <h6 class="mb-0">
+                                        {% trans "Viewing Companions" %}
+                                        <span class="badge {% if profile.viewing_companions_privacy == 'public' %}bg-success{% elif profile.viewing_companions_privacy == 'users' %}bg-info{% else %}bg-secondary{% endif %} ms-2 small">
+                                            {{ profile.get_viewing_companions_privacy_display }}
+                                        </span>
+                                    </h6>
+                                </div>
+                                <p class="ps-4 mb-0">{{ profile.get_viewing_companions_display }}</p>
+                            </div>
+                        {% endif %}
+                        
+                        {% if profile.viewing_time != 'NS' %}
+                            <div class="col-md-6 mb-4">
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="fas fa-clock text-success me-2"></i>
+                                    <h6 class="mb-0">
+                                        {% trans "Preferred Viewing Time" %}
+                                        <span class="badge {% if profile.viewing_time_privacy == 'public' %}bg-success{% elif profile.viewing_time_privacy == 'users' %}bg-info{% else %}bg-secondary{% endif %} ms-2 small">
+                                            {{ profile.get_viewing_time_privacy_display }}
+                                        </span>
+                                    </h6>
+                                </div>
+                                <p class="ps-4 mb-0">{{ profile.get_viewing_time_display }}</p>
+                            </div>
+                        {% endif %}
+                        
+                        {% if profile.price_sensitivity != 'NS' %}
+                            <div class="col-md-6 mb-4">
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="fas fa-money-bill-wave text-success me-2"></i>
+                                    <h6 class="mb-0">
+                                        {% trans "Price Sensitivity" %}
+                                        <span class="badge {% if profile.price_sensitivity_privacy == 'public' %}bg-success{% elif profile.price_sensitivity_privacy == 'users' %}bg-info{% else %}bg-secondary{% endif %} ms-2 small">
+                                            {{ profile.get_price_sensitivity_privacy_display }}
+                                        </span>
+                                    </h6>
+                                </div>
+                                <p class="ps-4 mb-0">{{ profile.get_price_sensitivity_display }}</p>
+                            </div>
+                        {% endif %}
+                        
+                        {% if profile.format_preference != 'NS' %}
+                            <div class="col-md-6 mb-4">
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="fas fa-tv text-danger me-2"></i>
+                                    <h6 class="mb-0">
+                                        {% trans "Format Preference" %}
+                                        <span class="badge {% if profile.format_preference_privacy == 'public' %}bg-success{% elif profile.format_preference_privacy == 'users' %}bg-info{% else %}bg-secondary{% endif %} ms-2 small">
+                                            {{ profile.get_format_preference_privacy_display }}
+                                        </span>
+                                    </h6>
+                                </div>
+                                <p class="ps-4 mb-0">{{ profile.get_format_preference_display }}</p>
+                            </div>
+                        {% endif %}
+                        
+                        {% if profile.travel_distance %}
+                            <div class="col-md-6 mb-4">
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="fas fa-route text-primary me-2"></i>
+                                    <h6 class="mb-0">
+                                        {% trans "Travel Distance" %}
+                                        <span class="badge {% if profile.travel_distance_privacy == 'public' %}bg-success{% elif profile.travel_distance_privacy == 'users' %}bg-info{% else %}bg-secondary{% endif %} ms-2 small">
+                                            {{ profile.get_travel_distance_privacy_display }}
+                                        </span>
+                                    </h6>
+                                </div>
+                                <p class="ps-4 mb-0">{{ profile.travel_distance }} miles</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    {% if profile.cinema_amenities %}
+                        <div class="mt-3 mb-4">
+                            <div class="d-flex align-items-center mb-2">
+                                <i class="fas fa-couch text-warning me-2"></i>
+                                <h6 class="mb-0">
+                                    {% trans "Important Cinema Amenities" %}
+                                    <span class="badge {% if profile.cinema_amenities_privacy == 'public' %}bg-success{% elif profile.cinema_amenities_privacy == 'users' %}bg-info{% else %}bg-secondary{% endif %} ms-2 small">
+                                        {{ profile.get_cinema_amenities_privacy_display }}
+                                    </span>
+                                </h6>
+                            </div>
+                            <p class="ps-4 mb-0">{{ profile.cinema_amenities }}</p>
+                        </div>
+                    {% endif %}
+                    
+                    {% if profile.film_genres %}
+                        <div class="mt-3">
+                            <div class="d-flex align-items-center mb-2">
+                                <i class="fas fa-tags text-info me-2"></i>
+                                <h6 class="mb-0">
+                                    {% trans "Preferred Cinema Genres" %}
+                                    <span class="badge {% if profile.film_genres_privacy == 'public' %}bg-success{% elif profile.film_genres_privacy == 'users' %}bg-info{% else %}bg-secondary{% endif %} ms-2 small">
+                                        {{ profile.get_film_genres_privacy_display }}
+                                    </span>
+                                </h6>
+                            </div>
+                            <p class="ps-4 mb-0">{{ profile.film_genres }}</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+            
             <!-- Achievements Section -->
             <div class="card shadow mt-4">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">{% trans "Achievements" %}</h5>
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-trophy me-2"></i>{% trans "Achievements" %}</h5>
                     <span class="badge bg-primary rounded-pill">{{ achievements|length }}</span>
                 </div>
                 <div class="card-body">
                     {% if achievements %}
                         <div class="row">
                             {% for achievement in achievements %}
-                                <div class="col-md-6 mb-3">
-                                    <div class="achievement-card p-3 border rounded d-flex align-items-center">
+                                <div class="col-md-6 mb-4">
+                                    <div class="achievement-card p-3 border rounded d-flex align-items-center shadow-sm hover-effect">
                                         <div class="achievement-icon me-3 d-flex align-items-center justify-content-center bg-primary text-white rounded-circle" 
                                              style="width: 50px; height: 50px;">
                                             <i class="fas {{ achievement.icon }} fa-lg"></i>
                                         </div>
                                         <div>
-                                            <h6 class="mb-1">{{ achievement.get_achievement_type_display }}</h6>
+                                            <h6 class="mb-1 text-primary">{{ achievement.get_achievement_type_display }}</h6>
                                             <p class="text-muted small mb-0">{{ achievement.description }}</p>
-                                            <small class="text-muted">{% trans "Achieved" %}: {{ achievement.date_achieved|date:"F j, Y" }}</small>
+                                            <small class="text-muted"><i class="far fa-calendar-alt me-1"></i>{% trans "Achieved" %}: {{ achievement.date_achieved|date:"F j, Y" }}</small>
                                         </div>
                                     </div>
                                 </div>
@@ -153,8 +367,8 @@
                         </div>
                     {% else %}
                         <div class="text-center py-4">
-                            <i class="fas fa-trophy fa-3x text-muted mb-3"></i>
-                            <h5>{% trans "No achievements yet" %}</h5>
+                            <i class="fas fa-trophy fa-3x text-muted mb-3 opacity-50"></i>
+                            <h5 class="text-muted">{% trans "No achievements yet" %}</h5>
                             <p class="text-muted">{% trans "Complete your profile, vote for films, and add genre tags to earn achievements!" %}</p>
                         </div>
                     {% endif %}
@@ -162,34 +376,37 @@
             </div>
             
             <div class="card shadow mt-4">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">{% trans "My Votes" %}</h5>
-                    <span class="badge bg-primary">{{ user_votes.count }}</span>
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-thumbs-up me-2"></i>{% trans "My Votes" %}</h5>
+                    <span class="badge bg-primary rounded-pill">{{ user_votes.count }}</span>
                 </div>
                 <div class="card-body">
                     {% with votes=user_votes %}
                         {% if votes %}
                             <div class="row">
                                 {% for vote in votes %}
-                                    <div class="col-md-6 mb-3">
-                                        <div class="d-flex">
+                                    <div class="col-md-6 mb-4">
+                                        <div class="d-flex align-items-center p-2 border rounded shadow-sm hover-effect">
                                             <img src="{{ vote.film.poster_url|default:'https://via.placeholder.com/50x75' }}" 
-                                                 alt="{{ vote.film.title }}" width="50" class="me-3">
+                                                 alt="{{ vote.film.title }}" width="50" height="75" class="me-3" style="object-fit: cover;">
                                             <div>
                                                 <h6 class="mb-0">
-                                                    <a href="{% url 'films_app:film_detail' vote.film.imdb_id %}">{{ vote.film.title }}</a>
+                                                    <a href="{% url 'films_app:film_detail' vote.film.imdb_id %}" class="text-decoration-none">{{ vote.film.title }}</a>
                                                 </h6>
-                                                <small class="text-muted">{{ vote.film.year }}</small>
+                                                <div class="d-flex align-items-center mt-1">
+                                                    <span class="badge bg-secondary me-2">{{ vote.film.year }}</span>
+                                                    <small class="text-muted"><i class="far fa-calendar-alt me-1"></i>{{ vote.created_at|date:"M j, Y" }}</small>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
                                 {% endfor %}
                             </div>
                         {% else %}
-                            <p class="text-center text-muted">
-                                {% trans "You haven't voted for any films yet." %}
-                            </p>
-                            <div class="text-center">
+                            <div class="text-center py-4">
+                                <i class="fas fa-film fa-3x text-muted mb-3 opacity-50"></i>
+                                <h5 class="text-muted">{% trans "You haven't voted for any films yet." %}</h5>
+                                <p class="text-muted mb-4">{% trans "Discover films and vote for your favorites!" %}</p>
                                 <a href="{% url 'films_app:home' %}" class="btn btn-primary">
                                     <i class="fas fa-film me-2"></i>{% trans "Discover Films" %}
                                 </a>

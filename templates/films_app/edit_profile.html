@@ -30,7 +30,11 @@
                                     <span>{{ profile.profile_completion_percentage }}%</span>
                                 </div>
                                 <div class="progress" style="height: 10px;">
-                                    <div class="progress-bar bg-success" style="width: {{ profile.profile_completion_percentage }}%;" role="progressbar" aria-valuenow="{{ profile.profile_completion_percentage }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                    <div class="progress-bar bg-success" role="progressbar" 
+                                         style="width: {{ profile.profile_completion_percentage }}%;" 
+                                         aria-valuenow="{{ profile.profile_completion_percentage }}" 
+                                         aria-valuemin="0" 
+                                         aria-valuemax="100"></div>
                                 </div>
                                 <small class="text-muted mt-1 d-block">{% trans "Fill out at least 80% of your profile to earn the achievement" %}</small>
                             </div>
@@ -41,14 +45,14 @@
                         
                         <div class="mb-3">
                             <label for="bio" class="form-label">{% trans "Bio" %}</label>
-                            <textarea name="bio" id="bio" class="form-control" rows="4">{{ profile.bio|default:'' }}</textarea>
+                            <textarea name="bio" id="bio" class="form-control" rows="4" placeholder="Tell us about yourself and your film preferences...">{{ profile.bio|default:'' }}</textarea>
                             <div class="form-text">{% trans "Tell us about yourself and your film preferences." %}</div>
                         </div>
                         
                         <div class="mb-3">
                             <label for="letterboxd_username" class="form-label">{% trans "Letterboxd Username" %}</label>
                             <input type="text" name="letterboxd_username" id="letterboxd_username" class="form-control" 
-                                   value="{{ profile.letterboxd_username|default:'' }}">
+                                   value="{{ profile.letterboxd_username|default:'' }}" placeholder="Your Letterboxd username (if you have one)">
                             <div class="form-text">{% trans "If you have a Letterboxd account, enter your username here." %}</div>
                         </div>
                         
@@ -66,7 +70,7 @@
                         <div class="mb-3">
                             <label for="contact_email" class="form-label">{% trans "Contact Email" %}</label>
                             <input type="email" name="contact_email" id="contact_email" class="form-control" 
-                                   value="{{ profile.contact_email|default:'' }}">
+                                   value="{{ profile.contact_email|default:'' }}" placeholder="Alternative email for notifications (optional)">
                             <div class="form-text">{% trans "Email address for notifications (if different from account email)." %}</div>
                         </div>
                         
@@ -86,7 +90,7 @@
                         <div class="mb-3">
                             <label for="favorite_cinema" class="form-label">{% trans "Favorite Cinema" %}</label>
                             <input type="text" name="favorite_cinema" id="favorite_cinema" class="form-control" 
-                                   value="{{ profile.favorite_cinema|default:'' }}">
+                                   value="{{ profile.favorite_cinema|default:'' }}" placeholder="e.g., Odeon, Vue, Cineworld, or your local independent cinema">
                             <div class="form-text">{% trans "Your preferred cinema or chain (e.g., AMC, Regal, local independent)" %}</div>
                         </div>
                         
@@ -156,22 +160,25 @@
                             </div>
                             
                             <div class="col-md-6 mb-3">
-                                <label for="travel_distance" class="form-label">{% trans "Travel Distance" %}</label>
-                                <input type="text" name="travel_distance" id="travel_distance" class="form-control" 
-                                       value="{{ profile.travel_distance|default:'' }}">
-                                <div class="form-text">{% trans "How far are you willing to travel? (e.g., '5 miles', '30 minutes')" %}</div>
+                                <label for="travel_distance" class="form-label">{% trans "Travel Distance (miles)" %}</label>
+                                <div class="input-group">
+                                    <input type="number" name="travel_distance" id="travel_distance" class="form-control" 
+                                           value="{{ profile.travel_distance|default:'' }}" min="1" max="100" placeholder="e.g., 5, 10, 25">
+                                    <span class="input-group-text">miles</span>
+                                </div>
+                                <div class="form-text">{% trans "How far are you willing to travel to a cinema?" %}</div>
                             </div>
                         </div>
                         
                         <div class="mb-3">
                             <label for="cinema_amenities" class="form-label">{% trans "Important Cinema Amenities" %}</label>
-                            <textarea name="cinema_amenities" id="cinema_amenities" class="form-control" rows="2">{{ profile.cinema_amenities|default:'' }}</textarea>
+                            <textarea name="cinema_amenities" id="cinema_amenities" class="form-control" rows="2" placeholder="e.g., reclining seats, good food options, bar service, IMAX screens, etc.">{{ profile.cinema_amenities|default:'' }}</textarea>
                             <div class="form-text">{% trans "What amenities are important to you? (e.g., food service, bar, reclining seats)" %}</div>
                         </div>
                         
                         <div class="mb-3">
                             <label for="film_genres" class="form-label">{% trans "Preferred Cinema Genres" %}</label>
-                            <textarea name="film_genres" id="film_genres" class="form-control" rows="2">{{ profile.film_genres|default:'' }}</textarea>
+                            <textarea name="film_genres" id="film_genres" class="form-control" rows="2" placeholder="e.g., action blockbusters, horror films, documentaries, etc.">{{ profile.film_genres|default:'' }}</textarea>
                             <div class="form-text">{% trans "What genres do you prefer to see in the cinema rather than at home?" %}</div>
                         </div>
                         
@@ -185,7 +192,7 @@
                             <div class="input-group mb-2">
                                 <input type="text" name="location" id="location" class="form-control" 
                                        value="{{ profile.location|default:'' }}" autocomplete="off"
-                                       placeholder="Start typing your city or town...">
+                                       placeholder="Enter your city, town or region in the UK...">
                                 <button class="btn btn-outline-secondary" type="button" id="postcodeSearchBtn">
                                     <i class="fas fa-search"></i> {% trans "Find by Postcode" %}
                                 </button>
@@ -227,6 +234,18 @@
                         
                         <div class="row">
                             <div class="col-md-6 mb-3">
+                                <label for="dashboard_activity_privacy" class="form-label">{% trans "Dashboard Activity Privacy" %}</label>
+                                <select name="dashboard_activity_privacy" id="dashboard_activity_privacy" class="form-select">
+                                    {% for value, label in profile.PRIVACY_CHOICES %}
+                                        <option value="{{ value }}" {% if profile.dashboard_activity_privacy == value %}selected{% endif %}>
+                                            {{ label }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                                <div class="form-text">{% trans "Controls whether your activity appears on the dashboard." %}</div>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
                                 <label for="location_privacy" class="form-label">{% trans "Location Privacy" %}</label>
                                 <select name="location_privacy" id="location_privacy" class="form-select">
                                     {% for value, label in profile.PRIVACY_CHOICES %}
@@ -236,7 +255,9 @@
                                     {% endfor %}
                                 </select>
                             </div>
-                            
+                        </div>
+                        
+                        <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="gender_privacy" class="form-label">{% trans "Gender Privacy" %}</label>
                                 <select name="gender_privacy" id="gender_privacy" class="form-select">
@@ -247,9 +268,7 @@
                                     {% endfor %}
                                 </select>
                             </div>
-                        </div>
-                        
-                        <div class="row">
+                            
                             <div class="col-md-6 mb-3">
                                 <label for="age_privacy" class="form-label">{% trans "Age Range Privacy" %}</label>
                                 <select name="age_privacy" id="age_privacy" class="form-select">
@@ -260,7 +279,9 @@
                                     {% endfor %}
                                 </select>
                             </div>
-                            
+                        </div>
+                        
+                        <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="votes_privacy" class="form-label">{% trans "Votes Privacy" %}</label>
                                 <select name="votes_privacy" id="votes_privacy" class="form-select">

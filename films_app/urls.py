@@ -30,4 +30,5 @@ urlpatterns = [
     path('user/<str:username>/', views.user_profile_view, name='user_profile'),
     path('user-vote-status/', views.get_user_vote_status, name='get_user_vote_status'),
     path('top-films/', views.get_top_films_partial, name='get_top_films'),
+    path('debug-profile/<str:username>/', views.debug_profile, name='debug_profile'),
 ] 

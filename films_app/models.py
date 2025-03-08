@@ -157,7 +157,7 @@ class UserProfile(models.Model):
         'location', 'gender', 'age', 'votes', 'cinema_frequency', 
         'favorite_cinema', 'viewing_companions', 'viewing_time', 
         'price_sensitivity', 'format_preference', 'travel_distance',
-        'cinema_amenities', 'film_genres'
+        'cinema_amenities', 'film_genres', 'dashboard_activity'
     ]
     
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
@@ -183,7 +183,7 @@ class UserProfile(models.Model):
     viewing_time = models.CharField(max_length=20, choices=VIEWING_TIME_CHOICES, default='NS', help_text="When do you prefer to go to the cinema?")
     price_sensitivity = models.CharField(max_length=10, choices=PRICE_SENSITIVITY_CHOICES, default='NS', help_text="How important is ticket price in your decision to see a film?")
     format_preference = models.CharField(max_length=10, choices=FORMAT_PREFERENCE_CHOICES, default='NS', help_text="What format do you prefer to watch films in?")
-    travel_distance = models.CharField(max_length=50, blank=True, null=True, help_text="How far are you willing to travel for a film? (e.g., '5 miles', '30 minutes')")
+    travel_distance = models.PositiveIntegerField(blank=True, null=True, help_text="How far are you willing to travel to a cinema (in miles)?")
     cinema_amenities = models.TextField(blank=True, null=True, help_text="What cinema amenities are important to you? (e.g., food service, bar, reclining seats)")
     film_genres = models.TextField(blank=True, null=True, help_text="What film genres do you prefer to see in the cinema?")
     
@@ -191,7 +191,7 @@ class UserProfile(models.Model):
     location_privacy = models.CharField(max_length=10, choices=PRIVACY_CHOICES, default='private')
     gender_privacy = models.CharField(max_length=10, choices=PRIVACY_CHOICES, default='private')
     age_privacy = models.CharField(max_length=10, choices=PRIVACY_CHOICES, default='private')
-    votes_privacy = models.CharField(max_length=10, choices=PRIVACY_CHOICES, default='public')
+    votes_privacy = models.CharField(max_length=10, choices=PRIVACY_CHOICES, default='private')
     
     # New privacy settings
     favorite_cinema_privacy = models.CharField(max_length=10, choices=PRIVACY_CHOICES, default='private')
@@ -203,6 +203,7 @@ class UserProfile(models.Model):
     travel_distance_privacy = models.CharField(max_length=10, choices=PRIVACY_CHOICES, default='private')
     cinema_amenities_privacy = models.CharField(max_length=10, choices=PRIVACY_CHOICES, default='private')
     film_genres_privacy = models.CharField(max_length=10, choices=PRIVACY_CHOICES, default='private')
+    dashboard_activity_privacy = models.CharField(max_length=10, choices=PRIVACY_CHOICES, default='public')
     
     def __str__(self):
         return f"Profile for {self.user.username}"
@@ -217,12 +218,96 @@ class UserProfile(models.Model):
     
     @property
     def primary_email(self):
-        """Return the primary email address for this user."""
+        """Return the primary email address for the user."""
         if self.use_google_email_for_contact and self.google_email:
             return self.google_email
         elif self.contact_email:
             return self.contact_email
         return self.user.email
+    
+    def get_gender_display(self):
+        """Return the display value for gender."""
+        return dict(self.GENDER_CHOICES).get(self.gender, 'Not specified')
+    
+    def get_age_range_display(self):
+        """Return the display value for age range."""
+        return dict(self.AGE_RANGE_CHOICES).get(self.age_range, 'Not specified')
+    
+    def get_cinema_frequency_display(self):
+        """Return the display value for cinema frequency."""
+        return dict(self.VIEWING_FREQUENCY_CHOICES).get(self.cinema_frequency, 'Not specified')
+    
+    def get_viewing_companions_display(self):
+        """Return the display value for viewing companions."""
+        return dict(self.VIEWING_COMPANION_CHOICES).get(self.viewing_companions, 'Not specified')
+    
+    def get_viewing_time_display(self):
+        """Return the display value for viewing time."""
+        return dict(self.VIEWING_TIME_CHOICES).get(self.viewing_time, 'Not specified')
+    
+    def get_price_sensitivity_display(self):
+        """Return the display value for price sensitivity."""
+        return dict(self.PRICE_SENSITIVITY_CHOICES).get(self.price_sensitivity, 'Not specified')
+    
+    def get_format_preference_display(self):
+        """Return the display value for format preference."""
+        return dict(self.FORMAT_PREFERENCE_CHOICES).get(self.format_preference, 'Not specified')
+    
+    def get_location_privacy_display(self):
+        """Return the display value for location privacy."""
+        return dict(self.PRIVACY_CHOICES).get(self.location_privacy, 'Private')
+    
+    def get_gender_privacy_display(self):
+        """Return the display value for gender privacy."""
+        return dict(self.PRIVACY_CHOICES).get(self.gender_privacy, 'Private')
+    
+    def get_age_privacy_display(self):
+        """Return the display value for age privacy."""
+        return dict(self.PRIVACY_CHOICES).get(self.age_privacy, 'Private')
+    
+    def get_votes_privacy_display(self):
+        """Return the display value for votes privacy."""
+        return dict(self.PRIVACY_CHOICES).get(self.votes_privacy, 'Private')
+    
+    def get_favorite_cinema_privacy_display(self):
+        """Return the display value for favorite cinema privacy."""
+        return dict(self.PRIVACY_CHOICES).get(self.favorite_cinema_privacy, 'Private')
+    
+    def get_cinema_frequency_privacy_display(self):
+        """Return the display value for cinema frequency privacy."""
+        return dict(self.PRIVACY_CHOICES).get(self.cinema_frequency_privacy, 'Private')
+    
+    def get_viewing_companions_privacy_display(self):
+        """Return the display value for viewing companions privacy."""
+        return dict(self.PRIVACY_CHOICES).get(self.viewing_companions_privacy, 'Private')
+    
+    def get_viewing_time_privacy_display(self):
+        """Return the display value for viewing time privacy."""
+        return dict(self.PRIVACY_CHOICES).get(self.viewing_time_privacy, 'Private')
+    
+    def get_price_sensitivity_privacy_display(self):
+        """Return the display value for price sensitivity privacy."""
+        return dict(self.PRIVACY_CHOICES).get(self.price_sensitivity_privacy, 'Private')
+    
+    def get_format_preference_privacy_display(self):
+        """Return the display value for format preference privacy."""
+        return dict(self.PRIVACY_CHOICES).get(self.format_preference_privacy, 'Private')
+    
+    def get_travel_distance_privacy_display(self):
+        """Return the display value for travel distance privacy."""
+        return dict(self.PRIVACY_CHOICES).get(self.travel_distance_privacy, 'Private')
+    
+    def get_cinema_amenities_privacy_display(self):
+        """Return the display value for cinema amenities privacy."""
+        return dict(self.PRIVACY_CHOICES).get(self.cinema_amenities_privacy, 'Private')
+    
+    def get_film_genres_privacy_display(self):
+        """Return the display value for film genres privacy."""
+        return dict(self.PRIVACY_CHOICES).get(self.film_genres_privacy, 'Private')
+    
+    def get_dashboard_activity_privacy_display(self):
+        """Return the display value for dashboard activity privacy."""
+        return dict(self.PRIVACY_CHOICES).get(self.dashboard_activity_privacy, 'Public')
     
     def is_visible_to(self, field_name, viewer=None):
         """Check if a field is visible to the viewer based on privacy settings."""

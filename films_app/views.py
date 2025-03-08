@@ -116,7 +116,20 @@ def edit_profile(request):
         profile.viewing_time = request.POST.get('viewing_time', 'NS')
         profile.price_sensitivity = request.POST.get('price_sensitivity', 'NS')
         profile.format_preference = request.POST.get('format_preference', 'NS')
-        profile.travel_distance = request.POST.get('travel_distance', '')
+        
+        # Handle travel_distance as integer
+        travel_distance = request.POST.get('travel_distance', '')
+        try:
+            if travel_distance and travel_distance.strip():
+                profile.travel_distance = int(travel_distance)
+                # Ensure it's a positive value between 1 and 100
+                if profile.travel_distance < 1 or profile.travel_distance > 100:
+                    profile.travel_distance = None
+            else:
+                profile.travel_distance = None
+        except (ValueError, TypeError):
+            profile.travel_distance = None
+        
         profile.cinema_amenities = request.POST.get('cinema_amenities', '')
         profile.film_genres = request.POST.get('film_genres', '')
         
@@ -141,6 +154,7 @@ def edit_profile(request):
         profile.travel_distance_privacy = request.POST.get('travel_distance_privacy', 'private')
         profile.cinema_amenities_privacy = request.POST.get('cinema_amenities_privacy', 'private')
         profile.film_genres_privacy = request.POST.get('film_genres_privacy', 'private')
+        profile.dashboard_activity_privacy = request.POST.get('dashboard_activity_privacy', 'public')
         
         profile.save()
         
@@ -474,6 +488,9 @@ def dashboard(request):
     # Get active users
     active_users = User.objects.filter(votes__in=period_votes_query).annotate(
         vote_count=Count('votes')
+    ).filter(
+        vote_count__gt=0,
+        profile__dashboard_activity_privacy='public'  # Only include users who have set their dashboard activity to public
     ).order_by('-vote_count')[:5]
     
     active_users_data = []
@@ -486,14 +503,17 @@ def dashboard(request):
     
     # Get recent activity
     recent_activity = []
-    recent_votes = Vote.objects.select_related('user', 'film').order_by('-created_at')[:10]
+    recent_votes = Vote.objects.select_related('user', 'film').filter(
+        user__profile__dashboard_activity_privacy='public'  # Only include users who have set their dashboard activity to public
+    ).order_by('-created_at')[:10]
     
     for vote in recent_votes:
         recent_activity.append({
             'user': vote.user,
             'action': 'voted for',
             'description': f"{vote.film.title} ({vote.film.year})",
-            'timestamp': vote.created_at
+            'timestamp': vote.created_at,
+            'film': vote.film
         })
     
     # Get stats
@@ -733,149 +753,56 @@ def demographic_analysis(request):
     return render(request, 'films_app/demographic_analysis.html', context)
 
 
-def debug_profile(request):
-    """Debug view to check profile data."""
-    if not request.user.is_authenticated:
-        return redirect('account_login')
+def debug_profile(request, username):
+    """Debug view for profile information."""
+    if not request.user.is_authenticated or not request.user.is_superuser:
+        return redirect('films_app:home')
     
-    from django.http import JsonResponse
-    from allauth.socialaccount.models import SocialAccount
-    import json
+    # Get the user by username
+    target_user = get_object_or_404(User, username=username)
+    profile = target_user.profile
     
-    logger = logging.getLogger(__name__)
-    
-    # Get the user's profile
-    profile = request.user.profile
-    
-    # PRIORITY 1: Try to find Google account by stored ID
-    google_account = None
-    if profile.google_account_id:
-        try:
-            google_account = SocialAccount.objects.get(
-                provider='google',
-                uid=profile.google_account_id
-            )
-            logger.info(f"Found Google account by stored ID: {profile.google_account_id}")
-        except SocialAccount.DoesNotExist:
-            logger.warning(f"No Google account found with stored ID: {profile.google_account_id}")
-    
-    # PRIORITY 2 (FALLBACK): Only if no account found by ID, try user's social accounts
-    if not google_account:
-        social_accounts = request.user.socialaccount_set.filter(provider='google')
-        if social_accounts.exists():
-            google_account = social_accounts.first()
-            logger.info(f"Found Google account through user relationship")
-            
-            # Store the Google account ID for future use if not already set
-            if not profile.google_account_id:
-                profile.google_account_id = google_account.uid
-                if 'email' in google_account.extra_data:
-                    profile.google_email = google_account.extra_data['email']
-                profile.save()
-                logger.info(f"Stored Google account ID: {profile.google_account_id}")
-    
-    # ALWAYS update the profile picture if we have a Google account with a picture
-    if google_account and 'picture' in google_account.extra_data:
-        picture_url = google_account.extra_data['picture']
-        logger.info(f"Found picture URL in Google account: {picture_url}")
-        
-        # Update the profile picture
-        profile.profile_picture_url = picture_url
-        profile.save()
-        
-        logger.info(f"Updated profile picture URL to: {picture_url}")
-        messages.success(request, f"Updated profile picture URL to: {picture_url}")
-    
-    # Check if we need to manually update the Google account ID and email
-    if request.GET.get('update_google_id') and google_account:
-        profile.google_account_id = google_account.uid
-        if 'email' in google_account.extra_data:
-            profile.google_email = google_account.extra_data['email']
-        profile.save()
-        messages.success(request, f"Updated Google account ID to: {profile.google_account_id}")
-        logger.info(f"Manually updated Google account ID to: {profile.google_account_id}")
-        if profile.google_email:
-            logger.info(f"Manually updated Google email to: {profile.google_email}")
-    
-    # Check if we need to find all Google accounts
-    all_google_accounts = []
-    if request.GET.get('find_accounts'):
-        # Find all Google accounts in the system
-        all_accounts = SocialAccount.objects.filter(provider='google')
-        for account in all_accounts:
-            account_data = {
-                'id': account.id,
-                'user': account.user.username,
-                'uid': account.uid,
-                'email': account.extra_data.get('email', 'Unknown'),
-                'has_picture': 'picture' in account.extra_data,
-                'picture_url': account.extra_data.get('picture', None)
-            }
-            all_google_accounts.append(account_data)
-            logger.info(f"Found Google account: {account.user.username}, UID: {account.uid}, Email: {account.extra_data.get('email', 'Unknown')}")
-    
-    # Check if we need to link a specific account
-    if request.GET.get('link_account'):
-        account_id = request.GET.get('link_account')
-        try:
-            account = SocialAccount.objects.get(id=account_id)
-            # Update the user reference
-            account.user = request.user
-            account.save()
-            
-            # Also update the Google account ID and email in the profile
-            profile.google_account_id = account.uid
-            if 'email' in account.extra_data:
-                profile.google_email = account.extra_data['email']
-            profile.save()
-            
-            messages.success(request, f"Successfully linked Google account {account.uid} to your user!")
-            logger.info(f"Linked Google account {account.uid} to user {request.user.username}")
-            
-            # Also update the profile picture
-            if 'picture' in account.extra_data:
-                profile.profile_picture_url = account.extra_data['picture']
-                profile.save()
-        except SocialAccount.DoesNotExist:
-            messages.error(request, f"Account with ID {account_id} not found")
-    
-    # Get all social accounts for the response
-    social_accounts = request.user.socialaccount_set.all()
-    
-    data = {
-        'user': {
-            'username': request.user.username,
-            'email': request.user.email,
-            'first_name': request.user.first_name,
-            'last_name': request.user.last_name,
-        },
-        'profile': {
-            'profile_picture_url': profile.profile_picture_url,
-            'google_account_id': profile.google_account_id,
-            'google_email': profile.google_email,
-            'contact_email': profile.contact_email,
-            'use_google_email_for_contact': profile.use_google_email_for_contact,
-            'primary_email': profile.primary_email,
-        },
-        'social_accounts': [],
-        'all_google_accounts': all_google_accounts
+    # Get all privacy settings
+    privacy_settings = {
+        'location_privacy': profile.location_privacy,
+        'gender_privacy': profile.gender_privacy,
+        'age_privacy': profile.age_privacy,
+        'votes_privacy': profile.votes_privacy,
+        'favorite_cinema_privacy': profile.favorite_cinema_privacy,
+        'cinema_frequency_privacy': profile.cinema_frequency_privacy,
+        'viewing_companions_privacy': profile.viewing_companions_privacy,
+        'viewing_time_privacy': profile.viewing_time_privacy,
+        'price_sensitivity_privacy': profile.price_sensitivity_privacy,
+        'format_preference_privacy': profile.format_preference_privacy,
+        'travel_distance_privacy': profile.travel_distance_privacy,
+        'cinema_amenities_privacy': profile.cinema_amenities_privacy,
+        'film_genres_privacy': profile.film_genres_privacy,
+        'dashboard_activity_privacy': profile.dashboard_activity_privacy,
     }
     
-    for account in social_accounts:
-        account_data = {
-            'provider': account.provider,
-            'uid': account.uid,
-        }
-        
-        # Add extra_data but ensure it's JSON serializable
-        try:
-            account_data['extra_data'] = account.extra_data
-        except:
-            account_data['extra_data'] = json.dumps(str(account.extra_data))
-            
-        data['social_accounts'].append(account_data)
+    # Get all profile fields
+    profile_fields = {
+        'location': profile.location,
+        'gender': profile.gender,
+        'age_range': profile.age_range,
+        'favorite_cinema': profile.favorite_cinema,
+        'cinema_frequency': profile.cinema_frequency,
+        'viewing_companions': profile.viewing_companions,
+        'viewing_time': profile.viewing_time,
+        'price_sensitivity': profile.price_sensitivity,
+        'format_preference': profile.format_preference,
+        'travel_distance': profile.travel_distance,
+        'cinema_amenities': profile.cinema_amenities,
+        'film_genres': profile.film_genres,
+    }
     
-    return JsonResponse(data)
+    context = {
+        'privacy_settings': privacy_settings,
+        'profile_fields': profile_fields,
+        'target_user': target_user,
+    }
+    
+    return render(request, 'films_app/debug_profile.html', context)
 
 
 def proxy_profile_image(request):
