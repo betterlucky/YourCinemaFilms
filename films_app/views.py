@@ -16,7 +16,7 @@ import time
 from django.utils.translation import gettext as _
 
 from .models import Film, Vote, UserProfile, GenreTag
-from .utils import validate_genre_tag
+from .utils import validate_genre_tag, fetch_and_update_film_from_omdb
 
 
 def home(request):
@@ -166,61 +166,41 @@ def search_films(request):
 @login_required
 def film_detail(request, imdb_id):
     """Get detailed information about a film."""
-    # Check if film exists in database
-    film = Film.objects.filter(imdb_id=imdb_id).first()
-    
-    if not film:
-        # Fetch from OMDB API
-        api_key = settings.OMDB_API_KEY
-        url = f"http://www.omdbapi.com/?apikey={api_key}&i={imdb_id}&plot=full"
+    try:
+        # Fetch or update film from OMDB
+        film, created = fetch_and_update_film_from_omdb(imdb_id)
         
-        try:
-            response = requests.get(url)
-            data = response.json()
-            
-            if data.get('Response') == 'True':
-                film = Film(
-                    imdb_id=imdb_id,
-                    title=data.get('Title', ''),
-                    year=data.get('Year', ''),
-                    poster_url=data.get('Poster', ''),
-                    director=data.get('Director', ''),
-                    plot=data.get('Plot', ''),
-                    genres=data.get('Genre', ''),
-                    runtime=data.get('Runtime', ''),
-                    actors=data.get('Actors', '')
-                )
-                film.save()
-            else:
-                return JsonResponse({'error': 'Film not found'}, status=404)
-        except Exception as e:
-            return JsonResponse({'error': str(e)}, status=500)
-    
-    # Check if user has voted for this film
-    has_voted = False
-    if request.user.is_authenticated:
-        has_voted = Vote.objects.filter(user=request.user, film=film).exists()
-    
-    # Get user tags for this film
-    user_tags = []
-    if request.user.is_authenticated:
-        user_tags = GenreTag.objects.filter(user=request.user, film=film)
-    
-    # Get all approved tags for this film
-    approved_tags = GenreTag.objects.filter(film=film, is_approved=True)
-    
-    # Get all genres (official + approved tags)
-    all_genres = film.all_genres
-    
-    context = {
-        'film': film,
-        'has_voted': has_voted,
-        'user_tags': user_tags,
-        'approved_tags': approved_tags,
-        'all_genres': all_genres,
-    }
-    
-    return render(request, 'films_app/film_detail.html', context)
+        # Check if user has voted for this film
+        has_voted = False
+        user_vote = None
+        
+        if request.user.is_authenticated:
+            user_vote = Vote.objects.filter(user=request.user, film=film).first()
+            has_voted = user_vote is not None
+        
+        # Get vote count
+        vote_count = Vote.objects.filter(film=film).count()
+        
+        # Get user tags for this film
+        user_tags = GenreTag.objects.filter(film=film, user=request.user)
+        
+        # Get all approved tags for this film
+        approved_tags = GenreTag.objects.filter(film=film, is_approved=True).exclude(user=request.user)
+        
+        context = {
+            'film': film,
+            'has_voted': has_voted,
+            'vote_count': vote_count,
+            'user_tags': user_tags,
+            'approved_tags': approved_tags,
+            'genres': film.genre_list,
+            'all_genres': film.all_genres,
+        }
+        
+        return render(request, 'films_app/film_detail.html', context)
+    except ValueError as e:
+        messages.error(request, str(e))
+        return redirect('films_app:home')
 
 
 @login_required
@@ -985,4 +965,19 @@ def get_google_profile_image(request):
     logger.warning(f"No Google account found for {request.user.username}")
     messages.warning(request, _("No Google account connected. Please connect a Google account to use this feature."))
     
-    return redirect('films_app:profile') 
+    return redirect('films_app:profile')
+
+
+@login_required
+def update_film_from_omdb(request, imdb_id):
+    """Update film information from OMDB API."""
+    try:
+        # Fetch or update film from OMDB with force_update=True
+        from .utils import fetch_and_update_film_from_omdb
+        film, _ = fetch_and_update_film_from_omdb(imdb_id, force_update=True)
+        
+        messages.success(request, f"Successfully updated '{film.title}' with the latest information from OMDB, including genres: {film.genres}")
+        return redirect('films_app:film_detail', imdb_id=imdb_id)
+    except ValueError as e:
+        messages.error(request, str(e))
+        return redirect('films_app:film_detail', imdb_id=imdb_id) 

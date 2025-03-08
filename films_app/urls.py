@@ -14,6 +14,7 @@ urlpatterns = [
     path('user/<str:username>/image/', views.proxy_user_profile_image, name='user_profile_image'),
     path('search/', views.search_films, name='search_films'),
     path('film/<str:imdb_id>/', views.film_detail, name='film_detail'),
+    path('film/<str:imdb_id>/update/', views.update_film_from_omdb, name='update_film_from_omdb'),
     path('film/<str:imdb_id>/vote/', views.vote_for_film, name='vote_for_film'),
     path('vote/<int:vote_id>/remove/', views.remove_vote, name='remove_vote'),
     path('film/<str:imdb_id>/tag/', views.add_genre_tag, name='add_genre_tag'),

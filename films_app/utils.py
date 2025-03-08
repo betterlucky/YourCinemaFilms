@@ -1,4 +1,7 @@
 import re
+import requests
+from django.conf import settings
+from .models import Film
 
 # List of common profanity words to filter
 # This is a basic list - in a production environment, you would use a more comprehensive list
@@ -66,10 +69,7 @@ def filter_profanity(text):
 
 def validate_genre_tag(tag):
     """
-    Validate a genre tag:
-    - No profanity
-    - Length between 2 and 50 characters
-    - Only alphanumeric characters, spaces, and hyphens
+    Validate a genre tag.
     
     Args:
         tag (str): The genre tag to validate
@@ -93,7 +93,71 @@ def validate_genre_tag(tag):
         return False, "Genre tag can only contain letters, numbers, spaces, and hyphens"
     
     # Check for profanity
-    if contains_profanity(tag):
-        return False, "Genre tag contains inappropriate language"
+    tag_lower = tag.lower()
+    for word in PROFANITY_LIST:
+        if word in tag_lower:
+            return False, "Genre tag contains inappropriate language"
     
-    return True, "" 
+    return True, ""
+
+def fetch_and_update_film_from_omdb(imdb_id, force_update=False):
+    """
+    Fetch film details from OMDB API and update or create the film in the database.
+    
+    Args:
+        imdb_id (str): The IMDb ID of the film
+        force_update (bool): Whether to force update even if the film exists
+        
+    Returns:
+        tuple: (film, created) where film is the Film object and created is a boolean
+               indicating whether the film was created
+    """
+    # Check if film exists in database
+    film = Film.objects.filter(imdb_id=imdb_id).first()
+    created = False
+    
+    # If film exists and we're not forcing an update, return it
+    if film and not force_update:
+        return film, created
+    
+    # Fetch from OMDB API
+    api_key = settings.OMDB_API_KEY
+    url = f"http://www.omdbapi.com/?apikey={api_key}&i={imdb_id}&plot=full"
+    
+    try:
+        response = requests.get(url)
+        data = response.json()
+        
+        if data.get('Response') == 'True':
+            if film:
+                # Update existing film
+                film.title = data.get('Title', film.title)
+                film.year = data.get('Year', film.year)
+                film.poster_url = data.get('Poster', film.poster_url)
+                film.director = data.get('Director', film.director)
+                film.plot = data.get('Plot', film.plot)
+                film.genres = data.get('Genre', film.genres)
+                film.runtime = data.get('Runtime', film.runtime)
+                film.actors = data.get('Actors', film.actors)
+                film.save()
+            else:
+                # Create new film
+                film = Film(
+                    imdb_id=imdb_id,
+                    title=data.get('Title', ''),
+                    year=data.get('Year', ''),
+                    poster_url=data.get('Poster', ''),
+                    director=data.get('Director', ''),
+                    plot=data.get('Plot', ''),
+                    genres=data.get('Genre', ''),
+                    runtime=data.get('Runtime', ''),
+                    actors=data.get('Actors', '')
+                )
+                film.save()
+                created = True
+                
+            return film, created
+        else:
+            raise ValueError(f"Film not found: {data.get('Error', 'Unknown error')}")
+    except Exception as e:
+        raise ValueError(f"Error fetching film from OMDB: {str(e)}") 
