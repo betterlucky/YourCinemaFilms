@@ -41,9 +41,10 @@
                                hx-get="{% url 'films_app:search_films' %}"
                                hx-trigger="keyup changed delay:500ms, search"
                                hx-target="#search-results"
-                               hx-swap="innerHTML"
+                               hx-swap="innerHTML show:window:top"
                                hx-indicator="#search-loading"
-                               name="query">
+                               name="query"
+                               autocomplete="off">
                         <button class="btn btn-primary btn-lg" type="submit">
                             <i class="fas fa-search"></i>
                         </button>
@@ -231,13 +232,25 @@
                 }, 100);
             }
         });
+        
+        // Ensure main search input maintains focus
+        $('#main-search-input').on('focus', function() {
+            // Store which search input has focus
+            window.activeSearchInput = 'main-search-input';
+        });
+        
+        // Ensure navbar search input maintains focus
+        $('#search-input').on('focus', function() {
+            // Store which search input has focus
+            window.activeSearchInput = 'search-input';
+        });
 
         // Keep focus on main search input when modal is shown
         $('#searchResultsModal').on('shown.bs.modal', function() {
-            // Determine which search input was used
-            if ($('#main-search-input').is(':focus')) {
+            // Determine which search input was used based on stored value
+            if (window.activeSearchInput === 'main-search-input') {
                 $('#main-search-input').focus();
-            } else if ($('#search-input').is(':focus')) {
+            } else if (window.activeSearchInput === 'search-input') {
                 $('#search-input').focus();
             }
         });
@@ -245,10 +258,10 @@
         // Prevent search results from stealing focus
         $(document).on('htmx:afterSwap', function(e) {
             if ($(e.target).attr('id') === 'search-results') {
-                // Determine which search input was used
-                if ($('#main-search-form').find('input:focus').length) {
+                // Determine which search input was used based on stored value
+                if (window.activeSearchInput === 'main-search-input') {
                     $('#main-search-input').focus();
-                } else if ($('#search-form').find('input:focus').length) {
+                } else if (window.activeSearchInput === 'search-input') {
                     $('#search-input').focus();
                 }
             }
