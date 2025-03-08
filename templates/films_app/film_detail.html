@@ -35,14 +35,18 @@
             {% if user.is_authenticated %}
                 <div class="mb-4">
                     <h5>Add Genre Tag</h5>
-                    <div class="input-group">
-                        <input type="text" id="genre-tag-input" class="form-control" placeholder="Enter a genre tag...">
-                        <button class="btn btn-outline-primary" id="add-genre-tag">Add Tag</button>
-                    </div>
-                    <div class="form-text">
-                        Help categorize this film by adding genre tags. Tags will be reviewed before appearing publicly.
-                    </div>
-                    <div id="tag-error" class="text-danger mt-1" style="display: none;"></div>
+                    <form hx-post="{% url 'films_app:add_genre_tag' film.imdb_id %}"
+                          hx-swap="outerHTML"
+                          hx-target="body">
+                        <div class="input-group">
+                            <input type="text" id="genre-tag-input" name="tag" class="form-control" placeholder="Enter a genre tag...">
+                            <button type="submit" class="btn btn-outline-primary">Add Tag</button>
+                        </div>
+                        <div class="form-text">
+                            Help categorize this film by adding genre tags. Tags will be reviewed before appearing publicly.
+                        </div>
+                        <div id="tag-error" class="text-danger mt-1" style="display: none;"></div>
+                    </form>
                     
                     {% if user_tags %}
                         <div class="mt-3">
@@ -58,8 +62,11 @@
                                         {% endif %}
                                         <button class="btn-close btn-close-white ms-1" 
                                                 style="font-size: 0.5rem;" 
-                                                data-tag-id="{{ tag.id }}"
-                                                onclick="removeTag({{ tag.id }})"></button>
+                                                hx-post="{% url 'films_app:remove_genre_tag' tag_id=tag.id %}"
+                                                hx-confirm="Are you sure you want to remove this genre tag?"
+                                                hx-swap="outerHTML"
+                                                hx-target="body"
+                                                hx-trigger="click"></button>
                                     </span>
                                 {% endfor %}
                             </div>
@@ -97,7 +104,11 @@
                         </button>
                     {% else %}
                         {% if user.profile.can_vote %}
-                            <button id="vote-button" class="btn btn-primary">
+                            <button class="btn btn-primary"
+                                    hx-post="{% url 'films_app:vote_for_film' film.imdb_id %}"
+                                    hx-swap="outerHTML"
+                                    hx-target="body"
+                                    hx-trigger="click">
                                 <i class="fas fa-thumbs-up me-2"></i>Vote for this film
                             </button>
                         {% else %}
@@ -149,67 +160,6 @@
 {% block extra_js %}
 <script>
     $(document).ready(function() {
-        // Handle vote button
-        {% if user.is_authenticated and not has_voted and user.profile.can_vote %}
-        $('#vote-button').on('click', function() {
-            $.ajax({
-                url: '{% url "films_app:vote_for_film" film.imdb_id %}',
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': '{{ csrf_token }}'
-                },
-                success: function(response) {
-                    location.reload();
-                },
-                error: function(xhr) {
-                    if (xhr.responseJSON && xhr.responseJSON.error) {
-                        alert(xhr.responseJSON.error);
-                    } else {
-                        alert('Error voting for film. Please try again.');
-                    }
-                }
-            });
-        });
-        {% endif %}
-        
-        // Handle add genre tag button
-        {% if user.is_authenticated %}
-        $('#add-genre-tag').on('click', function() {
-            const tag = $('#genre-tag-input').val().trim();
-            
-            if (!tag) {
-                $('#tag-error').text('Please enter a genre tag').show();
-                return;
-            }
-            
-            $.ajax({
-                url: '{% url "films_app:add_genre_tag" film.imdb_id %}',
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': '{{ csrf_token }}'
-                },
-                data: {
-                    tag: tag
-                },
-                success: function(response) {
-                    location.reload();
-                },
-                error: function(xhr) {
-                    if (xhr.responseJSON && xhr.responseJSON.error) {
-                        $('#tag-error').text(xhr.responseJSON.error).show();
-                    } else {
-                        $('#tag-error').text('Error adding genre tag. Please try again.').show();
-                    }
-                }
-            });
-        });
-        
-        // Clear error message when input changes
-        $('#genre-tag-input').on('input', function() {
-            $('#tag-error').hide();
-        });
-        {% endif %}
-        
         // Load similar films based on genres
         const genres = {{ film.genre_list|safe }};
         if (genres && genres.length > 0) {
@@ -280,24 +230,5 @@
             `);
         }
     });
-    
-    // Function to remove a genre tag
-    function removeTag(tagId) {
-        if (confirm('Are you sure you want to remove this genre tag?')) {
-            $.ajax({
-                url: `{% url 'films_app:remove_genre_tag' tag_id=0 %}`.replace('0', tagId),
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': '{{ csrf_token }}'
-                },
-                success: function(response) {
-                    location.reload();
-                },
-                error: function(xhr) {
-                    alert('Error removing genre tag. Please try again.');
-                }
-            });
-        }
-    }
 </script>
 {% endblock %} 

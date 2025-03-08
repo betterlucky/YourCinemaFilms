@@ -97,7 +97,12 @@
                                             </a>
                                             <div class="card-body card-body-actions pt-0">
                                                 <a href="{% url 'films_app:film_detail' vote.film.imdb_id %}" class="btn btn-sm btn-outline-primary">View Details</a>
-                                                <button class="btn btn-sm btn-outline-danger remove-vote" data-vote-id="{{ vote.id }}">
+                                                <button class="btn btn-sm btn-outline-danger"
+                                                        hx-post="{% url 'films_app:remove_vote' vote_id=vote.id %}"
+                                                        hx-confirm="Are you sure you want to remove this vote?"
+                                                        hx-swap="outerHTML"
+                                                        hx-target="body"
+                                                        hx-trigger="click">
                                                     Remove Vote
                                                 </button>
                                             </div>
@@ -156,27 +161,6 @@
 {% block extra_js %}
 <script>
     $(document).ready(function() {
-        // Handle remove vote button
-        $('.remove-vote').on('click', function() {
-            const voteId = $(this).data('vote-id');
-            
-            if (confirm('Are you sure you want to remove this vote?')) {
-                $.ajax({
-                    url: `{% url 'films_app:remove_vote' vote_id=0 %}`.replace('0', voteId),
-                    method: 'POST',
-                    headers: {
-                        'X-CSRFToken': '{{ csrf_token }}'
-                    },
-                    success: function(response) {
-                        location.reload();
-                    },
-                    error: function(xhr) {
-                        alert('Error removing vote. Please try again.');
-                    }
-                });
-            }
-        });
-        
         // Handle search focus links
         $('.search-focus').on('click', function(e) {
             e.preventDefault();
