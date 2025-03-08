@@ -1,0 +1,78 @@
+/* Dashboard page specific styles */
+
+/* Dashboard stat cards */
+.dashboard-stat-card {
+    transition: transform var(--transition-speed) var(--transition-timing);
+}
+
+.dashboard-stat-card:hover {
+    transform: translateY(-5px);
+}
+
+.dashboard-stat-card .card-body {
+    padding: 1.5rem;
+}
+
+.dashboard-stat-card .card-footer {
+    padding: 0.75rem 1.5rem;
+    border-top: none;
+}
+
+.dashboard-stat-card i {
+    opacity: 0.5;
+}
+
+/* Dashboard charts */
+.dashboard-chart-card {
+    height: 100%;
+}
+
+.dashboard-chart-card .card-body {
+    padding: 1.5rem;
+}
+
+/* Activity list */
+.activity-item {
+    border-left: 3px solid transparent;
+    transition: background-color var(--transition-speed) var(--transition-timing);
+}
+
+.activity-item:hover {
+    background-color: rgba(var(--primary-rgb), 0.05);
+    border-left-color: var(--primary);
+}
+
+/* Top films list */
+.top-film-item {
+    transition: background-color var(--transition-speed) var(--transition-timing);
+}
+
+.top-film-item:hover {
+    background-color: rgba(var(--primary-rgb), 0.05);
+}
+
+.top-film-poster {
+    width: 50px;
+    height: 75px;
+    object-fit: cover;
+    border-radius: var(--border-radius-sm);
+}
+
+/* Active users list */
+.user-rank-badge {
+    background-color: var(--primary);
+    color: var(--white);
+    border-radius: 50%;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: bold;
+}
+
+/* Time period selector */
+.time-period-selector .btn-group {
+    width: 100%;
+}
+
+.time-period-selector .btn {
+    flex: 1;
+} 

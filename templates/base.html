@@ -18,8 +18,7 @@
     <link rel="icon" href="{% static 'img/favicon.ico' %}" type="image/x-icon">
     
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="{% static 'css/style.css' %}">
-    <link rel="stylesheet" href="{% static 'css/social-buttons.css' %}">
+    <link rel="stylesheet" href="{% static 'css/main.css' %}">
     
     <!-- HTMX -->
     <script src="https://unpkg.com/htmx.org@1.9.6" integrity="sha384-FhXw7b6AlE/jyjlZH5iHa/tTe9EpJ1Y55RjcgPbjeWMskSxZt1v9qkxLJWNJaGni" crossorigin="anonymous"></script>
@@ -40,7 +39,7 @@
                         <a class="nav-link" href="{% url 'films_app:home' %}">Home</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'films_app:charts' %}">Dashboard</a>
+                        <a class="nav-link" href="{% url 'films_app:dashboard' %}">Dashboard</a>
                     </li>
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="genresDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -121,7 +120,7 @@
                     <h5>Links</h5>
                     <ul class="list-unstyled">
                         <li><a href="{% url 'films_app:home' %}" class="text-white">Home</a></li>
-                        <li><a href="{% url 'films_app:charts' %}" class="text-white">Dashboard</a></li>
+                        <li><a href="{% url 'films_app:dashboard' %}" class="text-white">Dashboard</a></li>
                         <li><a href="{% url 'films_app:genre_analysis' %}" class="text-white">Genres</a></li>
                     </ul>
                 </div>

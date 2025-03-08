@@ -1,0 +1,18 @@
+/* Main CSS file for YourCinemaFilms */
+
+/* Import base styles and variables */
+@import 'base.css';
+
+/* Import layout styles */
+@import 'layout/navigation.css';
+@import 'layout/footer.css';
+
+/* Import component styles */
+@import 'components/cards.css';
+@import 'components/buttons.css';
+
+/* Import utility styles */
+@import 'utils/utilities.css';
+
+/* Import page-specific styles */
+@import 'pages/dashboard.css'; 

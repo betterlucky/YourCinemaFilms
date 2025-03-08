@@ -1,0 +1,82 @@
+/* Card component styles */
+
+.card {
+    border-radius: var(--border-radius);
+    border: none;
+    box-shadow: var(--box-shadow-sm);
+    margin-bottom: var(--spacing-lg);
+    overflow: hidden;
+}
+
+.card-header {
+    padding: var(--spacing-md) var(--spacing-lg);
+    background-color: var(--white);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.card-body {
+    padding: var(--spacing-lg);
+}
+
+.card-footer {
+    padding: var(--spacing-md) var(--spacing-lg);
+    background-color: var(--white);
+    border-top: 1px solid var(--border-color);
+}
+
+/* Card with hover effect */
+.card-hover {
+    transition: transform var(--transition-speed) var(--transition-timing),
+                box-shadow var(--transition-speed) var(--transition-timing);
+}
+
+.card-hover:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--box-shadow);
+}
+
+/* Card with image */
+.card-img-top {
+    width: 100%;
+    height: auto;
+    object-fit: cover;
+}
+
+/* List group inside card */
+.card .list-group-item {
+    border-left: none;
+    border-right: none;
+}
+
+.card .list-group-item:first-child {
+    border-top: none;
+}
+
+.card .list-group-item:last-child {
+    border-bottom: none;
+}
+
+/* Card with icon */
+.card-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 4rem;
+    height: 4rem;
+    border-radius: 50%;
+    margin-bottom: var(--spacing-md);
+}
+
+/* Card with border */
+.card-border-left {
+    border-left: 4px solid var(--primary);
+}
+
+.card-border-top {
+    border-top: 4px solid var(--primary);
+}
+
+/* Card with custom background */
+.card-bg-gradient {
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+} 

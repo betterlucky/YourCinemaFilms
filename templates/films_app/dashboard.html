@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load films_tags %}
+{% load static %}
 
 {% block title %}Dashboard - Films I Want To See{% endblock %}
 
@@ -17,10 +18,10 @@
                 </div>
                 <div class="card-body">
                     <div class="btn-group w-100" role="group">
-                        <a href="{% url 'films_app:charts' %}?period=week" class="btn btn-outline-primary {% if period == 'week' %}active{% endif %}">Week</a>
-                        <a href="{% url 'films_app:charts' %}?period=month" class="btn btn-outline-primary {% if period == 'month' %}active{% endif %}">Month</a>
-                        <a href="{% url 'films_app:charts' %}?period=year" class="btn btn-outline-primary {% if period == 'year' %}active{% endif %}">Year</a>
-                        <a href="{% url 'films_app:charts' %}?period=all" class="btn btn-outline-primary {% if period == 'all' %}active{% endif %}">All Time</a>
+                        <a href="{% url 'films_app:dashboard' %}?period=week" class="btn btn-outline-primary {% if period == 'week' %}active{% endif %}">Week</a>
+                        <a href="{% url 'films_app:dashboard' %}?period=month" class="btn btn-outline-primary {% if period == 'month' %}active{% endif %}">Month</a>
+                        <a href="{% url 'films_app:dashboard' %}?period=year" class="btn btn-outline-primary {% if period == 'year' %}active{% endif %}">Year</a>
+                        <a href="{% url 'films_app:dashboard' %}?period=all" class="btn btn-outline-primary {% if period == 'all' %}active{% endif %}">All Time</a>
                     </div>
                 </div>
             </div>
@@ -30,14 +31,14 @@
     <!-- Stats Cards -->
     <div class="row mb-4">
         <div class="col-md-3 mb-3">
-            <div class="card bg-primary text-white h-100">
+            <div class="card bg-primary text-white h-100 dashboard-stat-card">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
                             <h6 class="text-uppercase">Total Films</h6>
                             <h2 class="mb-0">{{ total_films }}</h2>
                         </div>
-                        <i class="fas fa-film fa-3x opacity-50"></i>
+                        <i class="fas fa-film fa-3x"></i>
                     </div>
                 </div>
                 <div class="card-footer bg-primary-dark">
@@ -47,14 +48,14 @@
         </div>
         
         <div class="col-md-3 mb-3">
-            <div class="card bg-success text-white h-100">
+            <div class="card bg-success text-white h-100 dashboard-stat-card">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
                             <h6 class="text-uppercase">Total Votes</h6>
                             <h2 class="mb-0">{{ total_votes }}</h2>
                         </div>
-                        <i class="fas fa-thumbs-up fa-3x opacity-50"></i>
+                        <i class="fas fa-thumbs-up fa-3x"></i>
                     </div>
                 </div>
                 <div class="card-footer bg-success-dark">
@@ -64,14 +65,14 @@
         </div>
         
         <div class="col-md-3 mb-3">
-            <div class="card bg-info text-white h-100">
+            <div class="card bg-info text-white h-100 dashboard-stat-card">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
                             <h6 class="text-uppercase">Users</h6>
                             <h2 class="mb-0">{{ total_users }}</h2>
                         </div>
-                        <i class="fas fa-users fa-3x opacity-50"></i>
+                        <i class="fas fa-users fa-3x"></i>
                     </div>
                 </div>
                 <div class="card-footer bg-info-dark">
@@ -81,17 +82,17 @@
         </div>
         
         <div class="col-md-3 mb-3">
-            <div class="card bg-warning text-white h-100">
+            <div class="card bg-purple text-white h-100 dashboard-stat-card">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
                             <h6 class="text-uppercase">Genres</h6>
                             <h2 class="mb-0">{{ total_genres }}</h2>
                         </div>
-                        <i class="fas fa-tags fa-3x opacity-50"></i>
+                        <i class="fas fa-tags fa-3x"></i>
                     </div>
                 </div>
-                <div class="card-footer bg-warning-dark">
+                <div class="card-footer bg-purple-dark">
                     <small>Including {{ user_genres }} user tags</small>
                 </div>
             </div>
@@ -100,7 +101,7 @@
     
     <div class="row mb-5">
         <div class="col-md-8 mb-4">
-            <div class="card h-100">
+            <div class="card dashboard-chart-card">
                 <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                     <h4 class="mb-0">Activity Timeline</h4>
                     <a href="{% url 'films_app:genre_analysis' %}" class="btn btn-sm btn-light">
@@ -114,7 +115,7 @@
         </div>
         
         <div class="col-md-4 mb-4">
-            <div class="card h-100">
+            <div class="card dashboard-chart-card">
                 <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                     <h4 class="mb-0">Genre Distribution</h4>
                     <a href="{% url 'films_app:genre_comparison' %}" class="btn btn-sm btn-light">
@@ -137,7 +138,7 @@
                 <div class="card-body p-0">
                     <div class="list-group list-group-flush">
                         {% for activity in recent_activity %}
-                            <div class="list-group-item">
+                            <div class="list-group-item activity-item">
                                 <div class="d-flex w-100 justify-content-between">
                                     <h6 class="mb-1">{{ activity.user.username }} {{ activity.action }}</h6>
                                     <small>{{ activity.timestamp|timesince }} ago</small>
@@ -185,7 +186,7 @@
                     </div>
                 </div>
                 <div class="card-footer text-center">
-                    <a href="{% url 'films_app:top_films' %}" class="btn btn-outline-primary btn-sm">View All Top Films</a>
+                    <a href="{% url 'films_app:get_top_films' %}" class="btn btn-outline-primary btn-sm">View All Top Films</a>
                 </div>
             </div>
         </div>

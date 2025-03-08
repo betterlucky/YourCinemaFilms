@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from django.views.generic.base import RedirectView
 
 app_name = 'films_app'
 
@@ -21,7 +22,8 @@ urlpatterns = [
     path('film/<str:imdb_id>/tag/', views.add_genre_tag, name='add_genre_tag'),
     path('tag/<int:tag_id>/remove/', views.remove_genre_tag, name='remove_genre_tag'),
     path('manage-tags/', views.manage_genre_tags, name='manage_genre_tags'),
-    path('charts/', views.charts, name='charts'),
+    path('dashboard/', views.dashboard, name='dashboard'),
+    path('charts/', RedirectView.as_view(pattern_name='films_app:dashboard', permanent=True)),
     path('genres/', views.genre_analysis, name='genre_analysis'),
     path('genres/compare/', views.genre_comparison, name='genre_comparison'),
     path('demographics/', views.demographic_analysis, name='demographic_analysis'),

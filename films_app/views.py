@@ -19,7 +19,7 @@ from django.template.loader import render_to_string
 from django.core.cache import cache
 from django.db.models.functions import Trim
 
-from .models import Film, Vote, UserProfile, GenreTag, Tag
+from .models import Film, Vote, UserProfile, GenreTag
 from .utils import (
     validate_genre_tag, 
     fetch_and_update_film_from_omdb, 
@@ -360,8 +360,8 @@ def manage_genre_tags(request):
     return render(request, 'films_app/manage_tags.html', context)
 
 
-def charts(request):
-    """View for displaying the dashboard."""
+def dashboard(request):
+    """View for displaying the dashboard with site statistics and activity."""
     # Get time period from request
     period = request.GET.get('period', 'all')
     
@@ -490,7 +490,7 @@ def charts(request):
         'user_genres': user_tags
     }
     
-    return render(request, 'films_app/charts.html', context)
+    return render(request, 'films_app/dashboard.html', context)
 
 
 def get_genre_distribution(votes_queryset):
