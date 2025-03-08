@@ -159,7 +159,7 @@
                     </div>
                 </div>
                 <div class="card-footer text-center">
-                    <a href="#" class="btn btn-outline-primary btn-sm">View All Activity</a>
+                    <a href="{% url 'films_app:all_activity' %}?period={{ period }}" class="btn btn-outline-primary btn-sm">View All Activity</a>
                 </div>
             </div>
         </div>
@@ -192,7 +192,7 @@
                     </div>
                 </div>
                 <div class="card-footer text-center">
-                    <a href="{% url 'films_app:get_top_films' %}" class="btn btn-outline-primary btn-sm">View All Top Films</a>
+                    <a href="{% url 'films_app:all_top_films' %}?period={{ period }}" class="btn btn-outline-primary btn-sm">View All Top Films</a>
                 </div>
             </div>
         </div>
@@ -222,7 +222,7 @@
                     </div>
                 </div>
                 <div class="card-footer text-center">
-                    <a href="#" class="btn btn-outline-primary btn-sm">View All Users</a>
+                    <a href="{% url 'films_app:all_users' %}?period={{ period }}" class="btn btn-outline-primary btn-sm">View All Users</a>
                 </div>
             </div>
         </div>
@@ -266,6 +266,14 @@
                 displayDates.push(activityDates[activityDates.length - 1]);
                 displayCounts.push(activityCounts[activityCounts.length - 1]);
             }
+        }
+        
+        // Ensure we have at least 2 data points for a proper line chart
+        if (displayDates && displayDates.length === 1) {
+            // If we only have one data point, duplicate it with a slight offset
+            // This ensures the chart displays a line instead of just a point
+            displayDates.unshift("Previous");
+            displayCounts.unshift(0);
         }
         
         const activityChart = new Chart(activityCtx, {

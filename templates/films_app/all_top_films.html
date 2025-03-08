@@ -1,0 +1,136 @@
+{% extends 'base.html' %}
+{% load films_tags %}
+{% load static %}
+
+{% block title %}Top Films - Films I Want To See{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1 class="mb-0">Top Films</h1>
+            <p class="lead">Films with the most votes</p>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Time Period</h5>
+                </div>
+                <div class="card-body">
+                    <div class="btn-group w-100" role="group">
+                        <a href="{% url 'films_app:all_top_films' %}?period=week" class="btn btn-outline-primary {% if period == 'week' %}active{% endif %}">Week</a>
+                        <a href="{% url 'films_app:all_top_films' %}?period=month" class="btn btn-outline-primary {% if period == 'month' %}active{% endif %}">Month</a>
+                        <a href="{% url 'films_app:all_top_films' %}?period=year" class="btn btn-outline-primary {% if period == 'year' %}active{% endif %}">Year</a>
+                        <a href="{% url 'films_app:all_top_films' %}?period=all" class="btn btn-outline-primary {% if period == 'all' %}active{% endif %}">All Time</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">Top Films</h4>
+                    <a href="{% url 'films_app:dashboard' %}?period={{ period }}" class="btn btn-sm btn-light">
+                        <i class="fas fa-tachometer-alt me-1"></i>Back to Dashboard
+                    </a>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for film in films %}
+                            <div class="col-md-3 mb-4">
+                                <a href="{% url 'films_app:film_detail' film.imdb_id %}" class="card-link">
+                                    <div class="card film-card h-100">
+                                        <div class="vote-badge">
+                                            {% if period != 'all' and film.period_vote_count %}
+                                                {{ film.period_vote_count }} vote{{ film.period_vote_count|pluralize }}
+                                            {% else %}
+                                                {{ film.vote_count }} vote{{ film.vote_count|pluralize }}
+                                            {% endif %}
+                                        </div>
+                                        <img src="{{ film.poster_url|default:'https://via.placeholder.com/300x450?text=No+Poster' }}" 
+                                             class="card-img-top film-poster" alt="{{ film.title }}">
+                                        <div class="card-body">
+                                            <h5 class="card-title">{{ film.title }}</h5>
+                                            <p class="card-text text-muted">{{ film.year }}</p>
+                                            <span class="btn btn-sm btn-primary">View Details</span>
+                                        </div>
+                                    </div>
+                                </a>
+                            </div>
+                        {% empty %}
+                            <div class="col-12">
+                                <div class="alert alert-info">
+                                    No films have been voted for during this time period.
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                {% if films.has_other_pages %}
+                <div class="card-footer">
+                    <nav aria-label="Film pagination">
+                        <ul class="pagination justify-content-center mb-0">
+                            {% if films.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page=1&period={{ period }}" aria-label="First">
+                                        <span aria-hidden="true">&laquo;&laquo;</span>
+                                    </a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ films.previous_page_number }}&period={{ period }}" aria-label="Previous">
+                                        <span aria-hidden="true">&laquo;</span>
+                                    </a>
+                                </li>
+                            {% else %}
+                                <li class="page-item disabled">
+                                    <span class="page-link">&laquo;&laquo;</span>
+                                </li>
+                                <li class="page-item disabled">
+                                    <span class="page-link">&laquo;</span>
+                                </li>
+                            {% endif %}
+                            
+                            {% for i in films.paginator.page_range %}
+                                {% if films.number == i %}
+                                    <li class="page-item active">
+                                        <span class="page-link">{{ i }}</span>
+                                    </li>
+                                {% elif i > films.number|add:'-3' and i < films.number|add:'3' %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ i }}&period={{ period }}">{{ i }}</a>
+                                    </li>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if films.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ films.next_page_number }}&period={{ period }}" aria-label="Next">
+                                        <span aria-hidden="true">&raquo;</span>
+                                    </a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ films.paginator.num_pages }}&period={{ period }}" aria-label="Last">
+                                        <span aria-hidden="true">&raquo;&raquo;</span>
+                                    </a>
+                                </li>
+                            {% else %}
+                                <li class="page-item disabled">
+                                    <span class="page-link">&raquo;</span>
+                                </li>
+                                <li class="page-item disabled">
+                                    <span class="page-link">&raquo;&raquo;</span>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

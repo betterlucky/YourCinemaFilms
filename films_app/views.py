@@ -19,7 +19,7 @@ from django.template.loader import render_to_string
 from django.core.cache import cache
 from django.db.models.functions import Trim
 from django.utils.safestring import mark_safe
-from django.core.paginator import Paginator
+from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 from django.db.models import Count, Q, F, Value, CharField
 from django.db.models.functions import Concat
 from django.views.decorators.http import require_POST
@@ -474,16 +474,70 @@ def dashboard(request):
                 month_end = timezone.make_aware(datetime(month_date.year, month_date.month + 1, 1)) - timedelta(seconds=1)
             activity_counts.append(Vote.objects.filter(created_at__range=(month_start, month_end)).count())
     else:
-        # Yearly activity for all time
+        # Activity for all time - improved visualization
         earliest_vote = Vote.objects.order_by('created_at').first()
         if earliest_vote:
             earliest_year = earliest_vote.created_at.year
             current_year = timezone.now().year
-            for year in range(earliest_year, current_year + 1):
-                activity_dates.append(str(year))
-                year_start = timezone.make_aware(datetime(year, 1, 1))
-                year_end = timezone.make_aware(datetime(year, 12, 31, 23, 59, 59))
-                activity_counts.append(Vote.objects.filter(created_at__range=(year_start, year_end)).count())
+            years_span = current_year - earliest_year + 1
+            
+            # If we have a short history (less than 3 years), show quarterly data
+            if years_span <= 3:
+                # Quarterly activity
+                for year in range(earliest_year, current_year + 1):
+                    for quarter in range(1, 5):
+                        if year == current_year and quarter > ((end_date.month - 1) // 3) + 1:
+                            # Skip future quarters in current year
+                            continue
+                            
+                        quarter_start_month = (quarter - 1) * 3 + 1
+                        quarter_end_month = quarter * 3
+                        
+                        quarter_start = timezone.make_aware(datetime(year, quarter_start_month, 1))
+                        if quarter_end_month == 12:
+                            quarter_end = timezone.make_aware(datetime(year + 1, 1, 1)) - timedelta(seconds=1)
+                        else:
+                            quarter_end = timezone.make_aware(datetime(year, quarter_end_month + 1, 1)) - timedelta(seconds=1)
+                        
+                        # Skip quarters before the earliest vote
+                        if quarter_end < earliest_vote.created_at:
+                            continue
+                            
+                        quarter_label = f"Q{quarter} {year}"
+                        activity_dates.append(quarter_label)
+                        activity_counts.append(Vote.objects.filter(created_at__range=(quarter_start, quarter_end)).count())
+            # If we have 4-10 years of data, show semi-annual data
+            elif years_span <= 10:
+                # Semi-annual activity
+                for year in range(earliest_year, current_year + 1):
+                    for half in range(1, 3):
+                        if year == current_year and half > ((end_date.month - 1) // 6) + 1:
+                            # Skip future half-years in current year
+                            continue
+                            
+                        half_start_month = (half - 1) * 6 + 1
+                        half_end_month = half * 6
+                        
+                        half_start = timezone.make_aware(datetime(year, half_start_month, 1))
+                        if half_end_month == 12:
+                            half_end = timezone.make_aware(datetime(year + 1, 1, 1)) - timedelta(seconds=1)
+                        else:
+                            half_end = timezone.make_aware(datetime(year, half_end_month + 1, 1)) - timedelta(seconds=1)
+                        
+                        # Skip half-years before the earliest vote
+                        if half_end < earliest_vote.created_at:
+                            continue
+                            
+                        half_label = f"H{half} {year}"
+                        activity_dates.append(half_label)
+                        activity_counts.append(Vote.objects.filter(created_at__range=(half_start, half_end)).count())
+            else:
+                # For longer periods, show yearly data
+                for year in range(earliest_year, current_year + 1):
+                    activity_dates.append(str(year))
+                    year_start = timezone.make_aware(datetime(year, 1, 1))
+                    year_end = timezone.make_aware(datetime(year, 12, 31, 23, 59, 59))
+                    activity_counts.append(Vote.objects.filter(created_at__range=(year_start, year_end)).count())
     
     # Get active users
     active_users = User.objects.filter(votes__in=period_votes_query).annotate(
@@ -550,6 +604,198 @@ def dashboard(request):
     }
     
     return render(request, 'films_app/dashboard.html', context)
+
+
+def all_activity(request):
+    """View for displaying all site activity."""
+    # Get time period from request
+    period = request.GET.get('period', 'all')
+    
+    # Calculate date range based on period
+    end_date = timezone.now()
+    start_date = None
+    
+    if period == 'week':
+        start_date = end_date - timedelta(days=7)
+    elif period == 'month':
+        start_date = end_date - timedelta(days=30)
+    elif period == 'year':
+        start_date = end_date - timedelta(days=365)
+    
+    # Get paginated activity
+    page = request.GET.get('page', 1)
+    
+    # Get all votes with public profiles
+    votes_query = Vote.objects.select_related('user', 'film').filter(
+        user__profile__dashboard_activity_privacy='public'
+    ).order_by('-created_at')
+    
+    # Apply time period filter if needed
+    if start_date:
+        votes_query = votes_query.filter(created_at__gte=start_date)
+    
+    # Format activity data
+    all_activity = []
+    for vote in votes_query:
+        all_activity.append({
+            'user': vote.user,
+            'action': 'voted for',
+            'description': f"{vote.film.title} ({vote.film.year})",
+            'timestamp': vote.created_at,
+            'film': vote.film
+        })
+    
+    # Paginate results
+    paginator = Paginator(all_activity, 25)  # Show 25 activities per page
+    
+    try:
+        activities = paginator.page(page)
+    except PageNotAnInteger:
+        activities = paginator.page(1)
+    except EmptyPage:
+        activities = paginator.page(paginator.num_pages)
+    
+    context = {
+        'period': period,
+        'activities': activities,
+        'periods': [
+            {'value': 'all', 'label': 'All Time'},
+            {'value': 'year', 'label': 'Past Year'},
+            {'value': 'month', 'label': 'Past Month'},
+            {'value': 'week', 'label': 'Past Week'}
+        ]
+    }
+    
+    return render(request, 'films_app/all_activity.html', context)
+
+
+def all_top_films(request):
+    """View for displaying all top films."""
+    # Get time period from request
+    period = request.GET.get('period', 'all')
+    
+    # Calculate date range based on period
+    end_date = timezone.now()
+    start_date = None
+    
+    if period == 'week':
+        start_date = end_date - timedelta(days=7)
+    elif period == 'month':
+        start_date = end_date - timedelta(days=30)
+    elif period == 'year':
+        start_date = end_date - timedelta(days=365)
+    
+    # Get paginated films
+    page = request.GET.get('page', 1)
+    
+    # Get all films with votes
+    films_query = Film.objects.annotate(vote_count=Count('votes')).filter(vote_count__gt=0)
+    
+    # Apply time period filter if needed
+    if start_date:
+        films_query = films_query.filter(votes__created_at__gte=start_date).annotate(
+            period_vote_count=Count('votes', filter=Q(votes__created_at__gte=start_date))
+        ).filter(period_vote_count__gt=0).order_by('-period_vote_count')
+    else:
+        films_query = films_query.order_by('-vote_count')
+    
+    # Paginate results
+    paginator = Paginator(films_query, 20)  # Show 20 films per page
+    
+    try:
+        films = paginator.page(page)
+    except PageNotAnInteger:
+        films = paginator.page(1)
+    except EmptyPage:
+        films = paginator.page(paginator.num_pages)
+    
+    context = {
+        'period': period,
+        'films': films,
+        'periods': [
+            {'value': 'all', 'label': 'All Time'},
+            {'value': 'year', 'label': 'Past Year'},
+            {'value': 'month', 'label': 'Past Month'},
+            {'value': 'week', 'label': 'Past Week'}
+        ]
+    }
+    
+    return render(request, 'films_app/all_top_films.html', context)
+
+
+def all_users(request):
+    """View for displaying all active users."""
+    # Get time period from request
+    period = request.GET.get('period', 'all')
+    
+    # Calculate date range based on period
+    end_date = timezone.now()
+    start_date = None
+    
+    if period == 'week':
+        start_date = end_date - timedelta(days=7)
+    elif period == 'month':
+        start_date = end_date - timedelta(days=30)
+    elif period == 'year':
+        start_date = end_date - timedelta(days=365)
+    
+    # Get paginated users
+    page = request.GET.get('page', 1)
+    
+    # Get all users with votes and respect privacy settings
+    users_query = User.objects.filter(
+        profile__dashboard_activity_privacy='public'  # Only include users who have set their dashboard activity to public
+    )
+    
+    # Apply time period filter if needed
+    if start_date:
+        # Get users who have voted in the period
+        users_with_votes = Vote.objects.filter(created_at__gte=start_date).values_list('user_id', flat=True).distinct()
+        users_query = users_query.filter(id__in=users_with_votes)
+    
+    # Annotate with vote count
+    users_query = users_query.annotate(vote_count=Count('votes'))
+    
+    # Filter to only include users with votes
+    users_query = users_query.filter(vote_count__gt=0)
+    
+    # Order by vote count
+    users_query = users_query.order_by('-vote_count')
+    
+    # Paginate results
+    paginator = Paginator(users_query, 20)  # Show 20 users per page
+    
+    try:
+        users = paginator.page(page)
+    except PageNotAnInteger:
+        users = paginator.page(1)
+    except EmptyPage:
+        users = paginator.page(paginator.num_pages)
+    
+    # Format user data with ranks
+    users_data = []
+    start_rank = (users.number - 1) * paginator.per_page + 1
+    
+    for i, user in enumerate(users):
+        users_data.append({
+            'user': user,
+            'vote_count': user.vote_count,
+            'rank': start_rank + i
+        })
+    
+    context = {
+        'period': period,
+        'users': users,
+        'users_data': users_data,
+        'periods': [
+            {'value': 'all', 'label': 'All Time'},
+            {'value': 'year', 'label': 'Past Year'},
+            {'value': 'month', 'label': 'Past Month'},
+            {'value': 'week', 'label': 'Past Week'}
+        ]
+    }
+    
+    return render(request, 'films_app/all_users.html', context)
 
 
 def get_genre_distribution(votes_queryset):

@@ -1,0 +1,127 @@
+{% extends 'base.html' %}
+{% load films_tags %}
+{% load static %}
+
+{% block title %}All Activity - Films I Want To See{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1 class="mb-0">Activity Log</h1>
+            <p class="lead">All site activity</p>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Time Period</h5>
+                </div>
+                <div class="card-body">
+                    <div class="btn-group w-100" role="group">
+                        <a href="{% url 'films_app:all_activity' %}?period=week" class="btn btn-outline-primary {% if period == 'week' %}active{% endif %}">Week</a>
+                        <a href="{% url 'films_app:all_activity' %}?period=month" class="btn btn-outline-primary {% if period == 'month' %}active{% endif %}">Month</a>
+                        <a href="{% url 'films_app:all_activity' %}?period=year" class="btn btn-outline-primary {% if period == 'year' %}active{% endif %}">Year</a>
+                        <a href="{% url 'films_app:all_activity' %}?period=all" class="btn btn-outline-primary {% if period == 'all' %}active{% endif %}">All Time</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">Activity Log</h4>
+                    <a href="{% url 'films_app:dashboard' %}?period={{ period }}" class="btn btn-sm btn-light">
+                        <i class="fas fa-tachometer-alt me-1"></i>Back to Dashboard
+                    </a>
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush">
+                        {% for activity in activities %}
+                            <div class="list-group-item activity-item">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h6 class="mb-1"><a href="{% url 'films_app:user_profile' activity.user.username %}">{{ activity.user.username }}</a> {{ activity.action }}</h6>
+                                    <small>{{ activity.timestamp|timesince }} ago</small>
+                                </div>
+                                <p class="mb-1">
+                                    {% if activity.action == 'voted for' %}
+                                        <a href="{% url 'films_app:film_detail' activity.film.imdb_id %}">{{ activity.description }}</a>
+                                    {% else %}
+                                        {{ activity.description }}
+                                    {% endif %}
+                                </p>
+                            </div>
+                        {% empty %}
+                            <div class="list-group-item text-center py-4">
+                                <p class="text-muted mb-0">No activity to display for this time period</p>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                {% if activities.has_other_pages %}
+                <div class="card-footer">
+                    <nav aria-label="Activity pagination">
+                        <ul class="pagination justify-content-center mb-0">
+                            {% if activities.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page=1&period={{ period }}" aria-label="First">
+                                        <span aria-hidden="true">&laquo;&laquo;</span>
+                                    </a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ activities.previous_page_number }}&period={{ period }}" aria-label="Previous">
+                                        <span aria-hidden="true">&laquo;</span>
+                                    </a>
+                                </li>
+                            {% else %}
+                                <li class="page-item disabled">
+                                    <span class="page-link">&laquo;&laquo;</span>
+                                </li>
+                                <li class="page-item disabled">
+                                    <span class="page-link">&laquo;</span>
+                                </li>
+                            {% endif %}
+                            
+                            {% for i in activities.paginator.page_range %}
+                                {% if activities.number == i %}
+                                    <li class="page-item active">
+                                        <span class="page-link">{{ i }}</span>
+                                    </li>
+                                {% elif i > activities.number|add:'-3' and i < activities.number|add:'3' %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ i }}&period={{ period }}">{{ i }}</a>
+                                    </li>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if activities.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ activities.next_page_number }}&period={{ period }}" aria-label="Next">
+                                        <span aria-hidden="true">&raquo;</span>
+                                    </a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ activities.paginator.num_pages }}&period={{ period }}" aria-label="Last">
+                                        <span aria-hidden="true">&raquo;&raquo;</span>
+                                    </a>
+                                </li>
+                            {% else %}
+                                <li class="page-item disabled">
+                                    <span class="page-link">&raquo;</span>
+                                </li>
+                                <li class="page-item disabled">
+                                    <span class="page-link">&raquo;&raquo;</span>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 
