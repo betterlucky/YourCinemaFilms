@@ -378,18 +378,18 @@
             <div class="card shadow mt-4">
                 <div class="card-header bg-light d-flex justify-content-between align-items-center">
                     <h5 class="mb-0"><i class="fas fa-thumbs-up me-2"></i>{% trans "My Votes" %}</h5>
-                    <span class="badge bg-primary rounded-pill">{{ user_votes.count }}</span>
+                    <span class="badge bg-primary rounded-pill" id="votes-count-badge">{{ user_votes.count }}</span>
                 </div>
                 <div class="card-body">
                     {% with votes=user_votes %}
                         {% if votes %}
-                            <div class="row">
+                            <div class="row" id="my-votes-container">
                                 {% for vote in votes %}
-                                    <div class="col-md-6 mb-4">
+                                    <div class="col-md-6 mb-4" id="vote-item-{{ vote.id }}">
                                         <div class="d-flex align-items-center p-2 border rounded shadow-sm hover-effect">
                                             <img src="{{ vote.film.poster_url|default:'https://via.placeholder.com/50x75' }}" 
                                                  alt="{{ vote.film.title }}" width="50" height="75" class="me-3" style="object-fit: cover;">
-                                            <div>
+                                            <div class="flex-grow-1">
                                                 <h6 class="mb-0">
                                                     <a href="{% url 'films_app:film_detail' vote.film.imdb_id %}" class="text-decoration-none">{{ vote.film.title }}</a>
                                                 </h6>
@@ -398,6 +398,14 @@
                                                     <small class="text-muted"><i class="far fa-calendar-alt me-1"></i>{{ vote.created_at|date:"M j, Y" }}</small>
                                                 </div>
                                             </div>
+                                            <button class="btn btn-sm btn-outline-danger ms-2" 
+                                                    hx-delete="{% url 'films_app:remove_vote' vote.id %}"
+                                                    hx-target="#vote-item-{{ vote.id }}"
+                                                    hx-swap="outerHTML"
+                                                    hx-confirm="Are you sure you want to remove your vote for {{ vote.film.title }}?"
+                                                    hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+                                                <i class="fas fa-times"></i>
+                                            </button>
                                         </div>
                                     </div>
                                 {% endfor %}
@@ -473,4 +481,35 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Listen for the voteRemoved event from HTMX
+    document.body.addEventListener('voteRemoved', function(event) {
+        const data = event.detail;
+        
+        // Update the badge with the exact count from the server
+        const badge = document.getElementById('votes-count-badge');
+        badge.textContent = data.voteCount;
+        
+        // If no votes left, refresh the page to show the empty state
+        if (data.voteCount === 0) {
+            window.location.reload();
+        }
+    });
+    
+    // Fallback function in case the event doesn't fire
+    function updateVoteCount() {
+        // This is a fallback and may not be needed if the event works correctly
+        const badge = document.getElementById('votes-count-badge');
+        const currentCount = parseInt(badge.textContent);
+        const newCount = Math.max(0, currentCount - 1);
+        badge.textContent = newCount;
+        
+        if (newCount === 0) {
+            window.location.reload();
+        }
+    }
+</script>
 {% endblock %} 

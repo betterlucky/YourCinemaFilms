@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse, HttpResponse, FileResponse
+from django.http import JsonResponse, HttpResponse, FileResponse, HttpResponseNotAllowed
 from django.conf import settings
 from django.contrib import messages
 from django.db.models import Count, Q, F
@@ -317,10 +317,9 @@ def vote_for_film(request, imdb_id):
 @login_required
 def remove_vote(request, vote_id):
     """Remove a vote."""
-    # Check if method is POST
-    method_error = require_http_method(request)
-    if method_error:
-        return method_error
+    # Check if method is POST or DELETE (for HTMX)
+    if request.method not in ['POST', 'DELETE']:
+        return HttpResponseNotAllowed(['POST', 'DELETE'])
     
     vote = get_object_or_404(Vote, id=vote_id, user=request.user)
     film = vote.film
@@ -330,17 +329,33 @@ def remove_vote(request, vote_id):
     user_votes, votes_remaining = get_user_votes_and_remaining(request.user)
     top_films = get_top_films_data()
     
-    # Return the updated card with empty content to remove it
-    response_html = f"""
-    <div hx-swap-oob="true" id="user-vote-status">
-        {render_to_string('films_app/partials/user_vote_status.html', {'user_votes': user_votes, 'votes_remaining': votes_remaining}, request=request)}
-    </div>
-    <div hx-swap-oob="true" id="top-films-container">
-        {render_to_string('films_app/partials/top_films.html', {'top_films': top_films}, request=request)}
-    </div>
-    """
+    # Check if this is an HTMX request
+    if request.headers.get('HX-Request'):
+        # If the request is from the profile page
+        if 'profile' in request.headers.get('HX-Current-URL', ''):
+            # Set the HX-Trigger header to trigger client-side events
+            response = HttpResponse("")
+            response.headers['HX-Trigger'] = json.dumps({
+                'voteRemoved': {
+                    'voteCount': len(user_votes),
+                    'votesRemaining': votes_remaining
+                }
+            })
+            return response
+        else:
+            # Return the updated card with empty content to remove it (for film detail page)
+            response_html = f"""
+            <div hx-swap-oob="true" id="user-vote-status">
+                {render_to_string('films_app/partials/user_vote_status.html', {'user_votes': user_votes, 'votes_remaining': votes_remaining}, request=request)}
+            </div>
+            <div hx-swap-oob="true" id="top-films-container">
+                {render_to_string('films_app/partials/top_films.html', {'top_films': top_films}, request=request)}
+            </div>
+            """
+            return HttpResponse(response_html)
     
-    return HttpResponse(response_html)
+    # For non-HTMX requests, redirect back to the referring page
+    return redirect(request.META.get('HTTP_REFERER', 'films_app:profile'))
 
 
 @login_required
