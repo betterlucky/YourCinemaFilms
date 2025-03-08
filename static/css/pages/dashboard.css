@@ -41,6 +41,52 @@
     #activityChart, #genreChart {
         max-height: 200px;
     }
+    
+    /* Improve mobile layout for stats cards */
+    .dashboard-stat-card {
+        margin-bottom: 1rem;
+    }
+    
+    /* Adjust spacing for mobile */
+    .container.py-5 {
+        padding-top: 2rem !important;
+        padding-bottom: 2rem !important;
+    }
+    
+    .row.mb-4, .row.mb-5 {
+        margin-bottom: 1.5rem !important;
+    }
+    
+    /* Make headers more mobile-friendly */
+    h1 {
+        font-size: 1.75rem;
+    }
+    
+    .lead {
+        font-size: 1rem;
+    }
+}
+
+/* Small mobile devices */
+@media (max-width: 576px) {
+    #activityChart, #genreChart {
+        max-height: 180px;
+    }
+    
+    /* Further reduce padding on mobile */
+    .card-body {
+        padding: 1rem;
+    }
+    
+    /* Stack buttons on small screens */
+    .btn-group {
+        flex-direction: column;
+    }
+    
+    .btn-group .btn {
+        border-radius: 0.25rem !important;
+        margin-bottom: 0.5rem;
+    }
 }
 
 /* Genre chart specific styles */

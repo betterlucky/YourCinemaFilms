@@ -131,4 +131,49 @@
 .search-result-year {
     font-size: 0.875rem;
     color: var(--text-muted);
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 768px) {
+    /* Improve search experience on mobile */
+    .search-input-field {
+        width: 100%;
+    }
+    
+    .search-results-dropdown {
+        width: 100%;
+        max-height: 300px;
+    }
+    
+    /* Adjust navbar spacing on mobile */
+    .navbar .container {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+    
+    /* Ensure dropdown menus are properly sized */
+    .dropdown-menu {
+        width: 100%;
+    }
+}
+
+/* Small mobile devices */
+@media (max-width: 576px) {
+    /* Further optimize for very small screens */
+    .navbar-brand {
+        font-size: 1.25rem;
+    }
+    
+    .search-result-poster {
+        width: 40px;
+        height: 60px;
+    }
+    
+    .search-result-title {
+        font-size: 0.9rem;
+    }
+    
+    .search-result-year {
+        font-size: 0.8rem;
+    }
 } 

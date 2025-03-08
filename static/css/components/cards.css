@@ -79,4 +79,36 @@
 /* Card with custom background */
 .card-bg-gradient {
     background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    color: var(--white);
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 768px) {
+    .card {
+        margin-bottom: var(--spacing-md);
+    }
+    
+    .card-body {
+        padding: var(--spacing-md);
+    }
+    
+    .card-header, .card-footer {
+        padding: var(--spacing-sm) var(--spacing-md);
+    }
+}
+
+/* Small mobile devices */
+@media (max-width: 576px) {
+    .card-hover:hover {
+        transform: none; /* Disable hover effects on mobile */
+    }
+    
+    /* Optimize card spacing for small screens */
+    .card {
+        margin-bottom: 1rem;
+    }
+    
+    .card-body {
+        padding: 0.75rem;
+    }
 } 
