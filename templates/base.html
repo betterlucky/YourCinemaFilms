@@ -53,8 +53,10 @@
                            placeholder="Search films..." 
                            aria-label="Search"
                            hx-get="{% url 'films_app:search_films' %}"
-                           hx-trigger="keyup changed delay:500ms"
+                           hx-trigger="keyup changed delay:500ms, search"
                            hx-target="#search-results"
+                           hx-swap="innerHTML"
+                           hx-indicator="#search-loading"
                            name="query">
                     <button class="btn btn-outline-light" type="submit">Search</button>
                 </form>
@@ -171,6 +173,10 @@
                 
                 if (query.length >= 3) {
                     searchModal.show();
+                    // Maintain focus on the search input after modal shows
+                    setTimeout(() => {
+                        searchInput.focus();
+                    }, 100);
                 }
             });
             
@@ -184,6 +190,22 @@
                 }
                 
                 searchModal.show();
+                // Maintain focus on the search input after modal shows
+                setTimeout(() => {
+                    searchInput.focus();
+                }, 100);
+            });
+            
+            // Keep focus on search input when modal is shown
+            $('#searchResultsModal').on('shown.bs.modal', function() {
+                searchInput.focus();
+            });
+            
+            // Prevent search results from stealing focus
+            $(document).on('htmx:afterSwap', function(e) {
+                if ($(e.target).attr('id') === 'search-results') {
+                    searchInput.focus();
+                }
             });
         });
     </script>
