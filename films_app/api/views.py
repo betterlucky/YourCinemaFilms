@@ -140,6 +140,7 @@ def search_films(request):
 
 
 @api_view(['GET'])
+@permission_classes([permissions.AllowAny])
 def charts_data(request):
     """API endpoint to get chart data."""
     # Get time period from request
@@ -178,6 +179,7 @@ def charts_data(request):
 
 
 @api_view(['GET'])
+@permission_classes([permissions.AllowAny])
 def genre_data(request):
     """API endpoint to get genre distribution data."""
     # Get time period from request
