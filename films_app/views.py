@@ -512,6 +512,19 @@ def genre_analysis(request):
     selected_genre = request.GET.get('genre', '')
     period = request.GET.get('period', 'all')
     
+    # If no genre is selected, default to the first genre with films
+    if not selected_genre and genres:
+        # Try to find a genre with films
+        for genre in genres:
+            test_films = get_films_by_genre(genre, period)
+            if test_films.exists():
+                selected_genre = genre
+                break
+        
+        # If still no genre found with films, just use the first genre
+        if not selected_genre and genres:
+            selected_genre = genres[0]
+    
     # Get films in the selected genre
     films = []
     if selected_genre:
