@@ -22,7 +22,8 @@ from .utils import (
     fetch_and_update_film_from_omdb, 
     require_http_method, 
     validate_and_format_genre_tag,
-    count_film_votes
+    count_film_votes,
+    filter_votes_by_period
 )
 
 
@@ -451,9 +452,8 @@ def user_profile_view(request, username):
     return render(request, 'films_app/user_profile.html', context)
 
 
-def genre_analysis(request):
-    """View for genre analysis."""
-    # Get all genres (including approved user tags)
+def get_all_genres():
+    """Get all genres from films and approved tags."""
     all_genres = set()
     
     # Get official genres from films
@@ -465,29 +465,52 @@ def genre_analysis(request):
     all_genres.update(approved_tags)
     
     # Sort genres alphabetically
-    genres = sorted(list(all_genres))
+    return sorted(list(all_genres))
+
+def get_films_by_genre(genre, period=None):
+    """Get films in a specific genre, optionally filtered by period."""
+    # Get films with official genre
+    official_genre_films = Film.objects.filter(genres__icontains=genre)
     
-    # Get selected genre
+    # Get films with user tag
+    user_tag_films = Film.objects.filter(tags__tag=genre, tags__is_approved=True)
+    
+    # Combine and remove duplicates
+    films = (official_genre_films | user_tag_films).distinct()
+    
+    # Filter by period if specified
+    if period and period != 'all':
+        votes = filter_votes_by_period(period)
+        films = films.filter(votes__in=votes)
+    
+    # Annotate with vote count and order by votes
+    return films.annotate(vote_count=Count('votes')).order_by('-vote_count')
+
+def genre_analysis(request):
+    """View for genre analysis."""
+    # Get all genres
+    genres = get_all_genres()
+    
+    # Get selected genre and period
     selected_genre = request.GET.get('genre', '')
+    period = request.GET.get('period', 'all')
     
     # Get films in the selected genre
     films = []
     if selected_genre:
-        # Get films with official genre
-        official_genre_films = Film.objects.filter(genres__icontains=selected_genre)
-        
-        # Get films with user tag
-        user_tag_films = Film.objects.filter(tags__tag=selected_genre, tags__is_approved=True)
-        
-        # Combine and remove duplicates
-        films = (official_genre_films | user_tag_films).distinct().annotate(
-            vote_count=Count('votes')
-        ).order_by('-vote_count')
+        films = get_films_by_genre(selected_genre, period)
     
     context = {
         'genres': genres,
         'selected_genre': selected_genre,
+        'period': period,
         'films': films,
+        'periods': [
+            {'value': 'all', 'label': 'All Time'},
+            {'value': 'year', 'label': 'Past Year'},
+            {'value': 'month', 'label': 'Past Month'},
+            {'value': 'week', 'label': 'Past Week'}
+        ]
     }
     
     return render(request, 'films_app/genre_analysis.html', context)

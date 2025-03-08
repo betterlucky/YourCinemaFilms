@@ -221,4 +221,49 @@ def count_film_votes(film):
     Returns:
         int: The number of votes for the film
     """
-    return Vote.objects.filter(film=film).count() 
+    return Vote.objects.filter(film=film).count()
+
+def get_date_range_from_period(period):
+    """
+    Get start and end dates based on a time period.
+    
+    Args:
+        period (str): The time period ('week', 'month', 'year', or 'all')
+        
+    Returns:
+        tuple: (start_date, end_date) where start_date may be None for 'all'
+    """
+    from django.utils import timezone
+    from datetime import timedelta
+    
+    end_date = timezone.now()
+    start_date = None
+    
+    if period == 'week':
+        start_date = end_date - timedelta(days=7)
+    elif period == 'month':
+        start_date = end_date - timedelta(days=30)
+    elif period == 'year':
+        start_date = end_date - timedelta(days=365)
+    
+    return start_date, end_date
+
+def filter_votes_by_period(period):
+    """
+    Filter votes based on a time period.
+    
+    Args:
+        period (str): The time period ('week', 'month', 'year', or 'all')
+        
+    Returns:
+        QuerySet: Filtered Vote queryset
+    """
+    from .models import Vote
+    
+    start_date, _ = get_date_range_from_period(period)
+    votes_query = Vote.objects.all()
+    
+    if start_date:
+        votes_query = votes_query.filter(created_at__gte=start_date)
+    
+    return votes_query 

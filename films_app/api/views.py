@@ -11,7 +11,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from ..models import Film, Vote, UserProfile, GenreTag
-from ..utils import validate_genre_tag
+from ..utils import validate_genre_tag, filter_votes_by_period
 from .serializers import FilmSerializer, VoteSerializer, UserProfileSerializer, GenreTagSerializer
 
 
@@ -144,25 +144,27 @@ def charts_data(request):
     """API endpoint to get chart data."""
     # Get time period from request
     period = request.query_params.get('period', 'all')
+    genre = request.query_params.get('genre', None)
     
-    # Calculate date range based on period
-    end_date = timezone.now()
-    start_date = None
-    
-    if period == 'week':
-        start_date = end_date - timedelta(days=7)
-    elif period == 'month':
-        start_date = end_date - timedelta(days=30)
-    elif period == 'year':
-        start_date = end_date - timedelta(days=365)
-    
-    # Query votes based on date range
-    votes_query = Vote.objects.all()
-    if start_date:
-        votes_query = votes_query.filter(created_at__gte=start_date)
+    # Get votes filtered by period
+    votes_query = filter_votes_by_period(period)
     
     # Get top films
-    top_films = Film.objects.filter(votes__in=votes_query).annotate(
+    films_query = Film.objects.filter(votes__in=votes_query)
+    
+    # Filter by genre if specified
+    if genre:
+        # Get films with official genre
+        official_genre_films = films_query.filter(genres__icontains=genre)
+        
+        # Get films with user tag
+        user_tag_films = films_query.filter(tags__tag=genre, tags__is_approved=True)
+        
+        # Combine and remove duplicates
+        films_query = (official_genre_films | user_tag_films).distinct()
+    
+    # Annotate with vote count and get top 10
+    top_films = films_query.annotate(
         vote_count=Count('votes')
     ).order_by('-vote_count')[:10]
     
@@ -181,21 +183,8 @@ def genre_data(request):
     # Get time period from request
     period = request.query_params.get('period', 'all')
     
-    # Calculate date range based on period
-    end_date = timezone.now()
-    start_date = None
-    
-    if period == 'week':
-        start_date = end_date - timedelta(days=7)
-    elif period == 'month':
-        start_date = end_date - timedelta(days=30)
-    elif period == 'year':
-        start_date = end_date - timedelta(days=365)
-    
-    # Query votes based on date range
-    votes_query = Vote.objects.all()
-    if start_date:
-        votes_query = votes_query.filter(created_at__gte=start_date)
+    # Get votes filtered by period
+    votes_query = filter_votes_by_period(period)
     
     # Get genre distribution
     genre_counts = {}

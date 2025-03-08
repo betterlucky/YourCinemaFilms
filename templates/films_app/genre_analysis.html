@@ -5,19 +5,32 @@
 {% block content %}
 <div class="container py-5">
     <div class="row mb-4">
-        <div class="col-md-8">
+        <div class="col-md-6">
             <h1 class="mb-0">Genre Analysis</h1>
             <p class="lead">Explore films by genre and see what's popular</p>
         </div>
-        <div class="col-md-4">
-            <form method="get" class="d-flex">
-                <select name="genre" class="form-select me-2" onchange="this.form.submit()">
-                    <option value="">Select a genre</option>
-                    {% for genre in genres %}
-                        <option value="{{ genre }}" {% if selected_genre == genre %}selected{% endif %}>{{ genre }}</option>
-                    {% endfor %}
-                </select>
-                <button type="submit" class="btn btn-primary">Go</button>
+        <div class="col-md-6">
+            <form method="get" class="row g-3">
+                <div class="col-md-6">
+                    <label for="genre-select" class="form-label">Genre</label>
+                    <select id="genre-select" name="genre" class="form-select">
+                        <option value="">Select a genre</option>
+                        {% for genre in genres %}
+                            <option value="{{ genre }}" {% if selected_genre == genre %}selected{% endif %}>{{ genre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="period-select" class="form-label">Time Period</label>
+                    <select id="period-select" name="period" class="form-select">
+                        {% for period_option in periods %}
+                            <option value="{{ period_option.value }}" {% if period == period_option.value %}selected{% endif %}>{{ period_option.label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">Apply</button>
+                </div>
             </form>
         </div>
     </div>
@@ -26,8 +39,14 @@
         <div class="row mb-4">
             <div class="col-12">
                 <div class="card">
-                    <div class="card-header bg-primary text-white">
+                    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                         <h4 class="mb-0">{{ selected_genre }} Films</h4>
+                        <span class="badge bg-light text-dark">
+                            {% if period == 'all' %}All Time{% endif %}
+                            {% if period == 'year' %}Past Year{% endif %}
+                            {% if period == 'month' %}Past Month{% endif %}
+                            {% if period == 'week' %}Past Week{% endif %}
+                        </span>
                     </div>
                     <div class="card-body">
                         <div id="genre-chart-container" style="height: 300px;"></div>
@@ -38,7 +57,10 @@
         
         <div class="row mb-4">
             <div class="col-12">
-                <h2 class="border-bottom pb-2">Top {{ selected_genre }} Films</h2>
+                <h2 class="border-bottom pb-2">
+                    Top {{ selected_genre }} Films
+                    <small class="text-muted">{{ films|length }} film{{ films|length|pluralize }}</small>
+                </h2>
             </div>
         </div>
         
@@ -66,7 +88,7 @@
             {% else %}
                 <div class="col-12">
                     <div class="alert alert-info">
-                        No films found in the {{ selected_genre }} genre. Try another genre.
+                        No films found in the {{ selected_genre }} genre for the selected time period. Try another genre or time period.
                     </div>
                 </div>
             {% endif %}
@@ -75,8 +97,14 @@
         <div class="row">
             <div class="col-12">
                 <div class="card">
-                    <div class="card-header bg-primary text-white">
+                    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                         <h4 class="mb-0">Genre Distribution</h4>
+                        <span class="badge bg-light text-dark">
+                            {% if period == 'all' %}All Time{% endif %}
+                            {% if period == 'year' %}Past Year{% endif %}
+                            {% if period == 'month' %}Past Month{% endif %}
+                            {% if period == 'week' %}Past Week{% endif %}
+                        </span>
                     </div>
                     <div class="card-body">
                         <div id="genres-chart-container" style="height: 400px;"></div>
@@ -104,7 +132,10 @@
             // Load genre-specific chart data
             $.ajax({
                 url: '/api/charts/data/',
-                data: { genre: '{{ selected_genre }}' },
+                data: { 
+                    genre: '{{ selected_genre }}',
+                    period: '{{ period }}'
+                },
                 success: function(response) {
                     if (response.labels.length > 0) {
                         const ctx = document.getElementById('genre-chart-container').getContext('2d');
@@ -154,6 +185,7 @@
             // Load overall genre distribution
             $.ajax({
                 url: '/api/genres/data/',
+                data: { period: '{{ period }}' },
                 success: function(response) {
                     if (response.labels.length > 0) {
                         const ctx = document.getElementById('genres-chart-container').getContext('2d');
