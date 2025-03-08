@@ -9,6 +9,7 @@ from rest_framework import generics, permissions, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from django.core.cache import cache
 
 from ..models import Film, Vote, UserProfile, GenreTag
 from ..utils import validate_genre_tag, filter_votes_by_period
@@ -185,35 +186,44 @@ def genre_data(request):
     # Get time period from request
     period = request.query_params.get('period', 'all')
     
+    # Try to get from cache first
+    cache_key = f'genre_distribution_{period}'
+    cached_data = cache.get(cache_key)
+    if cached_data:
+        return Response(cached_data)
+    
     # Get votes filtered by period
     votes_query = filter_votes_by_period(period)
     
     # Get genre distribution
     genre_counts = {}
     
-    # Get all films from votes
+    # Get all films from votes more efficiently
     films = Film.objects.filter(votes__in=votes_query).distinct()
     
-    # Count genres (including approved user tags)
+    # Get official genres counts using annotation
+    # This gets films with their genres and counts them by genre
+    official_genres = {}
     for film in films:
-        # Make sure all_genres property is available
-        if not hasattr(film, 'all_genres'):
-            film_genres = []
-            # Add official genres
-            if film.genres:
-                film_genres.extend([g.strip() for g in film.genres.split(',')])
-            # Add approved user tags
-            film_genres.extend([tag.tag for tag in film.tags.filter(is_approved=True)])
-            # Remove duplicates
-            film_genres = list(set(film_genres))
-        else:
-            film_genres = film.all_genres
-            
-        for genre in film_genres:
-            if genre in genre_counts:
-                genre_counts[genre] += 1
-            else:
-                genre_counts[genre] = 1
+        if film.genres:
+            for genre in [g.strip() for g in film.genres.split(',')]:
+                if genre:
+                    official_genres[genre] = official_genres.get(genre, 0) + 1
+    
+    # Get user tag counts using annotation
+    tag_counts = GenreTag.objects.filter(
+        film__in=films,
+        is_approved=True
+    ).values('tag').annotate(
+        count=Count('tag')
+    ).order_by('-count')
+    
+    # Combine official genres and user tags
+    for genre, count in official_genres.items():
+        genre_counts[genre] = genre_counts.get(genre, 0) + count
+    
+    for item in tag_counts:
+        genre_counts[item['tag']] = genre_counts.get(item['tag'], 0) + item['count']
     
     # Sort by count (descending)
     sorted_genres = dict(sorted(genre_counts.items(), key=lambda item: item[1], reverse=True))
@@ -225,6 +235,9 @@ def genre_data(request):
         'labels': list(top_genres.keys()),
         'data': list(top_genres.values()),
     }
+    
+    # Cache the result for 15 minutes (900 seconds)
+    cache.set(cache_key, data, 900)
     
     return Response(data)
 

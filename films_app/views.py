@@ -15,6 +15,8 @@ import os
 import time
 from django.utils.translation import gettext as _
 from django.template.loader import render_to_string
+from django.core.cache import cache
+from django.db.models.functions import Trim
 
 from .models import Film, Vote, UserProfile, GenreTag
 from .utils import (
@@ -453,19 +455,34 @@ def user_profile_view(request, username):
 
 
 def get_all_genres():
-    """Get all genres from films and approved tags."""
+    """Get all genres from films and approved tags, sorted alphabetically."""
+    # Try to get genres from cache
+    cached_genres = cache.get('all_genres')
+    if cached_genres:
+        return cached_genres
+    
+    # If not in cache, query the database
     all_genres = set()
     
-    # Get official genres from films
-    for film in Film.objects.all():
-        all_genres.update(film.genre_list)
+    # Get official genres more efficiently
+    film_genres = Film.objects.exclude(genres__isnull=True).exclude(genres='')
     
-    # Get approved user tags
+    # Use values_list to get only the genres field and avoid loading entire objects
+    for genres_str in film_genres.values_list('genres', flat=True):
+        if genres_str:
+            all_genres.update([genre.strip() for genre in genres_str.split(',')])
+    
+    # Get approved user tags more efficiently
     approved_tags = GenreTag.objects.filter(is_approved=True).values_list('tag', flat=True).distinct()
     all_genres.update(approved_tags)
     
     # Sort genres alphabetically
-    return sorted(list(all_genres))
+    sorted_genres = sorted(list(all_genres))
+    
+    # Cache the result for 1 hour (3600 seconds)
+    cache.set('all_genres', sorted_genres, 3600)
+    
+    return sorted_genres
 
 def get_films_by_genre(genre, period=None):
     """Get films in a specific genre, optionally filtered by period."""
