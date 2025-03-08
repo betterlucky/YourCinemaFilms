@@ -52,14 +52,14 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <h6 class="text-uppercase">Total Votes</h6>
-                            <h2 class="mb-0">{{ total_votes }}</h2>
+                            <h6 class="text-uppercase">{% if period != 'all' %}{{ period|title }} Votes{% else %}Total Votes{% endif %}</h6>
+                            <h2 class="mb-0">{% if period != 'all' %}{{ period_votes }}{% else %}{{ total_votes }}{% endif %}</h2>
                         </div>
                         <i class="fas fa-thumbs-up fa-3x"></i>
                     </div>
                 </div>
                 <div class="card-footer bg-success-dark">
-                    <small>{{ period_votes }} in selected period</small>
+                    <small>{{ total_votes }} all time</small>
                 </div>
             </div>
         </div>
@@ -69,14 +69,14 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <h6 class="text-uppercase">Users</h6>
-                            <h2 class="mb-0">{{ total_users }}</h2>
+                            <h6 class="text-uppercase">{% if period != 'all' %}{{ period|title }} Users{% else %}Total Users{% endif %}</h6>
+                            <h2 class="mb-0">{% if period != 'all' %}{{ new_users }}{% else %}{{ total_users }}{% endif %}</h2>
                         </div>
                         <i class="fas fa-users fa-3x"></i>
                     </div>
                 </div>
                 <div class="card-footer bg-info-dark">
-                    <small>{{ new_users }} new in selected period</small>
+                    <small>{{ total_users }} all time</small>
                 </div>
             </div>
         </div>

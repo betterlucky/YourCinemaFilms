@@ -431,7 +431,7 @@ def manage_genre_tags(request):
 def dashboard(request):
     """View for displaying the dashboard with site statistics and activity."""
     # Get time period from request
-    period = request.GET.get('period', 'all')
+    period = request.GET.get('period', 'week')
     
     # Calculate date range based on period
     end_date = timezone.now()
