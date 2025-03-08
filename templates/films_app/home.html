@@ -26,6 +26,34 @@
         </div>
     </div>
     
+    <!-- Large Center Search Bar -->
+    <div class="row mb-5">
+        <div class="col-md-8 mx-auto">
+            <div class="card shadow main-search-container">
+                <div class="card-body p-4">
+                    <h3 class="text-center mb-4">Find Your Favorite Films</h3>
+                    <form id="main-search-form" class="d-flex">
+                        <input id="main-search-input" 
+                               class="form-control form-control-lg me-2" 
+                               type="search" 
+                               placeholder="Search for films..." 
+                               aria-label="Search"
+                               hx-get="{% url 'films_app:search_films' %}"
+                               hx-trigger="keyup changed delay:500ms"
+                               hx-target="#search-results"
+                               name="query">
+                        <button class="btn btn-primary btn-lg" type="submit">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </form>
+                    <p class="text-center text-muted mt-3 mb-0">
+                        <small>Search by title, director, or actor</small>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
     {% if user.is_authenticated %}
         <div class="row mb-5">
             <div class="col-12">
@@ -183,6 +211,18 @@
         $('.search-focus').on('click', function(e) {
             e.preventDefault();
             $('#search-input').focus();
+        });
+
+        // Main search form handling
+        $('#main-search-form').on('submit', function(e) {
+            e.preventDefault();
+            const query = $('#main-search-input').val().trim();
+            
+            if (query.length >= 3) {
+                // Show the search modal
+                const searchModal = new bootstrap.Modal(document.getElementById('searchResultsModal'));
+                searchModal.show();
+            }
         });
 
         // OMDB Search functionality for home page
