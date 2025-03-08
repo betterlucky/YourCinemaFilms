@@ -17,7 +17,13 @@ from django.utils.translation import gettext as _
 from django.template.loader import render_to_string
 
 from .models import Film, Vote, UserProfile, GenreTag
-from .utils import validate_genre_tag, fetch_and_update_film_from_omdb
+from .utils import (
+    validate_genre_tag, 
+    fetch_and_update_film_from_omdb, 
+    require_http_method, 
+    validate_and_format_genre_tag,
+    get_film_vote_count
+)
 
 
 def home(request):
@@ -186,7 +192,7 @@ def film_detail(request, imdb_id):
             has_voted = user_vote is not None
         
         # Get vote count
-        vote_count = Vote.objects.filter(film=film).count()
+        vote_count = get_film_vote_count(film)
         
         # Get user tags for this film
         user_tags = GenreTag.objects.filter(film=film, user=request.user)
@@ -214,8 +220,10 @@ def film_detail(request, imdb_id):
 @login_required
 def vote_for_film(request, imdb_id):
     """Vote for a film."""
-    if request.method != 'POST':
-        return HttpResponse("Method not allowed", status=405)
+    # Check if method is POST
+    method_error = require_http_method(request)
+    if method_error:
+        return method_error
     
     # Get or create film
     film = get_object_or_404(Film, imdb_id=imdb_id)
@@ -236,7 +244,7 @@ def vote_for_film(request, imdb_id):
     vote.save()
     
     # Get updated vote count for the film
-    vote_count = Vote.objects.filter(film=film).count()
+    vote_count = get_film_vote_count(film)
     
     # Return the success button with updated vote count
     response_html = f"""
@@ -252,8 +260,10 @@ def vote_for_film(request, imdb_id):
 @login_required
 def remove_vote(request, vote_id):
     """Remove a vote."""
-    if request.method != 'POST':
-        return HttpResponse("Method not allowed", status=405)
+    # Check if method is POST
+    method_error = require_http_method(request)
+    if method_error:
+        return method_error
     
     vote = get_object_or_404(Vote, id=vote_id, user=request.user)
     film = vote.film
@@ -279,8 +289,10 @@ def remove_vote(request, vote_id):
 @login_required
 def add_genre_tag(request, imdb_id):
     """Add a genre tag to a film."""
-    if request.method != 'POST':
-        return HttpResponse("Method not allowed", status=405)
+    # Check if method is POST
+    method_error = require_http_method(request)
+    if method_error:
+        return method_error
     
     # Get film
     film = get_object_or_404(Film, imdb_id=imdb_id)
@@ -288,37 +300,17 @@ def add_genre_tag(request, imdb_id):
     # Get tag from request
     tag = request.POST.get('tag', '').strip()
     
-    # Validate tag
-    is_valid, error_message = validate_genre_tag(tag)
+    # Validate and format tag
+    is_valid, result = validate_and_format_genre_tag(tag, request.user, film)
     if not is_valid:
         # Return the form with an error message
         return render(request, 'films_app/partials/genre_tag_form.html', {
             'film': film,
-            'error_message': error_message
-        })
-    
-    # Capitalize the first letter of each word for consistency
-    tag = ' '.join(word.capitalize() for word in tag.split())
-    
-    # Check if tag already exists for this film and user
-    existing_tag = GenreTag.objects.filter(film=film, user=request.user, tag=tag).first()
-    if existing_tag:
-        # Return the form with an error message
-        return render(request, 'films_app/partials/genre_tag_form.html', {
-            'film': film,
-            'error_message': 'You have already added this genre tag'
-        })
-    
-    # Check if tag is already an official genre
-    if tag in film.genre_list:
-        # Return the form with an error message
-        return render(request, 'films_app/partials/genre_tag_form.html', {
-            'film': film,
-            'error_message': 'This genre is already listed for this film'
+            'error_message': result
         })
     
     # Create tag (not approved by default)
-    genre_tag = GenreTag(film=film, user=request.user, tag=tag)
+    genre_tag = GenreTag(film=film, user=request.user, tag=result)
     genre_tag.save()
     
     # Get all user tags for this film to render the updated list
@@ -335,8 +327,10 @@ def add_genre_tag(request, imdb_id):
 @login_required
 def remove_genre_tag(request, tag_id):
     """Remove a genre tag."""
-    if request.method != 'POST':
-        return HttpResponse("Method not allowed", status=405)
+    # Check if method is POST
+    method_error = require_http_method(request)
+    if method_error:
+        return method_error
     
     # Get tag and check ownership
     tag = get_object_or_404(GenreTag, id=tag_id, user=request.user)
@@ -1040,7 +1034,7 @@ def update_film_from_omdb(request, imdb_id):
 def get_film_vote_count(request, imdb_id):
     """Get the vote count for a film."""
     film = get_object_or_404(Film, imdb_id=imdb_id)
-    vote_count = Vote.objects.filter(film=film).count()
+    vote_count = get_film_vote_count(film)
     return render(request, 'films_app/partials/vote_count_badge.html', {'vote_count': vote_count})
 
 

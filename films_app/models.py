@@ -103,6 +103,9 @@ class UserProfile(models.Model):
         ('private', 'Private - Visible to only me')
     ]
     
+    # Fields with privacy settings
+    PRIVACY_FIELDS = ['location', 'gender', 'age', 'votes']
+    
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
     bio = models.TextField(blank=True, null=True)
     profile_picture_url = models.URLField(blank=True, null=True)
@@ -154,5 +157,16 @@ class UserProfile(models.Model):
         elif privacy_setting == 'users' and viewer and viewer.is_authenticated:
             return True
         elif viewer and (viewer == self.user or viewer.is_staff):
+            return True
+        return False
+    
+    def get_privacy_settings(self):
+        """Get all privacy settings as a dictionary."""
+        return {field: getattr(self, f"{field}_privacy") for field in self.PRIVACY_FIELDS}
+    
+    def set_privacy_setting(self, field, value):
+        """Set a privacy setting for a field."""
+        if field in self.PRIVACY_FIELDS and value in dict(self.PRIVACY_CHOICES):
+            setattr(self, f"{field}_privacy", value)
             return True
         return False 

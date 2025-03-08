@@ -1,7 +1,8 @@
 import re
 import requests
 from django.conf import settings
-from .models import Film
+from django.http import HttpResponse
+from .models import Film, GenreTag, Vote
 
 # List of common profanity words to filter
 # This is a basic list - in a production environment, you would use a more comprehensive list
@@ -160,4 +161,64 @@ def fetch_and_update_film_from_omdb(imdb_id, force_update=False):
         else:
             raise ValueError(f"Film not found: {data.get('Error', 'Unknown error')}")
     except Exception as e:
-        raise ValueError(f"Error fetching film from OMDB: {str(e)}") 
+        raise ValueError(f"Error fetching film from OMDB: {str(e)}")
+
+def require_http_method(request, method='POST'):
+    """
+    Check if the request method matches the required method.
+    
+    Args:
+        request: The HTTP request object
+        method (str): The required HTTP method (default: 'POST')
+        
+    Returns:
+        HttpResponse or None: HttpResponse with error if method doesn't match, None otherwise
+    """
+    if request.method != method:
+        return HttpResponse(f"Method not allowed. Expected {method}.", status=405)
+    return None
+
+def validate_and_format_genre_tag(tag, user, film):
+    """
+    Validate and format a genre tag, checking for duplicates and existing genres.
+    
+    Args:
+        tag (str): The genre tag to validate
+        user: The user adding the tag
+        film: The film to add the tag to
+        
+    Returns:
+        tuple: (is_valid, result_or_error)
+            - is_valid (bool): Whether the tag is valid
+            - result_or_error: Formatted tag if valid, error message if invalid
+    """
+    # Basic validation
+    is_valid, error_message = validate_genre_tag(tag)
+    if not is_valid:
+        return False, error_message
+    
+    # Capitalize the first letter of each word for consistency
+    formatted_tag = ' '.join(word.capitalize() for word in tag.split())
+    
+    # Check if tag already exists for this film and user
+    existing_tag = GenreTag.objects.filter(film=film, user=user, tag=formatted_tag).first()
+    if existing_tag:
+        return False, 'You have already added this genre tag'
+    
+    # Check if tag is already an official genre
+    if formatted_tag in film.genre_list:
+        return False, 'This genre is already listed for this film'
+    
+    return True, formatted_tag
+
+def get_film_vote_count(film):
+    """
+    Get the vote count for a film.
+    
+    Args:
+        film: The Film object
+        
+    Returns:
+        int: The number of votes for the film
+    """
+    return Vote.objects.filter(film=film).count() 
