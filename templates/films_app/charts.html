@@ -228,13 +228,16 @@
     $(document).ready(function() {
         // Activity timeline chart
         const activityCtx = document.getElementById('activityChart').getContext('2d');
+        const activityDates = {{ activity_dates|safe }};
+        const activityCounts = {{ activity_counts|safe }};
+        
         const activityChart = new Chart(activityCtx, {
             type: 'line',
             data: {
-                labels: {{ activity_dates|safe }},
+                labels: activityDates,
                 datasets: [{
                     label: 'Votes',
-                    data: {{ activity_counts|safe }},
+                    data: activityCounts,
                     backgroundColor: 'rgba(13, 110, 253, 0.1)',
                     borderColor: 'rgba(13, 110, 253, 1)',
                     borderWidth: 2,

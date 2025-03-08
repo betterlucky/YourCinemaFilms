@@ -156,6 +156,8 @@
         $(document).ready(function() {
             const searchForm = $('#search-form');
             const searchInput = $('#search-input');
+            const loginUrl = "{% url 'account_login' %}?next={% url 'films_app:home' %}";
+            const isAuthenticated = {% if user.is_authenticated %}true{% else %}false{% endif %};
             
             // Handle form submission
             searchForm.on('submit', function(e) {
@@ -167,9 +169,9 @@
                 }
                 
                 // If user is not logged in, redirect to login page
-                {% if not user.is_authenticated %}
-                window.location.href = "{% url 'account_login' %}?next={% url 'films_app:home' %}";
-                {% endif %}
+                if (!isAuthenticated) {
+                    window.location.href = loginUrl;
+                }
             });
             
             // Hide search results when clicking outside

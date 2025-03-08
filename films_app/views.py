@@ -1,6 +1,7 @@
 import json
 import requests
-from datetime import datetime, timedelta, relativedelta
+from datetime import datetime, timedelta
+from dateutil.relativedelta import relativedelta
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse, HttpResponse, FileResponse
