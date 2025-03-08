@@ -1,0 +1,218 @@
+{% if selected_genre %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">{{ selected_genre }} Films</h4>
+                    <span class="badge bg-light text-dark">
+                        {% if period == 'all' %}All Time{% endif %}
+                        {% if period == 'year' %}Past Year{% endif %}
+                        {% if period == 'month' %}Past Month{% endif %}
+                        {% if period == 'week' %}Past Week{% endif %}
+                    </span>
+                </div>
+                <div class="card-body">
+                    <div id="genre-chart-container" style="height: 300px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2 class="border-bottom pb-2">
+                Top {{ selected_genre }} Films
+                <small class="text-muted">{{ films|length }} film{{ films|length|pluralize }}</small>
+            </h2>
+        </div>
+    </div>
+    
+    <div class="row">
+        {% if films %}
+            {% for film in films %}
+                <div class="col-md-3 mb-4">
+                    <div class="card film-card">
+                        <div class="vote-badge">{{ film.vote_count }} vote{{ film.vote_count|pluralize }}</div>
+                        <img src="{{ film.poster_url|default:'https://via.placeholder.com/300x450?text=No+Poster' }}" 
+                             class="card-img-top film-poster" alt="{{ film.title }}">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ film.title }}</h5>
+                            <p class="card-text text-muted">{{ film.year }}</p>
+                            <p class="card-text">
+                                <small class="text-muted">
+                                    <strong>Genres:</strong> {{ film.genres }}
+                                </small>
+                            </p>
+                            <a href="{% url 'films_app:film_detail' film.imdb_id %}" class="btn btn-sm btn-primary">View Details</a>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="col-12">
+                <div class="alert alert-info">
+                    No films found in the {{ selected_genre }} genre for the selected time period. Try another genre or time period.
+                </div>
+            </div>
+        {% endif %}
+    </div>
+{% else %}
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">Genre Distribution</h4>
+                    <span class="badge bg-light text-dark">
+                        {% if period == 'all' %}All Time{% endif %}
+                        {% if period == 'year' %}Past Year{% endif %}
+                        {% if period == 'month' %}Past Month{% endif %}
+                        {% if period == 'week' %}Past Week{% endif %}
+                    </span>
+                </div>
+                <div class="card-body">
+                    <div id="genres-chart-container" style="height: 400px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle me-2"></i>
+                Select a genre from the dropdown above to see films in that genre.
+            </div>
+        </div>
+    </div>
+{% endif %}
+
+<script>
+    {% if selected_genre %}
+        // Load genre-specific chart data
+        $.ajax({
+            url: '/api/charts/data/',
+            data: { 
+                genre: '{{ selected_genre|escapejs }}',
+                period: '{{ period|escapejs }}'
+            },
+            success: function(response) {
+                if (response.labels.length > 0) {
+                    const ctx = document.getElementById('genre-chart-container').getContext('2d');
+                    new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: response.labels,
+                            datasets: [{
+                                label: 'Number of Votes',
+                                data: response.data,
+                                backgroundColor: 'rgba(13, 110, 253, 0.7)',
+                                borderColor: 'rgba(13, 110, 253, 1)',
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    ticks: {
+                                        precision: 0
+                                    }
+                                }
+                            },
+                            plugins: {
+                                legend: {
+                                    display: false
+                                },
+                                title: {
+                                    display: true,
+                                    text: 'Top {{ selected_genre|escapejs }} Films by Votes'
+                                }
+                            }
+                        }
+                    });
+                } else {
+                    $('#genre-chart-container').html('<div class="text-center py-3">No data available</div>');
+                }
+            },
+            error: function() {
+                $('#genre-chart-container').html('<div class="text-center py-3">Error loading chart data</div>');
+            }
+        });
+    {% else %}
+        // Load overall genre distribution
+        $.ajax({
+            url: '/api/genres/data/',
+            data: { period: '{{ period|escapejs }}' },
+            success: function(response) {
+                if (response.labels.length > 0) {
+                    const ctx = document.getElementById('genres-chart-container').getContext('2d');
+                    new Chart(ctx, {
+                        type: 'pie',
+                        data: {
+                            labels: response.labels,
+                            datasets: [{
+                                data: response.data,
+                                backgroundColor: [
+                                    'rgba(255, 99, 132, 0.7)',
+                                    'rgba(54, 162, 235, 0.7)',
+                                    'rgba(255, 206, 86, 0.7)',
+                                    'rgba(75, 192, 192, 0.7)',
+                                    'rgba(153, 102, 255, 0.7)',
+                                    'rgba(255, 159, 64, 0.7)',
+                                    'rgba(199, 199, 199, 0.7)',
+                                    'rgba(83, 102, 255, 0.7)',
+                                    'rgba(40, 159, 64, 0.7)',
+                                    'rgba(210, 199, 199, 0.7)'
+                                ],
+                                borderColor: [
+                                    'rgba(255, 99, 132, 1)',
+                                    'rgba(54, 162, 235, 1)',
+                                    'rgba(255, 206, 86, 1)',
+                                    'rgba(75, 192, 192, 1)',
+                                    'rgba(153, 102, 255, 1)',
+                                    'rgba(255, 159, 64, 1)',
+                                    'rgba(199, 199, 199, 1)',
+                                    'rgba(83, 102, 255, 1)',
+                                    'rgba(40, 159, 64, 1)',
+                                    'rgba(210, 199, 199, 1)'
+                                ],
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    position: 'right'
+                                },
+                                title: {
+                                    display: true,
+                                    text: 'Genre Distribution of Voted Films'
+                                },
+                                tooltip: {
+                                    callbacks: {
+                                        label: function(context) {
+                                            const label = context.label || '';
+                                            const value = context.raw || 0;
+                                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                            const percentage = Math.round((value / total) * 100);
+                                            return `${label}: ${value} films (${percentage}%)`;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                } else {
+                    $('#genres-chart-container').html('<div class="text-center py-3">No data available</div>');
+                }
+            },
+            error: function() {
+                $('#genres-chart-container').html('<div class="text-center py-3">Error loading chart data</div>');
+            }
+        });
+    {% endif %}
+</script> 

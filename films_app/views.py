@@ -513,6 +513,10 @@ def genre_analysis(request):
         ]
     }
     
+    # Check if this is an HTMX request
+    if request.headers.get('HX-Request'):
+        return render(request, 'films_app/partials/genre_content.html', context)
+    
     return render(request, 'films_app/genre_analysis.html', context)
 
 
