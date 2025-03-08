@@ -120,6 +120,41 @@ function showChartLoadError() {
  * Set up event listeners for the dropdowns
  */
 function setupEventListeners() {
+    console.log('Setting up event listeners');
+    
+    // Listen for HTMX after swap event
+    document.body.addEventListener('htmx:afterSwap', function(event) {
+        console.log('HTMX content swapped, target:', event.detail.target.id);
+        
+        // Only reinitialize if the genre content was swapped
+        if (event.detail.target.id === 'genre-content') {
+            console.log('Genre content was swapped, reinitializing charts');
+            
+            // Get the selected genre and period
+            const genreSelect = document.getElementById('genre-select');
+            const periodSelect = document.getElementById('period-select');
+            
+            if (!genreSelect || !periodSelect) {
+                console.error('Genre or period select elements not found after swap');
+                return;
+            }
+            
+            const selectedGenre = genreSelect.value;
+            const period = periodSelect.value;
+            
+            console.log('After swap detected genre:', selectedGenre, 'period:', period);
+            
+            // Initialize the appropriate chart
+            setTimeout(function() {
+                if (selectedGenre) {
+                    loadGenreSpecificChart(selectedGenre, period);
+                } else {
+                    loadGenreDistributionChart(period);
+                }
+            }, 100); // Small delay to ensure DOM is updated
+        }
+    });
+    
     // These are handled by HTMX, but we'll add them here for completeness
     const genreSelect = document.getElementById('genre-select');
     const periodSelect = document.getElementById('period-select');
