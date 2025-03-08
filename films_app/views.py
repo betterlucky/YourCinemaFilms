@@ -469,7 +469,7 @@ def charts(request):
     for film in Film.objects.all():
         all_genres.update(film.genres.split(', ') if film.genres else [])
     
-    user_tags = Tag.objects.filter(approved=True).count()
+    user_tags = GenreTag.objects.filter(is_approved=True).count()
     total_genres = len(all_genres)
     
     context = {

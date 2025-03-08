@@ -225,11 +225,15 @@
 
 {% block extra_js %}
 <script>
+    // Define data from Django templates as global variables
+    var activityDates = {{ activity_dates|safe }};
+    var activityCounts = {{ activity_counts|safe }};
+    var genreLabels = {{ genre_labels|safe }};
+    var genreData = {{ genre_data|safe }};
+    
     $(document).ready(function() {
         // Activity timeline chart
         const activityCtx = document.getElementById('activityChart').getContext('2d');
-        const activityDates = {{ activity_dates|safe }};
-        const activityCounts = {{ activity_counts|safe }};
         
         const activityChart = new Chart(activityCtx, {
             type: 'line',
@@ -273,9 +277,6 @@
         });
         
         // Genre chart
-        const genreLabels = {{ genre_labels|safe }};
-        const genreData = {{ genre_data|safe }};
-        
         const genreCtx = document.getElementById('genreChart').getContext('2d');
         const genreChart = new Chart(genreCtx, {
             type: 'pie',

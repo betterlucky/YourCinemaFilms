@@ -153,11 +153,13 @@
     
     <!-- Search Script -->
     <script>
+        // Define Django template variables as global variables
+        var loginUrl = "{% url 'account_login' %}?next={% url 'films_app:home' %}";
+        var isAuthenticated = {% if user.is_authenticated %}true{% else %}false{% endif %};
+        
         $(document).ready(function() {
             const searchForm = $('#search-form');
             const searchInput = $('#search-input');
-            const loginUrl = "{% url 'account_login' %}?next={% url 'films_app:home' %}";
-            const isAuthenticated = {% if user.is_authenticated %}true{% else %}false{% endif %};
             
             // Handle form submission
             searchForm.on('submit', function(e) {
