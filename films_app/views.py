@@ -14,6 +14,7 @@ from allauth.socialaccount.models import SocialAccount
 import os
 import time
 from django.utils.translation import gettext as _
+from django.template.loader import render_to_string
 
 from .models import Film, Vote, UserProfile, GenreTag
 from .utils import validate_genre_tag, fetch_and_update_film_from_omdb
@@ -211,7 +212,7 @@ def film_detail(request, imdb_id):
 def vote_for_film(request, imdb_id):
     """Vote for a film."""
     if request.method != 'POST':
-        return JsonResponse({'error': 'Method not allowed'}, status=405)
+        return HttpResponse("Method not allowed", status=405)
     
     # Get or create film
     film = get_object_or_404(Film, imdb_id=imdb_id)
@@ -219,37 +220,68 @@ def vote_for_film(request, imdb_id):
     # Check if user has already voted for this film
     existing_vote = Vote.objects.filter(user=request.user, film=film).first()
     if existing_vote:
-        return JsonResponse({'message': 'You have already voted for this film'})
+        # Return the "already voted" button
+        return render(request, 'films_app/partials/voted_button.html', {'film': film})
     
     # Check if user has reached the maximum number of votes
     user_votes_count = Vote.objects.filter(user=request.user).count()
     if user_votes_count >= 10:
-        return JsonResponse({'error': 'You have reached the maximum number of votes (10)'}, status=400)
+        # Return the "max votes reached" button
+        return render(request, 'films_app/partials/max_votes_button.html')
     
     # Create vote
     vote = Vote(user=request.user, film=film)
     vote.save()
     
-    return JsonResponse({'message': 'Vote recorded successfully'})
+    # Get updated vote count for the film
+    vote_count = Vote.objects.filter(film=film).count()
+    
+    # Return the success button with updated vote count
+    response_html = f"""
+    <button class="btn btn-success disabled">
+        <i class="fas fa-check-circle me-2"></i>You've voted for this film
+    </button>
+    <div hx-swap-oob="true" id="film-vote-count">
+        {render_to_string('films_app/partials/vote_count_badge.html', {'vote_count': vote_count}, request=request)}
+    </div>
+    """
+    
+    return HttpResponse(response_html)
 
 
 @login_required
 def remove_vote(request, vote_id):
     """Remove a vote."""
     if request.method != 'POST':
-        return JsonResponse({'error': 'Method not allowed'}, status=405)
+        return HttpResponse("Method not allowed", status=405)
     
     vote = get_object_or_404(Vote, id=vote_id, user=request.user)
+    film = vote.film
     vote.delete()
     
-    return JsonResponse({'message': 'Vote removed successfully'})
+    # Get updated data for the response
+    user_votes = Vote.objects.filter(user=request.user).select_related('film')
+    votes_remaining = 10 - user_votes.count()
+    top_films = Film.objects.annotate(vote_count=Count('votes')).filter(vote_count__gt=0).order_by('-vote_count')[:8]
+    
+    # Return the updated card with empty content to remove it
+    response_html = f"""
+    <div hx-swap-oob="true" id="user-vote-status">
+        {render_to_string('films_app/partials/user_vote_status.html', {'user_votes': user_votes, 'votes_remaining': votes_remaining}, request=request)}
+    </div>
+    <div hx-swap-oob="true" id="top-films-container">
+        {render_to_string('films_app/partials/top_films.html', {'top_films': top_films}, request=request)}
+    </div>
+    """
+    
+    return HttpResponse(response_html)
 
 
 @login_required
 def add_genre_tag(request, imdb_id):
     """Add a genre tag to a film."""
     if request.method != 'POST':
-        return JsonResponse({'error': 'Method not allowed'}, status=405)
+        return HttpResponse("Method not allowed", status=405)
     
     # Get film
     film = get_object_or_404(Film, imdb_id=imdb_id)
@@ -260,7 +292,11 @@ def add_genre_tag(request, imdb_id):
     # Validate tag
     is_valid, error_message = validate_genre_tag(tag)
     if not is_valid:
-        return JsonResponse({'error': error_message}, status=400)
+        # Return the form with an error message
+        return render(request, 'films_app/partials/genre_tag_form.html', {
+            'film': film,
+            'error_message': error_message
+        })
     
     # Capitalize the first letter of each word for consistency
     tag = ' '.join(word.capitalize() for word in tag.split())
@@ -268,19 +304,32 @@ def add_genre_tag(request, imdb_id):
     # Check if tag already exists for this film and user
     existing_tag = GenreTag.objects.filter(film=film, user=request.user, tag=tag).first()
     if existing_tag:
-        return JsonResponse({'error': 'You have already added this genre tag'}, status=400)
+        # Return the form with an error message
+        return render(request, 'films_app/partials/genre_tag_form.html', {
+            'film': film,
+            'error_message': 'You have already added this genre tag'
+        })
     
     # Check if tag is already an official genre
     if tag in film.genre_list:
-        return JsonResponse({'error': 'This genre is already listed for this film'}, status=400)
+        # Return the form with an error message
+        return render(request, 'films_app/partials/genre_tag_form.html', {
+            'film': film,
+            'error_message': 'This genre is already listed for this film'
+        })
     
     # Create tag (not approved by default)
     genre_tag = GenreTag(film=film, user=request.user, tag=tag)
     genre_tag.save()
     
-    return JsonResponse({
-        'message': 'Genre tag added successfully. It will be visible after approval.',
-        'tag_id': genre_tag.id
+    # Get all user tags for this film to render the updated list
+    user_tags = GenreTag.objects.filter(film=film, user=request.user)
+    
+    # Return the form with a success message
+    return render(request, 'films_app/partials/genre_tag_form.html', {
+        'film': film,
+        'user_tags': user_tags,
+        'success_message': 'Genre tag added successfully. It will be visible after approval.'
     })
 
 
@@ -288,15 +337,17 @@ def add_genre_tag(request, imdb_id):
 def remove_genre_tag(request, tag_id):
     """Remove a genre tag."""
     if request.method != 'POST':
-        return JsonResponse({'error': 'Method not allowed'}, status=405)
+        return HttpResponse("Method not allowed", status=405)
     
     # Get tag and check ownership
     tag = get_object_or_404(GenreTag, id=tag_id, user=request.user)
+    film = tag.film
     
     # Delete tag
     tag.delete()
     
-    return JsonResponse({'message': 'Genre tag removed successfully'})
+    # Return empty response to remove the tag from the UI
+    return HttpResponse('')
 
 
 @login_required
@@ -984,4 +1035,28 @@ def update_film_from_omdb(request, imdb_id):
         return redirect('films_app:film_detail', imdb_id=imdb_id)
     except ValueError as e:
         messages.error(request, str(e))
-        return redirect('films_app:film_detail', imdb_id=imdb_id) 
+        return redirect('films_app:film_detail', imdb_id=imdb_id)
+
+
+def get_film_vote_count(request, imdb_id):
+    """Get the vote count for a film."""
+    film = get_object_or_404(Film, imdb_id=imdb_id)
+    vote_count = Vote.objects.filter(film=film).count()
+    return render(request, 'films_app/partials/vote_count_badge.html', {'vote_count': vote_count})
+
+
+@login_required
+def get_user_vote_status(request):
+    """Get the user's voting status."""
+    user_votes = Vote.objects.filter(user=request.user).select_related('film')
+    votes_remaining = 10 - user_votes.count()
+    return render(request, 'films_app/partials/user_vote_status.html', {
+        'user_votes': user_votes,
+        'votes_remaining': votes_remaining
+    })
+
+
+def get_top_films(request):
+    """Get the top films."""
+    top_films = Film.objects.annotate(vote_count=Count('votes')).filter(vote_count__gt=0).order_by('-vote_count')[:8]
+    return render(request, 'films_app/partials/top_films.html', {'top_films': top_films}) 

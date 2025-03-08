@@ -1,0 +1,24 @@
+{% if top_films %}
+    {% for film in top_films %}
+        <div class="col-md-3 mb-4">
+            <a href="{% url 'films_app:film_detail' film.imdb_id %}" class="card-link">
+                <div class="card film-card">
+                    <div class="vote-badge">{{ film.vote_count }} vote{{ film.vote_count|pluralize }}</div>
+                    <img src="{{ film.poster_url|default:'https://via.placeholder.com/300x450?text=No+Poster' }}" 
+                         class="card-img-top film-poster" alt="{{ film.title }}">
+                    <div class="card-body">
+                        <h5 class="card-title">{{ film.title }}</h5>
+                        <p class="card-text text-muted">{{ film.year }}</p>
+                        <span class="btn btn-sm btn-primary">View Details</span>
+                    </div>
+                </div>
+            </a>
+        </div>
+    {% endfor %}
+{% else %}
+    <div class="col-12">
+        <div class="alert alert-info">
+            No films have been voted for yet. Be the first to vote!
+        </div>
+    </div>
+{% endif %} 

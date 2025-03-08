@@ -1,0 +1,11 @@
+<div class="alert alert-info text-center">
+    <h5 class="mb-2">Your Voting Status</h5>
+    <p class="mb-0">
+        You have used <strong>{{ user_votes|length }}</strong> of your <strong>10</strong> available votes.
+        {% if votes_remaining > 0 %}
+            <span class="text-success">You have {{ votes_remaining }} vote{{ votes_remaining|pluralize }} remaining.</span>
+        {% else %}
+            <span class="text-danger">You have used all your votes. You can change your allocated votes at any time.</span>
+        {% endif %}
+    </p>
+</div> 

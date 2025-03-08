@@ -1,0 +1,13 @@
+<div id="vote-success" 
+     hx-trigger="load"
+     hx-get="{% url 'films_app:film_detail' film.imdb_id %}"
+     hx-target="body"
+     hx-swap="innerHTML"
+     hx-push-url="true">
+    <div class="text-center py-3">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="mt-2">Vote recorded. Updating page...</p>
+    </div>
+</div> 

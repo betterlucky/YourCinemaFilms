@@ -66,18 +66,8 @@
     {% if user.is_authenticated %}
         <!-- Vote Count Information -->
         <div class="row mb-4">
-            <div class="col-md-8 mx-auto">
-                <div class="alert alert-info text-center">
-                    <h5 class="mb-2">Your Voting Status</h5>
-                    <p class="mb-0">
-                        You have used <strong>{{ user_votes|length }}</strong> of your <strong>10</strong> available votes.
-                        {% if votes_remaining > 0 %}
-                            <span class="text-success">You have {{ votes_remaining }} vote{{ votes_remaining|pluralize }} remaining.</span>
-                        {% else %}
-                            <span class="text-danger">You have used all your votes. You can change your allocated votes at any time.</span>
-                        {% endif %}
-                    </p>
-                </div>
+            <div class="col-md-8 mx-auto" id="user-vote-status">
+                {% include 'films_app/partials/user_vote_status.html' with user_votes=user_votes votes_remaining=votes_remaining %}
             </div>
         </div>
         
@@ -89,7 +79,7 @@
                     </div>
                     <div class="card-body">
                         {% if user_votes %}
-                            <div class="row">
+                            <div class="row" id="user-votes-container">
                                 {% for vote in user_votes %}
                                     <div class="col-md-3 mb-4">
                                         <div class="card film-card">
@@ -106,10 +96,14 @@
                                                 <button class="btn btn-sm btn-outline-danger"
                                                         hx-post="{% url 'films_app:remove_vote' vote_id=vote.id %}"
                                                         hx-confirm="Are you sure you want to remove this vote?"
+                                                        hx-target="closest .col-md-3"
                                                         hx-swap="outerHTML"
-                                                        hx-target="body"
-                                                        hx-trigger="click">
+                                                        hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+                                                        hx-indicator="#remove-vote-indicator-{{ vote.id }}">
                                                     Remove Vote
+                                                    <span id="remove-vote-indicator-{{ vote.id }}" class="htmx-indicator">
+                                                        <i class="fas fa-spinner fa-spin"></i>
+                                                    </span>
                                                 </button>
                                             </div>
                                         </div>
@@ -135,31 +129,8 @@
         </div>
     </div>
     
-    <div class="row">
-        {% if top_films %}
-            {% for film in top_films %}
-                <div class="col-md-3 mb-4">
-                    <a href="{% url 'films_app:film_detail' film.imdb_id %}" class="card-link">
-                        <div class="card film-card">
-                            <div class="vote-badge">{{ film.vote_count }} vote{{ film.vote_count|pluralize }}</div>
-                            <img src="{{ film.poster_url|default:'https://via.placeholder.com/300x450?text=No+Poster' }}" 
-                                 class="card-img-top film-poster" alt="{{ film.title }}">
-                            <div class="card-body">
-                                <h5 class="card-title">{{ film.title }}</h5>
-                                <p class="card-text text-muted">{{ film.year }}</p>
-                                <span class="btn btn-sm btn-primary">View Details</span>
-                            </div>
-                        </div>
-                    </a>
-                </div>
-            {% endfor %}
-        {% else %}
-            <div class="col-12">
-                <div class="alert alert-info">
-                    No films have been voted for yet. Be the first to vote!
-                </div>
-            </div>
-        {% endif %}
+    <div class="row" id="top-films-container">
+        {% include 'films_app/partials/top_films.html' with top_films=top_films %}
     </div>
 </div>
 {% endblock %}

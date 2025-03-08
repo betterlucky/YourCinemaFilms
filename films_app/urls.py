@@ -16,6 +16,7 @@ urlpatterns = [
     path('film/<str:imdb_id>/', views.film_detail, name='film_detail'),
     path('film/<str:imdb_id>/update/', views.update_film_from_omdb, name='update_film_from_omdb'),
     path('film/<str:imdb_id>/vote/', views.vote_for_film, name='vote_for_film'),
+    path('film/<str:imdb_id>/vote-count/', views.get_film_vote_count, name='get_film_vote_count'),
     path('vote/<int:vote_id>/remove/', views.remove_vote, name='remove_vote'),
     path('film/<str:imdb_id>/tag/', views.add_genre_tag, name='add_genre_tag'),
     path('tag/<int:tag_id>/remove/', views.remove_genre_tag, name='remove_genre_tag'),
@@ -24,4 +25,6 @@ urlpatterns = [
     path('genres/', views.genre_analysis, name='genre_analysis'),
     path('demographics/', views.demographic_analysis, name='demographic_analysis'),
     path('user/<str:username>/', views.user_profile_view, name='user_profile'),
+    path('user-vote-status/', views.get_user_vote_status, name='get_user_vote_status'),
+    path('top-films/', views.get_top_films, name='get_top_films'),
 ] 
