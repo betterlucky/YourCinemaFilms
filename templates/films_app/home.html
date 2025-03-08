@@ -34,7 +34,7 @@
                     <h3 class="text-center mb-4">Find Your Favorite Films</h3>
                     <form id="main-search-form" class="d-flex">
                         <input id="main-search-input" 
-                               class="form-control form-control-lg me-2" 
+                               class="form-control form-control-lg me-2 search-input-field" 
                                type="search" 
                                placeholder="Search for films..." 
                                aria-label="Search"
@@ -168,13 +168,22 @@
             $('#search-input').focus();
         });
 
-        // Main search form handling
+        // Main search form handling - just show modal
+        $('#main-search-input').on('input', function() {
+            const query = $(this).val().trim();
+            
+            if (query.length >= 3) {
+                const searchModal = new bootstrap.Modal(document.getElementById('searchResultsModal'));
+                searchModal.show();
+            }
+        });
+        
+        // Handle form submission
         $('#main-search-form').on('submit', function(e) {
             e.preventDefault();
             const query = $('#main-search-input').val().trim();
             
             if (query.length >= 3) {
-                // Show the search modal
                 const searchModal = new bootstrap.Modal(document.getElementById('searchResultsModal'));
                 searchModal.show();
             }

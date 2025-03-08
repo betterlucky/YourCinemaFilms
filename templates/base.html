@@ -48,7 +48,7 @@
                 </ul>
                 <form id="search-form" class="d-flex me-3">
                     <input id="search-input" 
-                           class="form-control me-2" 
+                           class="form-control me-2 search-input-field" 
                            type="search" 
                            placeholder="Search films..." 
                            aria-label="Search"
@@ -188,6 +188,20 @@
                 }
                 
                 searchModal.show();
+            });
+            
+            // Global HTMX event handler to maintain focus
+            document.body.addEventListener('htmx:afterSwap', function(event) {
+                // Find which search input had focus before the swap
+                const activeElement = document.activeElement;
+                const searchInputs = document.querySelectorAll('.search-input-field');
+                
+                // If a search input has focus, keep it focused
+                if (activeElement && activeElement.classList.contains('search-input-field')) {
+                    setTimeout(() => {
+                        activeElement.focus();
+                    }, 10);
+                }
             });
         });
     </script>
