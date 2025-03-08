@@ -23,18 +23,18 @@ from .utils import validate_genre_tag, fetch_and_update_film_from_omdb
 def home(request):
     """Home page view."""
     try:
-        # Get top 10 films based on votes
-        top_films = Film.objects.annotate(vote_count=Count('votes')).order_by('-vote_count')[:10]
+        # Get top films based on votes
+        top_films = get_top_films_data(limit=10)
         
         context = {
             'top_films': top_films,
         }
         
         if request.user.is_authenticated:
-            # Get user's votes
-            user_votes = Vote.objects.filter(user=request.user).select_related('film')
+            # Get user's votes and remaining votes
+            user_votes, votes_remaining = get_user_votes_and_remaining(request.user)
             context['user_votes'] = user_votes
-            context['votes_remaining'] = 10 - user_votes.count()
+            context['votes_remaining'] = votes_remaining
         
         return render(request, 'films_app/home.html', context)
     except Exception as e:
@@ -54,8 +54,8 @@ def profile(request):
     # Get the user's profile
     profile = request.user.profile
     
-    # Get user's votes
-    user_votes = Vote.objects.filter(user=request.user).select_related('film')
+    # Get user's votes and remaining votes
+    user_votes, votes_remaining = get_user_votes_and_remaining(request.user)
     
     # Check if the user has a Google account (case-insensitive)
     google_accounts = SocialAccount.objects.filter(user=request.user)
@@ -78,7 +78,7 @@ def profile(request):
     context = {
         'profile': profile,
         'user_votes': user_votes,
-        'votes_remaining': 10 - user_votes.count(),
+        'votes_remaining': votes_remaining,
         'social_accounts': google_accounts,
         'has_google_account': has_google_account,
     }
@@ -175,11 +175,13 @@ def film_detail(request, imdb_id):
         # Fetch or update film from OMDB
         film, created = fetch_and_update_film_from_omdb(imdb_id)
         
-        # Check if user has voted for this film
+        # Check if user has voted for this film and can vote
         has_voted = False
         user_vote = None
+        can_vote = False
         
         if request.user.is_authenticated:
+            can_vote, _ = user_can_vote(request.user, film)
             user_vote = Vote.objects.filter(user=request.user, film=film).first()
             has_voted = user_vote is not None
         
@@ -195,6 +197,7 @@ def film_detail(request, imdb_id):
         context = {
             'film': film,
             'has_voted': has_voted,
+            'can_vote': can_vote,
             'vote_count': vote_count,
             'user_tags': user_tags,
             'approved_tags': approved_tags,
@@ -217,17 +220,16 @@ def vote_for_film(request, imdb_id):
     # Get or create film
     film = get_object_or_404(Film, imdb_id=imdb_id)
     
-    # Check if user has already voted for this film
-    existing_vote = Vote.objects.filter(user=request.user, film=film).first()
-    if existing_vote:
-        # Return the "already voted" button
-        return render(request, 'films_app/partials/voted_button.html', {'film': film})
+    # Check if user can vote
+    can_vote, reason = user_can_vote(request.user, film)
     
-    # Check if user has reached the maximum number of votes
-    user_votes_count = Vote.objects.filter(user=request.user).count()
-    if user_votes_count >= 10:
-        # Return the "max votes reached" button
-        return render(request, 'films_app/partials/max_votes_button.html')
+    if not can_vote:
+        if reason == "already_voted":
+            # Return the "already voted" button
+            return render(request, 'films_app/partials/voted_button.html', {'film': film})
+        elif reason == "max_votes_reached":
+            # Return the "max votes reached" button
+            return render(request, 'films_app/partials/max_votes_button.html')
     
     # Create vote
     vote = Vote(user=request.user, film=film)
@@ -238,9 +240,7 @@ def vote_for_film(request, imdb_id):
     
     # Return the success button with updated vote count
     response_html = f"""
-    <button class="btn btn-success disabled">
-        <i class="fas fa-check-circle me-2"></i>You've voted for this film
-    </button>
+    {render_to_string('films_app/partials/voted_button.html', {'film': film}, request=request)}
     <div hx-swap-oob="true" id="film-vote-count">
         {render_to_string('films_app/partials/vote_count_badge.html', {'vote_count': vote_count}, request=request)}
     </div>
@@ -260,9 +260,8 @@ def remove_vote(request, vote_id):
     vote.delete()
     
     # Get updated data for the response
-    user_votes = Vote.objects.filter(user=request.user).select_related('film')
-    votes_remaining = 10 - user_votes.count()
-    top_films = Film.objects.annotate(vote_count=Count('votes')).filter(vote_count__gt=0).order_by('-vote_count')[:8]
+    user_votes, votes_remaining = get_user_votes_and_remaining(request.user)
+    top_films = get_top_films_data()
     
     # Return the updated card with empty content to remove it
     response_html = f"""
@@ -1048,8 +1047,7 @@ def get_film_vote_count(request, imdb_id):
 @login_required
 def get_user_vote_status(request):
     """Get the user's voting status."""
-    user_votes = Vote.objects.filter(user=request.user).select_related('film')
-    votes_remaining = 10 - user_votes.count()
+    user_votes, votes_remaining = get_user_votes_and_remaining(request.user)
     return render(request, 'films_app/partials/user_vote_status.html', {
         'user_votes': user_votes,
         'votes_remaining': votes_remaining
@@ -1058,5 +1056,32 @@ def get_user_vote_status(request):
 
 def get_top_films(request):
     """Get the top films."""
-    top_films = Film.objects.annotate(vote_count=Count('votes')).filter(vote_count__gt=0).order_by('-vote_count')[:8]
-    return render(request, 'films_app/partials/top_films.html', {'top_films': top_films}) 
+    top_films = get_top_films_data()
+    return render(request, 'films_app/partials/top_films.html', {'top_films': top_films})
+
+
+# Utility functions to reduce duplication
+def get_user_votes_and_remaining(user):
+    """Get user votes and remaining votes count."""
+    user_votes = Vote.objects.filter(user=user).select_related('film')
+    votes_remaining = 10 - user_votes.count()
+    return user_votes, votes_remaining
+
+def get_top_films_data(limit=8):
+    """Get top films by vote count."""
+    return Film.objects.annotate(vote_count=Count('votes')).filter(vote_count__gt=0).order_by('-vote_count')[:limit]
+
+def user_can_vote(user, film=None):
+    """Check if a user can vote for a film."""
+    # Check if user has already voted for this film
+    if film:
+        existing_vote = Vote.objects.filter(user=user, film=film).first()
+        if existing_vote:
+            return False, "already_voted"
+    
+    # Check if user has reached the maximum number of votes
+    user_votes_count = Vote.objects.filter(user=user).count()
+    if user_votes_count >= 10:
+        return False, "max_votes_reached"
+    
+    return True, None 

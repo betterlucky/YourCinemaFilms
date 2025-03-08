@@ -67,7 +67,7 @@
                             <i class="fas fa-check-circle me-2"></i>You've voted for this film
                         </button>
                     {% else %}
-                        {% if user.profile.can_vote %}
+                        {% if can_vote %}
                             <button class="btn btn-primary"
                                     hx-post="{% url 'films_app:vote_for_film' film.imdb_id %}"
                                     hx-swap="outerHTML"
