@@ -18,6 +18,12 @@ from django.utils.translation import gettext as _
 from django.template.loader import render_to_string
 from django.core.cache import cache
 from django.db.models.functions import Trim
+from django.utils.safestring import mark_safe
+from django.core.paginator import Paginator
+from django.db.models import Count, Q, F, Value, CharField
+from django.db.models.functions import Concat
+from django.views.decorators.http import require_POST
+from django.db import models
 
 from .models import Film, Vote, UserProfile, GenreTag
 from .utils import (
@@ -28,6 +34,8 @@ from .utils import (
     count_film_votes,
     filter_votes_by_period
 )
+# Import forms if they exist in your project
+# from .forms import FilmSearchForm, UploadProfileImageForm
 
 
 def home(request):
@@ -61,36 +69,26 @@ def profile(request):
     """User profile view."""
     logger = logging.getLogger(__name__)
     
-    # Get the user's profile
-    profile = request.user.profile
-    
     # Get user's votes and remaining votes
     user_votes, votes_remaining = get_user_votes_and_remaining(request.user)
     
     # Check if the user has a Google account (case-insensitive)
-    google_accounts = SocialAccount.objects.filter(user=request.user)
-    has_google_account = False
-    
-    # Debug logging for all social accounts
-    logger.info(f"User {request.user.username} has {google_accounts.count()} social accounts")
-    for account in google_accounts:
-        logger.info(f"Social account provider: {account.provider}")
-        # Case-insensitive check for 'google'
-        if account.provider.lower() == 'google':
-            has_google_account = True
-            logger.info(f"Found Google account with provider: {account.provider}")
-            logger.info(f"Google account UID: {account.uid}")
-            if hasattr(account, 'extra_data'):
-                logger.info(f"Google account extra_data: {account.extra_data}")
+    google_accounts = SocialAccount.objects.filter(user=request.user, provider='google')
+    has_google_account = google_accounts.exists()
     
     logger.info(f"Final has_google_account value: {has_google_account}")
     
+    # Get user achievements
+    from films_app.models import Achievement
+    achievements = Achievement.objects.filter(user=request.user)
+    
     context = {
-        'profile': profile,
+        'profile': request.user.profile,
         'user_votes': user_votes,
         'votes_remaining': votes_remaining,
         'social_accounts': google_accounts,
         'has_google_account': has_google_account,
+        'achievements': achievements,
     }
     
     return render(request, 'films_app/profile.html', context)
@@ -111,19 +109,60 @@ def edit_profile(request):
         profile.contact_email = request.POST.get('contact_email', '')
         profile.use_google_email_for_contact = 'use_google_email_for_contact' in request.POST
         
+        # Cinema preferences
+        profile.favorite_cinema = request.POST.get('favorite_cinema', '')
+        profile.cinema_frequency = request.POST.get('cinema_frequency', 'NS')
+        profile.viewing_companions = request.POST.get('viewing_companions', 'NS')
+        profile.viewing_time = request.POST.get('viewing_time', 'NS')
+        profile.price_sensitivity = request.POST.get('price_sensitivity', 'NS')
+        profile.format_preference = request.POST.get('format_preference', 'NS')
+        profile.travel_distance = request.POST.get('travel_distance', '')
+        profile.cinema_amenities = request.POST.get('cinema_amenities', '')
+        profile.film_genres = request.POST.get('film_genres', '')
+        
         # Demographic info
         profile.location = request.POST.get('location', '')
         profile.gender = request.POST.get('gender', 'NS')
         profile.age_range = request.POST.get('age_range', 'NS')
         
-        # Privacy settings
+        # Existing privacy settings
         profile.location_privacy = request.POST.get('location_privacy', 'private')
         profile.gender_privacy = request.POST.get('gender_privacy', 'private')
         profile.age_privacy = request.POST.get('age_privacy', 'private')
         profile.votes_privacy = request.POST.get('votes_privacy', 'public')
         
+        # New privacy settings
+        profile.favorite_cinema_privacy = request.POST.get('favorite_cinema_privacy', 'private')
+        profile.cinema_frequency_privacy = request.POST.get('cinema_frequency_privacy', 'private')
+        profile.viewing_companions_privacy = request.POST.get('viewing_companions_privacy', 'private')
+        profile.viewing_time_privacy = request.POST.get('viewing_time_privacy', 'private')
+        profile.price_sensitivity_privacy = request.POST.get('price_sensitivity_privacy', 'private')
+        profile.format_preference_privacy = request.POST.get('format_preference_privacy', 'private')
+        profile.travel_distance_privacy = request.POST.get('travel_distance_privacy', 'private')
+        profile.cinema_amenities_privacy = request.POST.get('cinema_amenities_privacy', 'private')
+        profile.film_genres_privacy = request.POST.get('film_genres_privacy', 'private')
+        
         profile.save()
-        messages.success(request, 'Profile updated successfully!')
+        
+        # Check if profile is complete and award achievement if needed
+        if profile.is_profile_complete():
+            # Check if user already has this achievement
+            from films_app.models import Achievement
+            achievement, created = Achievement.objects.get_or_create(
+                user=request.user,
+                achievement_type='profile_complete'
+            )
+            
+            if created:
+                messages.success(
+                    request, 
+                    mark_safe('Profile updated successfully! <span class="ms-2 badge bg-success">Achievement Unlocked: Profile Completed</span>')
+                )
+            else:
+                messages.success(request, 'Profile updated successfully!')
+        else:
+            messages.success(request, 'Profile updated successfully!')
+            
         return redirect('films_app:profile')
     
     return render(request, 'films_app/edit_profile.html', {'profile': request.user.profile})

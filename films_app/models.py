@@ -103,8 +103,62 @@ class UserProfile(models.Model):
         ('private', 'Private - Visible to only me')
     ]
     
+    # Viewing frequency choices
+    VIEWING_FREQUENCY_CHOICES = [
+        ('weekly', 'Weekly or more'),
+        ('monthly', 'Monthly'),
+        ('quarterly', 'Every few months'),
+        ('yearly', 'A few times a year'),
+        ('rarely', 'Rarely'),
+        ('NS', 'Prefer not to say')
+    ]
+    
+    # Viewing companion choices
+    VIEWING_COMPANION_CHOICES = [
+        ('alone', 'Usually alone'),
+        ('partner', 'With partner/spouse'),
+        ('family', 'With family'),
+        ('friends', 'With friends'),
+        ('varies', 'It varies'),
+        ('NS', 'Prefer not to say')
+    ]
+    
+    # Viewing time preferences
+    VIEWING_TIME_CHOICES = [
+        ('weekday_day', 'Weekday daytime'),
+        ('weekday_evening', 'Weekday evening'),
+        ('weekend_day', 'Weekend daytime'),
+        ('weekend_evening', 'Weekend evening'),
+        ('varies', 'It varies'),
+        ('NS', 'Prefer not to say')
+    ]
+    
+    # Price sensitivity
+    PRICE_SENSITIVITY_CHOICES = [
+        ('full', 'Willing to pay full price'),
+        ('discount', 'Prefer discount days/times'),
+        ('special', 'Only for special films/events'),
+        ('varies', 'It depends on the film'),
+        ('NS', 'Prefer not to say')
+    ]
+    
+    # Format preferences
+    FORMAT_PREFERENCE_CHOICES = [
+        ('standard', 'Standard screening'),
+        ('imax', 'IMAX'),
+        ('3d', '3D'),
+        ('premium', 'Premium (recliner seats, etc.)'),
+        ('varies', 'Depends on the film'),
+        ('NS', 'Prefer not to say')
+    ]
+    
     # Fields with privacy settings
-    PRIVACY_FIELDS = ['location', 'gender', 'age', 'votes']
+    PRIVACY_FIELDS = [
+        'location', 'gender', 'age', 'votes', 'cinema_frequency', 
+        'favorite_cinema', 'viewing_companions', 'viewing_time', 
+        'price_sensitivity', 'format_preference', 'travel_distance',
+        'cinema_amenities', 'film_genres'
+    ]
     
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
     bio = models.TextField(blank=True, null=True)
@@ -117,16 +171,38 @@ class UserProfile(models.Model):
     contact_email = models.EmailField(blank=True, null=True, help_text="Email address for notifications (if different from account email)")
     use_google_email_for_contact = models.BooleanField(default=True, help_text="Use Google email for contact purposes")
     
-    # Demographic information
-    location = models.CharField(max_length=100, blank=True, null=True)
+    # Existing demographic information
+    location = models.CharField(max_length=100, blank=True, null=True, help_text="Your city, town or region in the UK")
     gender = models.CharField(max_length=2, choices=GENDER_CHOICES, default='NS')
     age_range = models.CharField(max_length=5, choices=AGE_RANGE_CHOICES, default='NS')
     
-    # Privacy settings
+    # New cinema-specific demographic information
+    favorite_cinema = models.CharField(max_length=200, blank=True, null=True, help_text="Your preferred cinema or chain")
+    cinema_frequency = models.CharField(max_length=10, choices=VIEWING_FREQUENCY_CHOICES, default='NS', help_text="How often do you go to the cinema?")
+    viewing_companions = models.CharField(max_length=10, choices=VIEWING_COMPANION_CHOICES, default='NS', help_text="Who do you usually go to the cinema with?")
+    viewing_time = models.CharField(max_length=20, choices=VIEWING_TIME_CHOICES, default='NS', help_text="When do you prefer to go to the cinema?")
+    price_sensitivity = models.CharField(max_length=10, choices=PRICE_SENSITIVITY_CHOICES, default='NS', help_text="How important is ticket price in your decision to see a film?")
+    format_preference = models.CharField(max_length=10, choices=FORMAT_PREFERENCE_CHOICES, default='NS', help_text="What format do you prefer to watch films in?")
+    travel_distance = models.CharField(max_length=50, blank=True, null=True, help_text="How far are you willing to travel for a film? (e.g., '5 miles', '30 minutes')")
+    cinema_amenities = models.TextField(blank=True, null=True, help_text="What cinema amenities are important to you? (e.g., food service, bar, reclining seats)")
+    film_genres = models.TextField(blank=True, null=True, help_text="What film genres do you prefer to see in the cinema?")
+    
+    # Existing privacy settings
     location_privacy = models.CharField(max_length=10, choices=PRIVACY_CHOICES, default='private')
     gender_privacy = models.CharField(max_length=10, choices=PRIVACY_CHOICES, default='private')
     age_privacy = models.CharField(max_length=10, choices=PRIVACY_CHOICES, default='private')
     votes_privacy = models.CharField(max_length=10, choices=PRIVACY_CHOICES, default='public')
+    
+    # New privacy settings
+    favorite_cinema_privacy = models.CharField(max_length=10, choices=PRIVACY_CHOICES, default='private')
+    cinema_frequency_privacy = models.CharField(max_length=10, choices=PRIVACY_CHOICES, default='private')
+    viewing_companions_privacy = models.CharField(max_length=10, choices=PRIVACY_CHOICES, default='private')
+    viewing_time_privacy = models.CharField(max_length=10, choices=PRIVACY_CHOICES, default='private')
+    price_sensitivity_privacy = models.CharField(max_length=10, choices=PRIVACY_CHOICES, default='private')
+    format_preference_privacy = models.CharField(max_length=10, choices=PRIVACY_CHOICES, default='private')
+    travel_distance_privacy = models.CharField(max_length=10, choices=PRIVACY_CHOICES, default='private')
+    cinema_amenities_privacy = models.CharField(max_length=10, choices=PRIVACY_CHOICES, default='private')
+    film_genres_privacy = models.CharField(max_length=10, choices=PRIVACY_CHOICES, default='private')
     
     def __str__(self):
         return f"Profile for {self.user.username}"
@@ -169,4 +245,103 @@ class UserProfile(models.Model):
         if field in self.PRIVACY_FIELDS and value in dict(self.PRIVACY_CHOICES):
             setattr(self, f"{field}_privacy", value)
             return True
-        return False 
+        return False
+    
+    def is_profile_complete(self):
+        """Check if the user profile is complete with meaningful information."""
+        # Check if all required fields have been filled out
+        required_fields = [
+            self.bio,
+            self.location,
+            self.favorite_cinema,
+            self.cinema_frequency != 'NS',
+            self.viewing_companions != 'NS',
+            self.viewing_time != 'NS',
+            self.price_sensitivity != 'NS',
+            self.format_preference != 'NS',
+            self.travel_distance,
+            self.cinema_amenities,
+            self.film_genres,
+            self.gender != 'NS',
+            self.age_range != 'NS'
+        ]
+        
+        # Profile is complete if at least 80% of fields are filled
+        return sum(bool(field) for field in required_fields) >= 10
+    
+    def profile_completion_percentage(self):
+        """Calculate the percentage of profile completion."""
+        required_fields = [
+            self.bio,
+            self.location,
+            self.favorite_cinema,
+            self.cinema_frequency != 'NS',
+            self.viewing_companions != 'NS',
+            self.viewing_time != 'NS',
+            self.price_sensitivity != 'NS',
+            self.format_preference != 'NS',
+            self.travel_distance,
+            self.cinema_amenities,
+            self.film_genres,
+            self.gender != 'NS',
+            self.age_range != 'NS'
+        ]
+        
+        completed = sum(bool(field) for field in required_fields)
+        total = len(required_fields)
+        
+        return int((completed / total) * 100)
+
+
+class Achievement(models.Model):
+    """Model for tracking user achievements."""
+    ACHIEVEMENT_TYPES = [
+        ('profile_complete', 'Profile Completed'),
+        ('first_vote', 'First Vote'),
+        ('ten_votes', '10 Votes'),
+        ('fifty_votes', '50 Votes'),
+        ('first_tag', 'First Genre Tag'),
+        ('tag_approved', 'Genre Tag Approved'),
+        ('cinema_expert', 'Cinema Expert'),
+    ]
+    
+    ACHIEVEMENT_DESCRIPTIONS = {
+        'profile_complete': 'Completed your profile with detailed cinema preferences',
+        'first_vote': 'Cast your first vote for a film',
+        'ten_votes': 'Voted for 10 different films',
+        'fifty_votes': 'Voted for 50 different films',
+        'first_tag': 'Added your first genre tag to a film',
+        'tag_approved': 'Had a genre tag approved by moderators',
+        'cinema_expert': 'Contributed significantly to the community',
+    }
+    
+    ACHIEVEMENT_ICONS = {
+        'profile_complete': 'fa-user-check',
+        'first_vote': 'fa-thumbs-up',
+        'ten_votes': 'fa-award',
+        'fifty_votes': 'fa-trophy',
+        'first_tag': 'fa-tag',
+        'tag_approved': 'fa-check-circle',
+        'cinema_expert': 'fa-film',
+    }
+    
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='achievements')
+    achievement_type = models.CharField(max_length=50, choices=ACHIEVEMENT_TYPES)
+    date_achieved = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        unique_together = ('user', 'achievement_type')
+        ordering = ['achievement_type']
+    
+    def __str__(self):
+        return f"{self.user.username} - {self.get_achievement_type_display()}"
+    
+    @property
+    def description(self):
+        """Get the description for this achievement."""
+        return self.ACHIEVEMENT_DESCRIPTIONS.get(self.achievement_type, '')
+    
+    @property
+    def icon(self):
+        """Get the Font Awesome icon for this achievement."""
+        return self.ACHIEVEMENT_ICONS.get(self.achievement_type, 'fa-award') 

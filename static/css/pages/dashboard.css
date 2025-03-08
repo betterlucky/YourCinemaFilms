@@ -143,4 +143,25 @@
 
 .time-period-selector .btn {
     flex: 1;
+}
+
+/* Achievement styles */
+.achievement-card {
+    transition: all 0.3s ease;
+    background-color: #fff;
+    border-color: #e0e0e0 !important;
+}
+
+.achievement-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    border-color: #ced4da !important;
+}
+
+.achievement-icon {
+    transition: all 0.3s ease;
+}
+
+.achievement-card:hover .achievement-icon {
+    transform: scale(1.1);
 } 

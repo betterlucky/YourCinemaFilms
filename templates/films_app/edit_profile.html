@@ -15,6 +15,28 @@
                     <form method="post">
                         {% csrf_token %}
                         
+                        {% if not profile.is_profile_complete %}
+                        <div class="alert alert-info mb-4" role="alert">
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-trophy me-3 fa-lg"></i>
+                                <div>
+                                    <strong>{% trans "Achievement Opportunity!" %}</strong>
+                                    <p class="mb-1">{% trans "Complete your profile with detailed information to earn the 'Profile Completed' achievement." %}</p>
+                                </div>
+                            </div>
+                            <div class="mt-3">
+                                <div class="d-flex justify-content-between mb-1">
+                                    <span>{% trans "Profile Completion" %}</span>
+                                    <span>{{ profile.profile_completion_percentage }}%</span>
+                                </div>
+                                <div class="progress" style="height: 10px;">
+                                    <div class="progress-bar bg-success" style="width: {{ profile.profile_completion_percentage }}%;" role="progressbar" aria-valuenow="{{ profile.profile_completion_percentage }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                </div>
+                                <small class="text-muted mt-1 d-block">{% trans "Fill out at least 80% of your profile to earn the achievement" %}</small>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
                         <h5 class="mb-3">{% trans "Basic Information" %}</h5>
                         
                         <div class="mb-3">
@@ -58,20 +80,129 @@
                         
                         <hr class="my-4">
                         
+                        <h5 class="mb-3">{% trans "Cinema Preferences" %}</h5>
+                        <p class="text-muted small">{% trans "This information helps us understand your cinema-going habits." %}</p>
+                        
+                        <div class="mb-3">
+                            <label for="favorite_cinema" class="form-label">{% trans "Favorite Cinema" %}</label>
+                            <input type="text" name="favorite_cinema" id="favorite_cinema" class="form-control" 
+                                   value="{{ profile.favorite_cinema|default:'' }}">
+                            <div class="form-text">{% trans "Your preferred cinema or chain (e.g., AMC, Regal, local independent)" %}</div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="cinema_frequency" class="form-label">{% trans "Cinema Frequency" %}</label>
+                                <select name="cinema_frequency" id="cinema_frequency" class="form-select">
+                                    {% for value, label in profile.VIEWING_FREQUENCY_CHOICES %}
+                                        <option value="{{ value }}" {% if profile.cinema_frequency == value %}selected{% endif %}>
+                                            {{ label }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                                <div class="form-text">{% trans "How often do you go to the cinema?" %}</div>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="viewing_companions" class="form-label">{% trans "Viewing Companions" %}</label>
+                                <select name="viewing_companions" id="viewing_companions" class="form-select">
+                                    {% for value, label in profile.VIEWING_COMPANION_CHOICES %}
+                                        <option value="{{ value }}" {% if profile.viewing_companions == value %}selected{% endif %}>
+                                            {{ label }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                                <div class="form-text">{% trans "Who do you usually go to the cinema with?" %}</div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="viewing_time" class="form-label">{% trans "Preferred Viewing Time" %}</label>
+                                <select name="viewing_time" id="viewing_time" class="form-select">
+                                    {% for value, label in profile.VIEWING_TIME_CHOICES %}
+                                        <option value="{{ value }}" {% if profile.viewing_time == value %}selected{% endif %}>
+                                            {{ label }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                                <div class="form-text">{% trans "When do you prefer to go to the cinema?" %}</div>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="price_sensitivity" class="form-label">{% trans "Price Sensitivity" %}</label>
+                                <select name="price_sensitivity" id="price_sensitivity" class="form-select">
+                                    {% for value, label in profile.PRICE_SENSITIVITY_CHOICES %}
+                                        <option value="{{ value }}" {% if profile.price_sensitivity == value %}selected{% endif %}>
+                                            {{ label }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                                <div class="form-text">{% trans "How important is ticket price in your decision?" %}</div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="format_preference" class="form-label">{% trans "Format Preference" %}</label>
+                                <select name="format_preference" id="format_preference" class="form-select">
+                                    {% for value, label in profile.FORMAT_PREFERENCE_CHOICES %}
+                                        <option value="{{ value }}" {% if profile.format_preference == value %}selected{% endif %}>
+                                            {{ label }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                                <div class="form-text">{% trans "What format do you prefer to watch films in?" %}</div>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="travel_distance" class="form-label">{% trans "Travel Distance" %}</label>
+                                <input type="text" name="travel_distance" id="travel_distance" class="form-control" 
+                                       value="{{ profile.travel_distance|default:'' }}">
+                                <div class="form-text">{% trans "How far are you willing to travel? (e.g., '5 miles', '30 minutes')" %}</div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="cinema_amenities" class="form-label">{% trans "Important Cinema Amenities" %}</label>
+                            <textarea name="cinema_amenities" id="cinema_amenities" class="form-control" rows="2">{{ profile.cinema_amenities|default:'' }}</textarea>
+                            <div class="form-text">{% trans "What amenities are important to you? (e.g., food service, bar, reclining seats)" %}</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="film_genres" class="form-label">{% trans "Preferred Cinema Genres" %}</label>
+                            <textarea name="film_genres" id="film_genres" class="form-control" rows="2">{{ profile.film_genres|default:'' }}</textarea>
+                            <div class="form-text">{% trans "What genres do you prefer to see in the cinema rather than at home?" %}</div>
+                        </div>
+                        
+                        <hr class="my-4">
+                        
                         <h5 class="mb-3">{% trans "Demographic Information" %}</h5>
                         <p class="text-muted small">{% trans "This information is optional and helps us understand our user base better." %}</p>
                         
                         <div class="mb-3">
                             <label for="location" class="form-label">{% trans "Location" %}</label>
-                            <input type="text" name="location" id="location" class="form-control" 
-                                   value="{{ profile.location|default:'' }}">
+                            <div class="input-group mb-2">
+                                <input type="text" name="location" id="location" class="form-control" 
+                                       value="{{ profile.location|default:'' }}" autocomplete="off"
+                                       placeholder="Start typing your city or town...">
+                                <button class="btn btn-outline-secondary" type="button" id="postcodeSearchBtn">
+                                    <i class="fas fa-search"></i> {% trans "Find by Postcode" %}
+                                </button>
+                            </div>
+                            <div class="d-flex justify-content-end mb-2">
+                                <button type="button" class="btn btn-sm btn-link" id="browseLocationsBtn">
+                                    <i class="fas fa-list"></i> {% trans "Browse Locations by Region" %}
+                                </button>
+                            </div>
+                            <div class="form-text">{% trans "Your city, town or region in the UK" %}</div>
                         </div>
                         
                         <div class="mb-3">
                             <label for="gender" class="form-label">{% trans "Gender" %}</label>
                             <select name="gender" id="gender" class="form-select">
                                 {% for value, label in profile.GENDER_CHOICES %}
-                                    <option value="{{ value }}" {% if profile.gender == value %}selected{% endif %}>
+                                    <option value="{{ value }}" {% if profile.gender == value or value == 'NS' and not profile.gender %}selected{% endif %}>
                                         {{ label }}
                                     </option>
                                 {% endfor %}
@@ -82,7 +213,7 @@
                             <label for="age_range" class="form-label">{% trans "Age Range" %}</label>
                             <select name="age_range" id="age_range" class="form-select">
                                 {% for value, label in profile.AGE_RANGE_CHOICES %}
-                                    <option value="{{ value }}" {% if profile.age_range == value %}selected{% endif %}>
+                                    <option value="{{ value }}" {% if profile.age_range == value or value == 'NS' and not profile.age_range %}selected{% endif %}>
                                         {{ label }}
                                     </option>
                                 {% endfor %}
@@ -94,44 +225,157 @@
                         <h5 class="mb-3">{% trans "Privacy Settings" %}</h5>
                         <p class="text-muted small">{% trans "Control who can see your profile information." %}</p>
                         
-                        <div class="mb-3">
-                            <label for="location_privacy" class="form-label">{% trans "Location Privacy" %}</label>
-                            <select name="location_privacy" id="location_privacy" class="form-select">
-                                {% for value, label in profile.PRIVACY_CHOICES %}
-                                    <option value="{{ value }}" {% if profile.location_privacy == value %}selected{% endif %}>
-                                        {{ label }}
-                                    </option>
-                                {% endfor %}
-                            </select>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="location_privacy" class="form-label">{% trans "Location Privacy" %}</label>
+                                <select name="location_privacy" id="location_privacy" class="form-select">
+                                    {% for value, label in profile.PRIVACY_CHOICES %}
+                                        <option value="{{ value }}" {% if profile.location_privacy == value %}selected{% endif %}>
+                                            {{ label }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="gender_privacy" class="form-label">{% trans "Gender Privacy" %}</label>
+                                <select name="gender_privacy" id="gender_privacy" class="form-select">
+                                    {% for value, label in profile.PRIVACY_CHOICES %}
+                                        <option value="{{ value }}" {% if profile.gender_privacy == value %}selected{% endif %}>
+                                            {{ label }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="age_privacy" class="form-label">{% trans "Age Range Privacy" %}</label>
+                                <select name="age_privacy" id="age_privacy" class="form-select">
+                                    {% for value, label in profile.PRIVACY_CHOICES %}
+                                        <option value="{{ value }}" {% if profile.age_privacy == value %}selected{% endif %}>
+                                            {{ label }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="votes_privacy" class="form-label">{% trans "Votes Privacy" %}</label>
+                                <select name="votes_privacy" id="votes_privacy" class="form-select">
+                                    {% for value, label in profile.PRIVACY_CHOICES %}
+                                        <option value="{{ value }}" {% if profile.votes_privacy == value %}selected{% endif %}>
+                                            {{ label }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <h6 class="mt-3 mb-2">{% trans "Cinema Preferences Privacy" %}</h6>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="favorite_cinema_privacy" class="form-label">{% trans "Favorite Cinema Privacy" %}</label>
+                                <select name="favorite_cinema_privacy" id="favorite_cinema_privacy" class="form-select">
+                                    {% for value, label in profile.PRIVACY_CHOICES %}
+                                        <option value="{{ value }}" {% if profile.favorite_cinema_privacy == value %}selected{% endif %}>
+                                            {{ label }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="cinema_frequency_privacy" class="form-label">{% trans "Cinema Frequency Privacy" %}</label>
+                                <select name="cinema_frequency_privacy" id="cinema_frequency_privacy" class="form-select">
+                                    {% for value, label in profile.PRIVACY_CHOICES %}
+                                        <option value="{{ value }}" {% if profile.cinema_frequency_privacy == value %}selected{% endif %}>
+                                            {{ label }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="viewing_companions_privacy" class="form-label">{% trans "Viewing Companions Privacy" %}</label>
+                                <select name="viewing_companions_privacy" id="viewing_companions_privacy" class="form-select">
+                                    {% for value, label in profile.PRIVACY_CHOICES %}
+                                        <option value="{{ value }}" {% if profile.viewing_companions_privacy == value %}selected{% endif %}>
+                                            {{ label }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="viewing_time_privacy" class="form-label">{% trans "Viewing Time Privacy" %}</label>
+                                <select name="viewing_time_privacy" id="viewing_time_privacy" class="form-select">
+                                    {% for value, label in profile.PRIVACY_CHOICES %}
+                                        <option value="{{ value }}" {% if profile.viewing_time_privacy == value %}selected{% endif %}>
+                                            {{ label }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="price_sensitivity_privacy" class="form-label">{% trans "Price Sensitivity Privacy" %}</label>
+                                <select name="price_sensitivity_privacy" id="price_sensitivity_privacy" class="form-select">
+                                    {% for value, label in profile.PRIVACY_CHOICES %}
+                                        <option value="{{ value }}" {% if profile.price_sensitivity_privacy == value %}selected{% endif %}>
+                                            {{ label }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="format_preference_privacy" class="form-label">{% trans "Format Preference Privacy" %}</label>
+                                <select name="format_preference_privacy" id="format_preference_privacy" class="form-select">
+                                    {% for value, label in profile.PRIVACY_CHOICES %}
+                                        <option value="{{ value }}" {% if profile.format_preference_privacy == value %}selected{% endif %}>
+                                            {{ label }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="travel_distance_privacy" class="form-label">{% trans "Travel Distance Privacy" %}</label>
+                                <select name="travel_distance_privacy" id="travel_distance_privacy" class="form-select">
+                                    {% for value, label in profile.PRIVACY_CHOICES %}
+                                        <option value="{{ value }}" {% if profile.travel_distance_privacy == value %}selected{% endif %}>
+                                            {{ label }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="cinema_amenities_privacy" class="form-label">{% trans "Cinema Amenities Privacy" %}</label>
+                                <select name="cinema_amenities_privacy" id="cinema_amenities_privacy" class="form-select">
+                                    {% for value, label in profile.PRIVACY_CHOICES %}
+                                        <option value="{{ value }}" {% if profile.cinema_amenities_privacy == value %}selected{% endif %}>
+                                            {{ label }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
                         </div>
                         
                         <div class="mb-3">
-                            <label for="gender_privacy" class="form-label">{% trans "Gender Privacy" %}</label>
-                            <select name="gender_privacy" id="gender_privacy" class="form-select">
+                            <label for="film_genres_privacy" class="form-label">{% trans "Film Genres Privacy" %}</label>
+                            <select name="film_genres_privacy" id="film_genres_privacy" class="form-select">
                                 {% for value, label in profile.PRIVACY_CHOICES %}
-                                    <option value="{{ value }}" {% if profile.gender_privacy == value %}selected{% endif %}>
-                                        {{ label }}
-                                    </option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label for="age_privacy" class="form-label">{% trans "Age Range Privacy" %}</label>
-                            <select name="age_privacy" id="age_privacy" class="form-select">
-                                {% for value, label in profile.PRIVACY_CHOICES %}
-                                    <option value="{{ value }}" {% if profile.age_privacy == value %}selected{% endif %}>
-                                        {{ label }}
-                                    </option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label for="votes_privacy" class="form-label">{% trans "Votes Privacy" %}</label>
-                            <select name="votes_privacy" id="votes_privacy" class="form-select">
-                                {% for value, label in profile.PRIVACY_CHOICES %}
-                                    <option value="{{ value }}" {% if profile.votes_privacy == value %}selected{% endif %}>
+                                    <option value="{{ value }}" {% if profile.film_genres_privacy == value %}selected{% endif %}>
                                         {{ label }}
                                     </option>
                                 {% endfor %}
@@ -152,4 +396,937 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // UK locations for suggestions - expanded to include more granular locations
+    const ukLocations = [
+        // Major cities
+        "London", "Birmingham", "Manchester", "Glasgow", "Edinburgh", "Liverpool", "Bristol", 
+        "Sheffield", "Leeds", "Newcastle upon Tyne", "Nottingham", "Cardiff", "Belfast",
+        "Leicester", "Coventry", "Bradford", "Stoke-on-Trent", "Wolverhampton", "Plymouth",
+        "Derby", "Southampton", "Brighton", "Hull", "Reading", "Preston", "Blackpool",
+        
+        // Regions
+        "Greater London", "West Midlands", "Greater Manchester", "West Yorkshire", 
+        "South Yorkshire", "Merseyside", "Tyne and Wear", "East Midlands", "South Wales",
+        "Northern Ireland", "East Anglia", "The Cotswolds", "The Lake District", "Scottish Highlands",
+        
+        // Counties
+        "Kent", "Essex", "Surrey", "Hampshire", "Berkshire", "Buckinghamshire", "Oxfordshire",
+        "Sussex", "Dorset", "Devon", "Cornwall", "Somerset", "Wiltshire", "Gloucestershire",
+        "Warwickshire", "Leicestershire", "Northamptonshire", "Cambridgeshire", "Norfolk", "Suffolk",
+        "Cheshire", "Lancashire", "Cumbria", "Durham", "Northumberland", "Yorkshire",
+        
+        // Medium-sized towns
+        "Oxford", "Cambridge", "York", "Bath", "Exeter", "Chester", "Warwick", "Durham",
+        "Lancaster", "Lincoln", "Cheltenham", "Harrogate", "Stratford-upon-Avon", "Windsor",
+        "Canterbury", "St Albans", "Winchester", "Salisbury", "Chichester", "Inverness",
+        "Aberdeen", "Dundee", "Perth", "Stirling", "Swansea", "Newport", "Wrexham",
+        "Bangor", "Londonderry", "Newry", "Armagh", "Lisburn", "Ipswich", "Norwich",
+        "Peterborough", "Swindon", "Luton", "Milton Keynes", "Northampton", "Bournemouth",
+        "Portsmouth", "Middlesbrough", "Sunderland", "Blackburn", "Bolton", "Oldham",
+        "Huddersfield", "Wakefield", "Doncaster", "Barnsley", "Grimsby", "Scunthorpe",
+        
+        // Cornwall towns and villages
+        "Penzance", "St Ives", "Falmouth", "Truro", "Newquay", "Padstow", "Bude", "Bodmin",
+        "Launceston", "Redruth", "Camborne", "Helston", "St Austell", "Wadebridge", "Liskeard",
+        "Looe", "Fowey", "Hayle", "Perranporth", "Tintagel", "Port Isaac", "Mevagissey",
+        "St Just", "Marazion", "Mousehole", "Polperro", "Boscastle", "Rock", "St Agnes",
+        "Porthleven", "Lostwithiel", "Camelford", "Saltash", "Torpoint", "Callington",
+        
+        // Devon towns and villages
+        "Torquay", "Paignton", "Brixham", "Dartmouth", "Totnes", "Kingsbridge", "Salcombe",
+        "Teignmouth", "Dawlish", "Exmouth", "Sidmouth", "Honiton", "Axminster", "Seaton",
+        "Budleigh Salterton", "Ottery St Mary", "Crediton", "Tiverton", "Cullompton",
+        "Okehampton", "Tavistock", "Ivybridge", "Ashburton", "Buckfastleigh", "Newton Abbot",
+        "Bovey Tracey", "Moretonhampstead", "Chagford", "Lynton", "Lynmouth", "Ilfracombe",
+        "Woolacombe", "Croyde", "Braunton", "Barnstaple", "Bideford", "Great Torrington",
+        "Holsworthy", "South Molton", "Appledore", "Westward Ho!", "Clovelly",
+        
+        // Dorset towns and villages
+        "Bournemouth", "Poole", "Weymouth", "Dorchester", "Bridport", "Lyme Regis",
+        "Sherborne", "Shaftesbury", "Blandford Forum", "Wimborne Minster", "Wareham",
+        "Swanage", "Beaminster", "Sturminster Newton", "Gillingham", "Verwood", "Ferndown",
+        "Christchurch", "West Bay", "Charmouth", "Abbotsbury", "Cerne Abbas", "Corfe Castle",
+        "Worth Matravers", "Lulworth Cove", "Studland", "Burton Bradstock", "Chesil Beach",
+        
+        // Somerset towns and villages
+        "Bath", "Wells", "Glastonbury", "Frome", "Taunton", "Yeovil", "Bridgwater",
+        "Weston-super-Mare", "Minehead", "Burnham-on-Sea", "Clevedon", "Portishead",
+        "Shepton Mallet", "Street", "Bruton", "Castle Cary", "Ilminster", "Chard",
+        "Crewkerne", "Langport", "Somerton", "Wellington", "Watchet", "Williton",
+        "Dulverton", "Porlock", "Dunster", "Cheddar", "Axbridge", "Wedmore", "Nether Stowey",
+        
+        // Lake District towns and villages
+        "Keswick", "Ambleside", "Windermere", "Bowness-on-Windermere", "Grasmere", "Hawkshead",
+        "Coniston", "Kendal", "Penrith", "Cockermouth", "Ulverston", "Grange-over-Sands",
+        "Cartmel", "Ravenglass", "Gosforth", "Seascale", "Silloth", "Maryport", "Workington",
+        "Whitehaven", "Cleator Moor", "Egremont", "Millom", "Broughton-in-Furness", "Dalton-in-Furness",
+        "Barrow-in-Furness", "Kirkby Lonsdale", "Sedbergh", "Appleby-in-Westmorland",
+        
+        // Yorkshire towns and villages
+        "Whitby", "Scarborough", "Filey", "Bridlington", "Beverley", "Driffield", "Malton",
+        "Pickering", "Helmsley", "Thirsk", "Northallerton", "Richmond", "Leyburn", "Hawes",
+        "Settle", "Skipton", "Ilkley", "Otley", "Wetherby", "Knaresborough", "Ripon",
+        "Pateley Bridge", "Grassington", "Hebden Bridge", "Haworth", "Holmfirth", "Penistone",
+        "Selby", "Tadcaster", "Boroughbridge", "Masham", "Bedale", "Stokesley", "Guisborough",
+        
+        // Scottish towns and villages
+        "St Andrews", "Anstruther", "Pittenweem", "Crail", "Elie", "North Berwick", "Dunbar",
+        "Eyemouth", "Melrose", "Kelso", "Jedburgh", "Hawick", "Galashiels", "Peebles",
+        "Moffat", "Dumfries", "Kirkcudbright", "Castle Douglas", "Stranraer", "Portpatrick",
+        "Wigtown", "Newton Stewart", "Oban", "Fort William", "Mallaig", "Kyle of Lochalsh",
+        "Portree", "Ullapool", "Thurso", "Wick", "Dornoch", "Nairn", "Elgin", "Lossiemouth",
+        "Fraserburgh", "Peterhead", "Stonehaven", "Montrose", "Arbroath", "Carnoustie",
+        
+        // Welsh towns and villages
+        "Conwy", "Llandudno", "Colwyn Bay", "Rhyl", "Prestatyn", "Mold", "Llangollen",
+        "Ruthin", "Denbigh", "St Asaph", "Holywell", "Flint", "Caernarfon", "Bangor",
+        "Beaumaris", "Holyhead", "Amlwch", "Llangefni", "Pwllheli", "Porthmadog",
+        "Criccieth", "Harlech", "Barmouth", "Dolgellau", "Bala", "Welshpool", "Newtown",
+        "Machynlleth", "Aberystwyth", "Cardigan", "New Quay", "Aberaeron", "Lampeter",
+        "Llandeilo", "Carmarthen", "Tenby", "Pembroke", "Haverfordwest", "St Davids",
+        "Fishguard", "Brecon", "Builth Wells", "Llandrindod Wells", "Rhayader", "Knighton",
+        "Abergavenny", "Monmouth", "Chepstow", "Usk", "Caerleon", "Pontypool", "Cwmbran",
+        "Ebbw Vale", "Tredegar", "Merthyr Tydfil", "Pontypridd", "Caerphilly", "Barry",
+        "Penarth", "Cowbridge", "Bridgend", "Porthcawl", "Port Talbot", "Neath", "Llanelli"
+    ];
+    
+    // Group locations by region for browsing
+    const locationsByRegion = {
+        "England - South West": [
+            // Cornwall
+            "Penzance", "St Ives", "Falmouth", "Truro", "Newquay", "Padstow", "Bude", "Bodmin",
+            "Launceston", "Redruth", "Camborne", "Helston", "St Austell", "Wadebridge", "Liskeard",
+            "Looe", "Fowey", "Hayle", "Perranporth", "Tintagel", "Port Isaac", "Mevagissey",
+            "St Just", "Marazion", "Mousehole", "Polperro", "Boscastle", "Rock", "St Agnes",
+            "Porthleven", "Lostwithiel", "Camelford", "Saltash", "Torpoint", "Callington",
+            // Devon
+            "Plymouth", "Exeter", "Torquay", "Paignton", "Brixham", "Dartmouth", "Totnes",
+            "Kingsbridge", "Salcombe", "Teignmouth", "Dawlish", "Exmouth", "Sidmouth", "Honiton",
+            "Axminster", "Seaton", "Budleigh Salterton", "Ottery St Mary", "Crediton", "Tiverton",
+            "Cullompton", "Okehampton", "Tavistock", "Ivybridge", "Ashburton", "Buckfastleigh",
+            "Newton Abbot", "Bovey Tracey", "Moretonhampstead", "Chagford", "Lynton", "Lynmouth",
+            "Ilfracombe", "Woolacombe", "Croyde", "Braunton", "Barnstaple", "Bideford", "Great Torrington",
+            "Holsworthy", "South Molton", "Appledore", "Westward Ho!", "Clovelly",
+            // Dorset
+            "Bournemouth", "Poole", "Weymouth", "Dorchester", "Bridport", "Lyme Regis",
+            "Sherborne", "Shaftesbury", "Blandford Forum", "Wimborne Minster", "Wareham",
+            "Swanage", "Beaminster", "Sturminster Newton", "Gillingham", "Verwood", "Ferndown",
+            "Christchurch", "West Bay", "Charmouth", "Abbotsbury", "Cerne Abbas", "Corfe Castle",
+            "Worth Matravers", "Lulworth Cove", "Studland", "Burton Bradstock", "Chesil Beach",
+            // Somerset
+            "Bath", "Wells", "Glastonbury", "Frome", "Taunton", "Yeovil", "Bridgwater",
+            "Weston-super-Mare", "Minehead", "Burnham-on-Sea", "Clevedon", "Portishead",
+            "Shepton Mallet", "Street", "Bruton", "Castle Cary", "Ilminster", "Chard",
+            "Crewkerne", "Langport", "Somerton", "Wellington", "Watchet", "Williton",
+            "Dulverton", "Porlock", "Dunster", "Cheddar", "Axbridge", "Wedmore", "Nether Stowey"
+        ],
+        "England - South East": [
+            "London", "Brighton", "Southampton", "Portsmouth", "Oxford", "Reading", "Windsor",
+            "Canterbury", "Dover", "Folkestone", "Margate", "Ramsgate", "Whitstable", "Herne Bay",
+            "Maidstone", "Tunbridge Wells", "Sevenoaks", "Rochester", "Chatham", "Gillingham",
+            "Ashford", "Hastings", "Eastbourne", "Worthing", "Chichester", "Bognor Regis",
+            "Littlehampton", "Crawley", "Horsham", "Guildford", "Woking", "Farnham", "Aldershot",
+            "Basingstoke", "Winchester", "Andover", "Salisbury", "Newbury", "Maidenhead",
+            "Slough", "High Wycombe", "Aylesbury", "Milton Keynes", "Luton", "St Albans"
+        ],
+        "England - Midlands": [
+            "Birmingham", "Coventry", "Leicester", "Nottingham", "Derby", "Stoke-on-Trent",
+            "Wolverhampton", "Worcester", "Hereford", "Shrewsbury", "Telford", "Stafford",
+            "Lichfield", "Tamworth", "Nuneaton", "Rugby", "Leamington Spa", "Stratford-upon-Avon",
+            "Warwick", "Solihull", "Redditch", "Kidderminster", "Bromsgrove", "Evesham",
+            "Malvern", "Loughborough", "Melton Mowbray", "Hinckley", "Coalville", "Market Harborough",
+            "Kettering", "Corby", "Wellingborough", "Northampton", "Daventry", "Towcester",
+            "Lincoln", "Boston", "Skegness", "Grantham", "Sleaford", "Stamford", "Spalding",
+            "Grimsby", "Scunthorpe", "Mansfield", "Newark", "Worksop", "Retford", "Chesterfield"
+        ],
+        "England - North West": [
+            "Manchester", "Liverpool", "Blackpool", "Preston", "Lancaster", "Blackburn", "Bolton",
+            "Wigan", "Warrington", "Chester", "Crewe", "Macclesfield", "Stockport", "Oldham",
+            "Rochdale", "Bury", "Salford", "Southport", "St Helens", "Widnes", "Runcorn",
+            "Barrow-in-Furness", "Kendal", "Carlisle", "Workington", "Whitehaven", "Penrith",
+            "Keswick", "Ambleside", "Windermere", "Bowness-on-Windermere", "Grasmere", "Hawkshead",
+            "Coniston", "Ulverston", "Grange-over-Sands", "Cartmel", "Ravenglass", "Gosforth",
+            "Seascale", "Silloth", "Maryport", "Cockermouth", "Cleator Moor", "Egremont", "Millom"
+        ],
+        "England - North East & Yorkshire": [
+            "Newcastle upon Tyne", "Sunderland", "Durham", "Middlesbrough", "York", "Leeds",
+            "Sheffield", "Bradford", "Huddersfield", "Wakefield", "Doncaster", "Barnsley",
+            "Hull", "Scarborough", "Whitby", "Filey", "Bridlington", "Beverley", "Driffield",
+            "Malton", "Pickering", "Helmsley", "Thirsk", "Northallerton", "Richmond", "Leyburn",
+            "Hawes", "Settle", "Skipton", "Ilkley", "Otley", "Wetherby", "Knaresborough", "Ripon",
+            "Pateley Bridge", "Grassington", "Hebden Bridge", "Haworth", "Holmfirth", "Penistone",
+            "Selby", "Tadcaster", "Boroughbridge", "Masham", "Bedale", "Stokesley", "Guisborough",
+            "Darlington", "Hartlepool", "Stockton-on-Tees", "Bishop Auckland", "Hexham", "Alnwick",
+            "Berwick-upon-Tweed", "Morpeth", "Ashington", "Blyth"
+        ],
+        "Scotland": [
+            "Edinburgh", "Glasgow", "Aberdeen", "Dundee", "Inverness", "Perth", "Stirling",
+            "St Andrews", "Anstruther", "Pittenweem", "Crail", "Elie", "North Berwick", "Dunbar",
+            "Eyemouth", "Melrose", "Kelso", "Jedburgh", "Hawick", "Galashiels", "Peebles",
+            "Moffat", "Dumfries", "Kirkcudbright", "Castle Douglas", "Stranraer", "Portpatrick",
+            "Wigtown", "Newton Stewart", "Oban", "Fort William", "Mallaig", "Kyle of Lochalsh",
+            "Portree", "Ullapool", "Thurso", "Wick", "Dornoch", "Nairn", "Elgin", "Lossiemouth",
+            "Fraserburgh", "Peterhead", "Stonehaven", "Montrose", "Arbroath", "Carnoustie"
+        ],
+        "Wales": [
+            "Cardiff", "Swansea", "Newport", "Wrexham", "Bangor", "Conwy", "Llandudno",
+            "Colwyn Bay", "Rhyl", "Prestatyn", "Mold", "Llangollen", "Ruthin", "Denbigh",
+            "St Asaph", "Holywell", "Flint", "Caernarfon", "Beaumaris", "Holyhead", "Amlwch",
+            "Llangefni", "Pwllheli", "Porthmadog", "Criccieth", "Harlech", "Barmouth", "Dolgellau",
+            "Bala", "Welshpool", "Newtown", "Machynlleth", "Aberystwyth", "Cardigan", "New Quay",
+            "Aberaeron", "Lampeter", "Llandeilo", "Carmarthen", "Tenby", "Pembroke", "Haverfordwest",
+            "St Davids", "Fishguard", "Brecon", "Builth Wells", "Llandrindod Wells", "Rhayader",
+            "Knighton", "Abergavenny", "Monmouth", "Chepstow", "Usk", "Caerleon", "Pontypool",
+            "Cwmbran", "Ebbw Vale", "Tredegar", "Merthyr Tydfil", "Pontypridd", "Caerphilly",
+            "Barry", "Penarth", "Cowbridge", "Bridgend", "Porthcawl", "Port Talbot", "Neath", "Llanelli"
+        ],
+        "Northern Ireland": [
+            "Belfast", "Londonderry", "Newry", "Armagh", "Lisburn", "Bangor", "Enniskillen",
+            "Omagh", "Strabane", "Limavady", "Coleraine", "Ballymena", "Antrim", "Larne",
+            "Carrickfergus", "Newtownabbey", "Banbridge", "Craigavon", "Portadown", "Lurgan",
+            "Newcastle", "Downpatrick", "Ballymoney", "Ballycastle", "Portrush", "Portstewart",
+            "Dungannon", "Cookstown", "Magherafelt", "Ballyclare", "Comber", "Holywood",
+            "Newtownards", "Donaghadee", "Warrenpoint", "Kilkeel", "Ballynahinch", "Dromore"
+        ]
+    };
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        const locationInput = document.getElementById('location');
+        
+        // Add event listener for postcode search button
+        const postcodeSearchBtn = document.getElementById('postcodeSearchBtn');
+        postcodeSearchBtn.addEventListener('click', function() {
+            // Show a modal dialog to enter postcode
+            showPostcodeModal();
+        });
+        
+        // Add event listener for browse locations button
+        const browseLocationsBtn = document.getElementById('browseLocationsBtn');
+        browseLocationsBtn.addEventListener('click', function() {
+            // Show a modal dialog to browse locations
+            showBrowseLocationsModal();
+        });
+        
+        // Add OpenStreetMap search button
+        const inputGroup = locationInput.closest('.input-group');
+        const osmSearchBtn = document.createElement('button');
+        osmSearchBtn.className = 'btn btn-outline-secondary';
+        osmSearchBtn.type = 'button';
+        osmSearchBtn.id = 'osmSearchBtn';
+        osmSearchBtn.innerHTML = '<i class="fas fa-map-marker-alt"></i> {% trans "Search Map" %}';
+        
+        // Insert the OSM search button after the postcode button
+        inputGroup.insertBefore(osmSearchBtn, postcodeSearchBtn.nextSibling);
+        
+        // Add event listener for OSM search button
+        osmSearchBtn.addEventListener('click', function() {
+            showOsmSearchModal();
+        });
+        
+        // Initialize the improved location search
+        initImprovedLocationSearch();
+    });
+    
+    // Function to initialize the improved location search
+    function initImprovedLocationSearch() {
+        const locationInput = document.getElementById('location');
+        const inputContainer = locationInput.closest('.input-group');
+        
+        // Create a wrapper div for the dropdown that will be positioned relative to the input
+        const dropdownWrapper = document.createElement('div');
+        dropdownWrapper.id = 'location-dropdown-wrapper';
+        dropdownWrapper.style.position = 'relative';
+        dropdownWrapper.style.width = '100%';
+        dropdownWrapper.style.marginTop = '-1px'; // Slight overlap with input
+        
+        // Insert the wrapper after the input group
+        inputContainer.parentNode.insertBefore(dropdownWrapper, inputContainer.nextSibling);
+        
+        // Sort locations alphabetically
+        ukLocations.sort();
+        
+        // Create a debounce function to limit how often the search runs
+        function debounce(func, wait) {
+            let timeout;
+            return function() {
+                const context = this;
+                const args = arguments;
+                clearTimeout(timeout);
+                timeout = setTimeout(function() {
+                    func.apply(context, args);
+                }, wait);
+            };
+        }
+        
+        // Function to perform the search
+        const performSearch = debounce(function(searchTerm) {
+            // Remove existing dropdown
+            removeLocationSearchDropdown();
+            
+            if (searchTerm.length < 2) return;
+            
+            // Find exact matches first (starting with the search term)
+            let exactMatches = ukLocations.filter(location => 
+                location.toLowerCase().startsWith(searchTerm)
+            );
+            
+            // Then find partial matches (containing the search term)
+            let partialMatches = ukLocations.filter(location => 
+                !location.toLowerCase().startsWith(searchTerm) && 
+                location.toLowerCase().includes(searchTerm)
+            );
+            
+            // Combine exact matches first, then partial matches
+            let matchingLocations = [...exactMatches, ...partialMatches].slice(0, 10);
+            
+            if (matchingLocations.length > 0) {
+                showLocationSearchDropdown(matchingLocations);
+            }
+        }, 200); // 200ms debounce time
+        
+        // Add input event listener
+        locationInput.addEventListener('input', function(e) {
+            const searchTerm = e.target.value.toLowerCase().trim();
+            performSearch(searchTerm);
+        });
+        
+        // Add focus event listener to show dropdown when input is focused
+        locationInput.addEventListener('focus', function(e) {
+            const searchTerm = e.target.value.toLowerCase().trim();
+            if (searchTerm.length >= 2) {
+                performSearch(searchTerm);
+            }
+        });
+        
+        // Hide dropdown when clicking outside
+        document.addEventListener('click', function(e) {
+            if (e.target !== locationInput && document.getElementById('location-search-dropdown')) {
+                removeLocationSearchDropdown();
+            }
+        });
+        
+        // Prevent form submission on Enter key in location input
+        locationInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                // If dropdown is visible and has items
+                const dropdown = document.getElementById('location-search-dropdown');
+                if (dropdown && dropdown.children.length > 0) {
+                    e.preventDefault(); // Prevent form submission
+                    
+                    // Select the first item in the dropdown
+                    dropdown.children[0].click();
+                }
+            }
+        });
+    }
+    
+    // Function to show location search dropdown
+    function showLocationSearchDropdown(locations) {
+        // Remove existing dropdown if any
+        removeLocationSearchDropdown();
+        
+        const locationInput = document.getElementById('location');
+        const dropdownWrapper = document.getElementById('location-dropdown-wrapper');
+        
+        // Create dropdown
+        const dropdown = document.createElement('div');
+        dropdown.id = 'location-search-dropdown';
+        dropdown.className = 'list-group';
+        dropdown.style.position = 'absolute';
+        dropdown.style.width = '100%';
+        dropdown.style.maxHeight = '200px';
+        dropdown.style.overflowY = 'auto';
+        dropdown.style.zIndex = '1000';
+        dropdown.style.boxShadow = '0 4px 8px rgba(0,0,0,0.1)';
+        dropdown.style.top = '0';
+        dropdown.style.left = '0';
+        dropdown.style.borderTopLeftRadius = '0';
+        dropdown.style.borderTopRightRadius = '0';
+        
+        // Add locations to dropdown
+        locations.forEach(location => {
+            const item = document.createElement('button');
+            item.type = 'button';
+            item.className = 'list-group-item list-group-item-action';
+            item.textContent = location;
+            
+            // Highlight the matching part of the text
+            const searchTerm = locationInput.value.toLowerCase().trim();
+            if (searchTerm.length >= 2) {
+                const index = location.toLowerCase().indexOf(searchTerm);
+                if (index >= 0) {
+                    const before = location.substring(0, index);
+                    const match = location.substring(index, index + searchTerm.length);
+                    const after = location.substring(index + searchTerm.length);
+                    item.innerHTML = before + '<strong>' + match + '</strong>' + after;
+                }
+            }
+            
+            item.addEventListener('click', function() {
+                locationInput.value = location;
+                removeLocationSearchDropdown();
+            });
+            dropdown.appendChild(item);
+        });
+        
+        // Append dropdown to the wrapper
+        dropdownWrapper.appendChild(dropdown);
+    }
+    
+    // Function to remove location search dropdown
+    function removeLocationSearchDropdown() {
+        const dropdown = document.getElementById('location-search-dropdown');
+        if (dropdown) {
+            dropdown.parentNode.removeChild(dropdown);
+        }
+    }
+    
+    // Function to show the browse locations modal
+    function showBrowseLocationsModal() {
+        // Create modal if it doesn't exist
+        if (!document.getElementById('browseLocationsModal')) {
+            // Create modal HTML
+            const modalHTML = `
+                <div class="modal fade" id="browseLocationsModal" tabindex="-1" aria-labelledby="browseLocationsModalLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="browseLocationsModalLabel">Browse UK Locations</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <div class="list-group" id="region-list">
+                                            <!-- Will be populated with regions -->
+                                        </div>
+                                    </div>
+                                    <div class="col-md-8">
+                                        <div class="input-group mb-3">
+                                            <input type="text" class="form-control" id="location-filter" placeholder="Filter locations...">
+                                            <button class="btn btn-outline-secondary" type="button" id="clear-filter">Clear</button>
+                                        </div>
+                                        <div class="list-group" id="location-list" style="max-height: 400px; overflow-y: auto;">
+                                            <!-- Will be populated with locations -->
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Append modal to body
+            const modalContainer = document.createElement('div');
+            modalContainer.innerHTML = modalHTML;
+            document.body.appendChild(modalContainer);
+            
+            // Populate regions
+            const regionList = document.getElementById('region-list');
+            Object.keys(locationsByRegion).forEach((region, index) => {
+                const item = document.createElement('button');
+                item.type = 'button';
+                item.className = 'list-group-item list-group-item-action' + (index === 0 ? ' active' : '');
+                item.textContent = region;
+                item.addEventListener('click', function() {
+                    // Set active class
+                    document.querySelectorAll('#region-list .list-group-item').forEach(el => {
+                        el.classList.remove('active');
+                    });
+                    this.classList.add('active');
+                    
+                    // Show locations for this region
+                    showLocationsForRegion(region);
+                });
+                regionList.appendChild(item);
+            });
+            
+            // Add event listener for location filter
+            document.getElementById('location-filter').addEventListener('input', function() {
+                const activeRegion = document.querySelector('#region-list .active').textContent;
+                showLocationsForRegion(activeRegion, this.value);
+            });
+            
+            // Add event listener for clear filter button
+            document.getElementById('clear-filter').addEventListener('click', function() {
+                document.getElementById('location-filter').value = '';
+                const activeRegion = document.querySelector('#region-list .active').textContent;
+                showLocationsForRegion(activeRegion);
+            });
+            
+            // Show locations for first region by default
+            showLocationsForRegion(Object.keys(locationsByRegion)[0]);
+        }
+        
+        // Show the modal
+        const browseLocationsModal = new bootstrap.Modal(document.getElementById('browseLocationsModal'));
+        browseLocationsModal.show();
+    }
+    
+    // Function to show locations for a specific region
+    function showLocationsForRegion(region, filterText = '') {
+        const locationList = document.getElementById('location-list');
+        locationList.innerHTML = '';
+        
+        // Get locations for this region
+        let locations = locationsByRegion[region] || [];
+        
+        // Apply filter if provided
+        if (filterText) {
+            const filter = filterText.toLowerCase();
+            locations = locations.filter(location => location.toLowerCase().includes(filter));
+        }
+        
+        // Sort locations alphabetically
+        locations.sort();
+        
+        // Add locations to list
+        if (locations.length > 0) {
+            locations.forEach(location => {
+                const item = document.createElement('button');
+                item.type = 'button';
+                item.className = 'list-group-item list-group-item-action';
+                item.textContent = location;
+                item.addEventListener('click', function() {
+                    // Set location input value
+                    document.getElementById('location').value = location;
+                    
+                    // Close modal
+                    bootstrap.Modal.getInstance(document.getElementById('browseLocationsModal')).hide();
+                });
+                locationList.appendChild(item);
+            });
+        } else {
+            const item = document.createElement('div');
+            item.className = 'list-group-item text-center text-muted';
+            item.textContent = 'No locations found';
+            locationList.appendChild(item);
+        }
+    }
+    
+    // Function to show the OpenStreetMap search modal
+    function showOsmSearchModal() {
+        // Create modal if it doesn't exist
+        if (!document.getElementById('osmSearchModal')) {
+            const modalHTML = `
+                <div class="modal fade" id="osmSearchModal" tabindex="-1" aria-labelledby="osmSearchModalLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="osmSearchModalLabel">Search UK Locations</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="mb-3">
+                                    <label for="osmSearchInput" class="form-label">Search for a location in the UK</label>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" id="osmSearchInput" 
+                                               placeholder="Enter town, city, village, or postcode...">
+                                        <button class="btn btn-primary" type="button" id="osmSearchButton">
+                                            <i class="fas fa-search"></i> Search
+                                        </button>
+                                    </div>
+                                    <div class="form-text">Search for any UK location by name or address</div>
+                                </div>
+                                <div id="osmSearchResults" class="d-none">
+                                    <h6>Results:</h6>
+                                    <div class="list-group" id="osmResultsList"></div>
+                                </div>
+                                <div id="osmSearchError" class="d-none alert alert-danger"></div>
+                                <div id="osmSearchLoading" class="d-none text-center my-3">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                    <p class="mt-2">Searching...</p>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Append modal to body
+            const modalContainer = document.createElement('div');
+            modalContainer.innerHTML = modalHTML;
+            document.body.appendChild(modalContainer);
+            
+            // Add event listener for search button
+            document.getElementById('osmSearchButton').addEventListener('click', function() {
+                searchOsmLocations();
+            });
+            
+            // Add event listener for Enter key in search input
+            document.getElementById('osmSearchInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    searchOsmLocations();
+                }
+            });
+        }
+        
+        // Reset the modal
+        document.getElementById('osmSearchInput').value = '';
+        document.getElementById('osmSearchResults').classList.add('d-none');
+        document.getElementById('osmSearchError').classList.add('d-none');
+        document.getElementById('osmSearchLoading').classList.add('d-none');
+        document.getElementById('osmResultsList').innerHTML = '';
+        
+        // Show the modal
+        const osmSearchModal = new bootstrap.Modal(document.getElementById('osmSearchModal'));
+        osmSearchModal.show();
+    }
+    
+    // Function to search locations using OpenStreetMap's Nominatim API
+    function searchOsmLocations() {
+        const searchInput = document.getElementById('osmSearchInput').value.trim();
+        const resultsDiv = document.getElementById('osmSearchResults');
+        const resultsList = document.getElementById('osmResultsList');
+        const errorDiv = document.getElementById('osmSearchError');
+        const loadingDiv = document.getElementById('osmSearchLoading');
+        
+        // Hide previous results/errors and show loading
+        resultsDiv.classList.add('d-none');
+        errorDiv.classList.add('d-none');
+        loadingDiv.classList.remove('d-none');
+        resultsList.innerHTML = '';
+        
+        // Validate search input
+        if (!searchInput) {
+            errorDiv.textContent = 'Please enter a location to search for';
+            errorDiv.classList.remove('d-none');
+            loadingDiv.classList.add('d-none');
+            return;
+        }
+        
+        // Build the Nominatim API URL with UK country code filter
+        const apiUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchInput)}&countrycodes=gb&limit=10`;
+        
+        // Call the Nominatim API
+        fetch(apiUrl, {
+            headers: {
+                // Add a user agent as per Nominatim usage policy
+                'User-Agent': 'YourCinemaFilms/1.0'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Search failed');
+            }
+            return response.json();
+        })
+        .then(data => {
+            // Hide loading
+            loadingDiv.classList.add('d-none');
+            
+            if (data.length === 0) {
+                // No results found
+                errorDiv.textContent = 'No locations found matching your search';
+                errorDiv.classList.remove('d-none');
+                return;
+            }
+            
+            // Process and display results
+            data.forEach(location => {
+                // Extract the location details
+                const name = location.display_name;
+                const type = location.type;
+                const importance = location.importance;
+                
+                // Create a list item for this location
+                const item = document.createElement('button');
+                item.type = 'button';
+                item.className = 'list-group-item list-group-item-action';
+                
+                // Format the display name to be more user-friendly
+                const nameParts = name.split(', ');
+                let displayName = nameParts[0];
+                let locationDetails = '';
+                
+                // For UK addresses, try to extract the town/city and county
+                if (nameParts.length > 2) {
+                    // Look for common UK administrative divisions
+                    const countyIndex = nameParts.findIndex(part => 
+                        part.includes('County') || 
+                        part.includes('shire') || 
+                        part.includes('London') ||
+                        part.includes('West Midlands') ||
+                        part.includes('Greater Manchester') ||
+                        part.includes('Merseyside')
+                    );
+                    
+                    if (countyIndex > 0) {
+                        locationDetails = nameParts[countyIndex];
+                    }
+                }
+                
+                // Create HTML for the location item
+                item.innerHTML = `
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <strong>${displayName}</strong>
+                            ${locationDetails ? `<div class="text-muted small">${locationDetails}</div>` : ''}
+                        </div>
+                        <span class="badge bg-secondary">${type}</span>
+                    </div>
+                `;
+                
+                // Add event listener to use this location
+                item.addEventListener('click', function() {
+                    // Extract the most relevant part of the location name for our purposes
+                    let locationName = displayName;
+                    
+                    // For certain types, we want to use the administrative area instead
+                    if (type === 'house' || type === 'building' || type === 'residential') {
+                        // For residential addresses, use the town/city instead
+                        const cityIndex = nameParts.findIndex(part => 
+                            !part.match(/^\d/) && // Skip postcodes
+                            !part.includes('UK') && // Skip country
+                            part !== displayName && // Skip the first part (house/street)
+                            !part.includes('County') && // Skip county
+                            !part.includes('shire')
+                        );
+                        
+                        if (cityIndex > 0) {
+                            locationName = nameParts[cityIndex];
+                        }
+                    }
+                    
+                    // Set the location input value
+                    document.getElementById('location').value = locationName;
+                    
+                    // Close the modal
+                    bootstrap.Modal.getInstance(document.getElementById('osmSearchModal')).hide();
+                });
+                
+                resultsList.appendChild(item);
+            });
+            
+            // Show results
+            resultsDiv.classList.remove('d-none');
+        })
+        .catch(error => {
+            loadingDiv.classList.add('d-none');
+            errorDiv.textContent = `Error: ${error.message}`;
+            errorDiv.classList.remove('d-none');
+        });
+    }
+    
+    // Function to show the postcode search modal
+    function showPostcodeModal() {
+        // Create modal if it doesn't exist
+        if (!document.getElementById('postcodeModal')) {
+            const modalHTML = `
+                <div class="modal fade" id="postcodeModal" tabindex="-1" aria-labelledby="postcodeModalLabel" aria-hidden="true">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="postcodeModalLabel">Find Location by Postcode</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="mb-3">
+                                    <label for="postcodeInput" class="form-label">Enter UK Postcode</label>
+                                    <input type="text" class="form-control" id="postcodeInput" placeholder="e.g. SW1A 1AA">
+                                    <div class="form-text">Enter a valid UK postcode to find your location</div>
+                                </div>
+                                <div id="postcodeResults" class="d-none">
+                                    <h6>Results:</h6>
+                                    <div id="postcodeResultsContent" class="alert alert-info"></div>
+                                </div>
+                                <div id="postcodeError" class="d-none alert alert-danger"></div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                <button type="button" class="btn btn-primary" id="lookupPostcodeBtn">Look Up</button>
+                                <button type="button" class="btn btn-success d-none" id="useLocationBtn">Use This Location</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Append modal to body
+            const modalContainer = document.createElement('div');
+            modalContainer.innerHTML = modalHTML;
+            document.body.appendChild(modalContainer);
+            
+            // Add event listener for lookup button
+            document.getElementById('lookupPostcodeBtn').addEventListener('click', function() {
+                lookupPostcode();
+            });
+            
+            // Add event listener for use location button
+            document.getElementById('useLocationBtn').addEventListener('click', function() {
+                usePostcodeLocation();
+            });
+            
+            // Add event listener for Enter key in postcode input
+            document.getElementById('postcodeInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    lookupPostcode();
+                }
+            });
+        }
+        
+        // Reset the modal
+        document.getElementById('postcodeInput').value = '';
+        document.getElementById('postcodeResults').classList.add('d-none');
+        document.getElementById('postcodeError').classList.add('d-none');
+        document.getElementById('useLocationBtn').classList.add('d-none');
+        
+        // Show the modal
+        const postcodeModal = new bootstrap.Modal(document.getElementById('postcodeModal'));
+        postcodeModal.show();
+    }
+    
+    // Function to look up a postcode using the postcodes.io API
+    function lookupPostcode() {
+        const postcode = document.getElementById('postcodeInput').value.trim();
+        const resultsDiv = document.getElementById('postcodeResults');
+        const resultsContent = document.getElementById('postcodeResultsContent');
+        const errorDiv = document.getElementById('postcodeError');
+        const useLocationBtn = document.getElementById('useLocationBtn');
+        
+        // Hide previous results/errors
+        resultsDiv.classList.add('d-none');
+        errorDiv.classList.add('d-none');
+        useLocationBtn.classList.add('d-none');
+        
+        // Validate postcode format (basic validation)
+        if (!postcode || !isValidUKPostcode(postcode)) {
+            errorDiv.textContent = 'Please enter a valid UK postcode';
+            errorDiv.classList.remove('d-none');
+            return;
+        }
+        
+        // Show loading message
+        resultsContent.textContent = 'Looking up postcode...';
+        resultsDiv.classList.remove('d-none');
+        
+        // Call the postcodes.io API
+        fetch(`https://api.postcodes.io/postcodes/${encodeURIComponent(postcode)}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Postcode not found');
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Extract location information
+                const result = data.result;
+                const locationInfo = {
+                    postcode: result.postcode,
+                    parish: result.parish || '',
+                    ward: result.admin_ward || '',
+                    district: result.admin_district || '',
+                    county: result.admin_county || '',
+                    town: result.parish || result.admin_ward || result.admin_district,
+                    region: result.region || '',
+                    country: result.country || ''
+                };
+                
+                // Store all possible location names for selection
+                const locationNames = [];
+                
+                // Add the most specific location first (parish/ward level)
+                if (locationInfo.parish && !locationNames.includes(locationInfo.parish)) {
+                    locationNames.push(locationInfo.parish);
+                }
+                
+                if (locationInfo.ward && !locationNames.includes(locationInfo.ward)) {
+                    locationNames.push(locationInfo.ward);
+                }
+                
+                // Then add district/town level
+                if (locationInfo.district && !locationNames.includes(locationInfo.district)) {
+                    locationNames.push(locationInfo.district);
+                }
+                
+                // Then add county level
+                if (locationInfo.county && !locationNames.includes(locationInfo.county)) {
+                    locationNames.push(locationInfo.county);
+                }
+                
+                // Display the results with all location options
+                let locationHtml = '';
+                
+                if (locationNames.length > 0) {
+                    locationHtml = '<p><strong>Available Locations:</strong></p><div class="list-group mb-3">';
+                    locationNames.forEach((name, index) => {
+                        locationHtml += `
+                            <button type="button" class="list-group-item list-group-item-action location-option" 
+                                    data-location="${name}">
+                                ${name} ${index === 0 ? '<span class="badge bg-primary ms-2">Most Specific</span>' : ''}
+                            </button>
+                        `;
+                    });
+                    locationHtml += '</div>';
+                }
+                
+                // Add region and country info
+                locationHtml += `
+                    <p><strong>Region:</strong> ${locationInfo.region}</p>
+                    <p><strong>Country:</strong> ${locationInfo.country}</p>
+                `;
+                
+                resultsContent.innerHTML = locationHtml;
+                
+                // Add event listeners to location options
+                document.querySelectorAll('.location-option').forEach(button => {
+                    button.addEventListener('click', function() {
+                        const locationName = this.getAttribute('data-location');
+                        document.getElementById('location').value = locationName;
+                        bootstrap.Modal.getInstance(document.getElementById('postcodeModal')).hide();
+                    });
+                });
+                
+                // Store the most specific location data for later use
+                resultsContent.dataset.locationName = locationNames[0] || '';
+                
+                // Show the "Use This Location" button if we have at least one location
+                if (locationNames.length > 0) {
+                    useLocationBtn.classList.remove('d-none');
+                }
+            })
+            .catch(error => {
+                errorDiv.textContent = `Error: ${error.message}`;
+                errorDiv.classList.remove('d-none');
+                resultsDiv.classList.add('d-none');
+            });
+    }
+    
+    // Function to use the selected postcode location
+    function usePostcodeLocation() {
+        const resultsContent = document.getElementById('postcodeResultsContent');
+        const locationInput = document.getElementById('location');
+        const locationName = resultsContent.dataset.locationName;
+        
+        // Set the location input value to the most specific location
+        if (locationName) {
+            locationInput.value = locationName;
+        }
+        
+        // Close the modal
+        bootstrap.Modal.getInstance(document.getElementById('postcodeModal')).hide();
+    }
+    
+    // Basic UK postcode validation
+    function isValidUKPostcode(postcode) {
+        // This is a simplified regex for UK postcodes
+        const regex = /^[A-Z]{1,2}[0-9][A-Z0-9]? ?[0-9][A-Z]{2}$/i;
+        return regex.test(postcode);
+    }
+</script>
 {% endblock %} 

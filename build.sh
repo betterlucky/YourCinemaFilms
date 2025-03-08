@@ -46,6 +46,21 @@ python ensure_db.py || {
   echo "Database setup failed, but continuing..."
 }
 
+# Explicitly run migrations for films_app to ensure Achievement model is created
+echo "Running migrations for films_app..."
+python manage.py makemigrations films_app --noinput || {
+  echo "Making migrations for films_app failed, but continuing..."
+}
+python manage.py migrate films_app --noinput || {
+  echo "Migrating films_app failed, but continuing..."
+}
+
+# Run the comprehensive migrations script
+echo "Running comprehensive migrations script..."
+python run_migrations.py || {
+  echo "Comprehensive migrations failed, but continuing..."
+}
+
 # Update the site domain
 echo "Updating site domain..."
 python update_site_domain.py || {

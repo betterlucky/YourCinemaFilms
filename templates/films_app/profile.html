@@ -126,10 +126,45 @@
                 </div>
             </div>
             
+            <!-- Achievements Section -->
+            <div class="card shadow mt-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">{% trans "Achievements" %}</h5>
+                    <span class="badge bg-primary rounded-pill">{{ achievements|length }}</span>
+                </div>
+                <div class="card-body">
+                    {% if achievements %}
+                        <div class="row">
+                            {% for achievement in achievements %}
+                                <div class="col-md-6 mb-3">
+                                    <div class="achievement-card p-3 border rounded d-flex align-items-center">
+                                        <div class="achievement-icon me-3 d-flex align-items-center justify-content-center bg-primary text-white rounded-circle" 
+                                             style="width: 50px; height: 50px;">
+                                            <i class="fas {{ achievement.icon }} fa-lg"></i>
+                                        </div>
+                                        <div>
+                                            <h6 class="mb-1">{{ achievement.get_achievement_type_display }}</h6>
+                                            <p class="text-muted small mb-0">{{ achievement.description }}</p>
+                                            <small class="text-muted">{% trans "Achieved" %}: {{ achievement.date_achieved|date:"F j, Y" }}</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-trophy fa-3x text-muted mb-3"></i>
+                            <h5>{% trans "No achievements yet" %}</h5>
+                            <p class="text-muted">{% trans "Complete your profile, vote for films, and add genre tags to earn achievements!" %}</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            
             <div class="card shadow mt-4">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">{% trans "My Votes" %}</h5>
-                    <span class="badge bg-primary">{{ user.votes.count }}</span>
+                    <span class="badge bg-primary">{{ user_votes.count }}</span>
                 </div>
                 <div class="card-body">
                     {% with votes=user_votes %}
