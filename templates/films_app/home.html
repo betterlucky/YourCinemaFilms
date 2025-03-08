@@ -68,7 +68,7 @@
                         {% if votes_remaining > 0 %}
                             <span class="text-success">You have {{ votes_remaining }} vote{{ votes_remaining|pluralize }} remaining.</span>
                         {% else %}
-                            <span class="text-warning">You have used all your votes. Remove some votes to add new ones.</span>
+                            <span class="text-danger">You have used all your votes. You can change your allocated votes at any time.</span>
                         {% endif %}
                     </p>
                 </div>
