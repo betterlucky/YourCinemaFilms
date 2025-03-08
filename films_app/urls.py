@@ -23,6 +23,7 @@ urlpatterns = [
     path('manage-tags/', views.manage_genre_tags, name='manage_genre_tags'),
     path('charts/', views.charts, name='charts'),
     path('genres/', views.genre_analysis, name='genre_analysis'),
+    path('genres/compare/', views.genre_comparison, name='genre_comparison'),
     path('demographics/', views.demographic_analysis, name='demographic_analysis'),
     path('user/<str:username>/', views.user_profile_view, name='user_profile'),
     path('user-vote-status/', views.get_user_vote_status, name='get_user_vote_status'),

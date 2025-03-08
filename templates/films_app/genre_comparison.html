@@ -1,0 +1,357 @@
+{% extends 'base.html' %}
+{% load films_tags %}
+{% load static %}
+
+{% block title %}Genre Comparison - Films I Want To See{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <h1 class="mb-0">Genre Comparison</h1>
+            <p class="lead">Compare different genres to see what's popular</p>
+        </div>
+        <div class="col-md-6">
+            <form id="period-form" class="row g-3 justify-content-end">
+                <div class="col-md-6">
+                    <label for="period-select" class="form-label">Time Period</label>
+                    <select id="period-select" name="period" class="form-select">
+                        {% for period_option in periods %}
+                            <option value="{{ period_option.value }}" {% if period == period_option.value %}selected{% endif %}>{{ period_option.label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Genre Comparison Chart</h4>
+                </div>
+                <div class="card-body">
+                    <div id="comparison-chart-container" style="height: 400px;">
+                        <div class="text-center py-5 text-muted">
+                            <i class="fas fa-chart-bar fa-3x mb-3"></i>
+                            <p>Select genres to compare them</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <button id="export-comparison-btn" class="btn btn-outline-secondary" disabled>
+                        <i class="fas fa-download"></i> Export Chart
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header bg-secondary text-white">
+                    <h4 class="mb-0">Select Genres</h4>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <div class="input-group">
+                            <input type="text" id="genre-search" class="form-control" placeholder="Search genres...">
+                            <button class="btn btn-outline-secondary" type="button" id="clear-search">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="genre-selection-container" style="max-height: 400px; overflow-y: auto;">
+                        {% for genre in genres %}
+                            <div class="form-check genre-item">
+                                <input class="form-check-input genre-compare-checkbox" type="checkbox" value="{{ genre }}" id="genre-{{ forloop.counter }}">
+                                <label class="form-check-label" for="genre-{{ forloop.counter }}">
+                                    {{ genre }}
+                                </label>
+                            </div>
+                        {% endfor %}
+                    </div>
+                    <div class="mt-3">
+                        <button id="compare-genres-btn" class="btn btn-primary w-100">Compare Selected Genres</button>
+                        <button id="clear-selection-btn" class="btn btn-outline-secondary w-100 mt-2">Clear Selection</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Export Options Modal -->
+    <div class="modal fade" id="exportModal" tabindex="-1" aria-labelledby="exportModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="exportModalLabel">Export Chart Data</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Export Format</label>
+                        <select class="form-select" id="export-format">
+                            <option value="png">PNG Image</option>
+                            <option value="csv">CSV Data</option>
+                            <option value="json">JSON Data</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="do-export-btn">Export</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Chart.js is needed for the comparison chart -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<!-- FileSaver.js for export functionality -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+<script>
+    $(document).ready(function() {
+        let comparisonChart = null;
+        
+        // Handle genre search
+        $('#genre-search').on('input', function() {
+            const searchTerm = $(this).val().toLowerCase();
+            $('.genre-item').each(function() {
+                const genreName = $(this).find('label').text().toLowerCase();
+                if (genreName.includes(searchTerm)) {
+                    $(this).show();
+                } else {
+                    $(this).hide();
+                }
+            });
+        });
+        
+        // Clear search
+        $('#clear-search').on('click', function() {
+            $('#genre-search').val('');
+            $('.genre-item').show();
+        });
+        
+        // Clear selection
+        $('#clear-selection-btn').on('click', function() {
+            $('.genre-compare-checkbox').prop('checked', false);
+            if (comparisonChart) {
+                comparisonChart.destroy();
+                comparisonChart = null;
+            }
+            $('#comparison-chart-container').html('<div class="text-center py-5 text-muted"><i class="fas fa-chart-bar fa-3x mb-3"></i><p>Select genres to compare them</p></div>');
+            $('#export-comparison-btn').prop('disabled', true);
+        });
+        
+        // Handle genre comparison
+        $('#compare-genres-btn').on('click', function() {
+            const selectedGenres = [];
+            $('.genre-compare-checkbox:checked').each(function() {
+                selectedGenres.push($(this).val());
+            });
+            
+            if (selectedGenres.length === 0) {
+                alert('Please select at least one genre to compare');
+                return;
+            }
+            
+            // Show loading indicator
+            $('#comparison-chart-container').html('<div class="text-center py-5"><div class="spinner-border text-primary" role="status"></div><p class="mt-2">Loading comparison data...</p></div>');
+            
+            // Get the current period
+            const period = $('#period-select').val();
+            
+            // Fetch data for each genre
+            const promises = selectedGenres.map(genre => {
+                return $.ajax({
+                    url: '/api/charts/data/',
+                    data: { 
+                        genre: genre,
+                        period: period
+                    }
+                });
+            });
+            
+            Promise.all(promises)
+                .then(results => {
+                    // Process results
+                    const datasets = [];
+                    const allLabels = new Set();
+                    
+                    // Get all unique film labels
+                    results.forEach(result => {
+                        if (result.labels) {
+                            result.labels.forEach(label => allLabels.add(label));
+                        }
+                    });
+                    
+                    // Convert to array and sort alphabetically
+                    const labels = Array.from(allLabels).sort();
+                    
+                    // Create a dataset for each genre
+                    results.forEach((result, index) => {
+                        if (!result.labels || !result.data) return;
+                        
+                        const data = new Array(labels.length).fill(0);
+                        
+                        // Map the data to the correct positions
+                        result.labels.forEach((label, i) => {
+                            const labelIndex = labels.indexOf(label);
+                            if (labelIndex !== -1) {
+                                data[labelIndex] = result.data[i];
+                            }
+                        });
+                        
+                        datasets.push({
+                            label: selectedGenres[index],
+                            data: data,
+                            backgroundColor: getColorForIndex(index, 0.7),
+                            borderColor: getColorForIndex(index, 1),
+                            borderWidth: 1
+                        });
+                    });
+                    
+                    if (labels.length === 0) {
+                        $('#comparison-chart-container').html('<div class="alert alert-info">No data available for the selected genres and time period.</div>');
+                        return;
+                    }
+                    
+                    // Create the comparison chart
+                    const ctx = document.getElementById('comparison-chart-container').getContext('2d');
+                    
+                    if (comparisonChart) {
+                        comparisonChart.destroy();
+                    }
+                    
+                    comparisonChart = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: labels,
+                            datasets: datasets
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    ticks: {
+                                        precision: 0
+                                    }
+                                }
+                            },
+                            plugins: {
+                                title: {
+                                    display: true,
+                                    text: 'Genre Comparison by Film Votes'
+                                }
+                            }
+                        }
+                    });
+                    
+                    // Enable export button
+                    $('#export-comparison-btn').prop('disabled', false);
+                })
+                .catch(error => {
+                    console.error('Error fetching comparison data:', error);
+                    $('#comparison-chart-container').html('<div class="alert alert-danger">Error loading comparison data. Please try again later.</div>');
+                });
+        });
+        
+        // Handle export button click
+        $('#export-comparison-btn').on('click', function() {
+            $('#exportModal').modal('show');
+        });
+        
+        // Handle actual export
+        $('#do-export-btn').on('click', function() {
+            const format = $('#export-format').val();
+            
+            if (!comparisonChart) {
+                alert('No chart available to export');
+                return;
+            }
+            
+            if (format === 'png') {
+                // Export as PNG
+                const url = comparisonChart.toBase64Image();
+                const link = document.createElement('a');
+                link.download = 'genre-comparison-chart.png';
+                link.href = url;
+                link.click();
+            } else if (format === 'csv') {
+                // Export as CSV
+                const data = comparisonChart.data;
+                let csv = 'Label,';
+                
+                // Add dataset labels as header
+                data.datasets.forEach((dataset, i) => {
+                    csv += dataset.label || `Dataset ${i+1}`;
+                    if (i < data.datasets.length - 1) csv += ',';
+                });
+                csv += '\n';
+                
+                // Add data rows
+                data.labels.forEach((label, i) => {
+                    csv += `"${label}",`;
+                    data.datasets.forEach((dataset, j) => {
+                        csv += dataset.data[i];
+                        if (j < data.datasets.length - 1) csv += ',';
+                    });
+                    csv += '\n';
+                });
+                
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+                saveAs(blob, 'genre-comparison-data.csv');
+            } else if (format === 'json') {
+                // Export as JSON
+                const data = comparisonChart.data;
+                const jsonData = {
+                    labels: data.labels,
+                    datasets: data.datasets.map(dataset => ({
+                        label: dataset.label,
+                        data: dataset.data
+                    }))
+                };
+                
+                const blob = new Blob([JSON.stringify(jsonData, null, 2)], { type: 'application/json' });
+                saveAs(blob, 'genre-comparison-data.json');
+            }
+            
+            $('#exportModal').modal('hide');
+        });
+        
+        // Period change handler
+        $('#period-select').on('change', function() {
+            if (comparisonChart) {
+                // If there's already a chart, trigger the comparison again
+                $('#compare-genres-btn').click();
+            }
+        });
+        
+        // Helper function to get colors for datasets
+        function getColorForIndex(index, alpha) {
+            const colors = [
+                `rgba(0, 123, 255, ${alpha})`,     // Blue
+                `rgba(220, 53, 69, ${alpha})`,     // Red
+                `rgba(40, 167, 69, ${alpha})`,     // Green
+                `rgba(255, 193, 7, ${alpha})`,     // Yellow
+                `rgba(111, 66, 193, ${alpha})`,    // Purple
+                `rgba(253, 126, 20, ${alpha})`,    // Orange
+                `rgba(23, 162, 184, ${alpha})`,    // Cyan
+                `rgba(102, 16, 242, ${alpha})`,    // Indigo
+                `rgba(32, 201, 151, ${alpha})`,    // Teal
+                `rgba(52, 58, 64, ${alpha})`       // Dark gray
+            ];
+            
+            return colors[index % colors.length];
+        }
+    });
+</script>
+{% endblock %} 

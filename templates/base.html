@@ -42,8 +42,14 @@
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'films_app:charts' %}">Charts</a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'films_app:genre_analysis' %}">Genres</a>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="genresDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            Genres
+                        </a>
+                        <ul class="dropdown-menu" aria-labelledby="genresDropdown">
+                            <li><a class="dropdown-item" href="{% url 'films_app:genre_analysis' %}">Genre Analysis</a></li>
+                            <li><a class="dropdown-item" href="{% url 'films_app:genre_comparison' %}">Genre Comparison</a></li>
+                        </ul>
                     </li>
                 </ul>
                 <form id="search-form" class="d-flex me-3 position-relative">

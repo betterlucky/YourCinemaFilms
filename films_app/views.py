@@ -537,6 +537,28 @@ def genre_analysis(request):
     return render(request, 'films_app/genre_analysis.html', context)
 
 
+def genre_comparison(request):
+    """View for genre comparison."""
+    # Get all genres
+    genres = get_all_genres()
+    
+    # Get selected period
+    period = request.GET.get('period', 'all')
+    
+    context = {
+        'genres': genres,
+        'period': period,
+        'periods': [
+            {'value': 'all', 'label': 'All Time'},
+            {'value': 'year', 'label': 'Past Year'},
+            {'value': 'month', 'label': 'Past Month'},
+            {'value': 'week', 'label': 'Past Week'}
+        ]
+    }
+    
+    return render(request, 'films_app/genre_comparison.html', context)
+
+
 def demographic_analysis(request):
     """View for demographic analysis."""
     # Only staff can access this view

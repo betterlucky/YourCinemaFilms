@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load films_tags %}
+{% load static %}
 
 {% block title %}Genre Analysis - Films I Want To See{% endblock %}
 
@@ -11,6 +12,11 @@
             <p class="lead">Explore films by genre and see what's popular</p>
         </div>
         <div class="col-md-6">
+            <div class="d-flex justify-content-end">
+                <a href="{% url 'films_app:genre_comparison' %}" class="btn btn-outline-primary mb-3">
+                    <i class="fas fa-chart-bar me-2"></i>Compare Genres
+                </a>
+            </div>
             <form id="genre-form" class="row g-3">
                 <div class="col-md-6">
                     <label for="genre-select" class="form-label">Genre</label>
@@ -42,48 +48,6 @@
         </div>
     </div>
     
-    <!-- Genre Comparison Section -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header bg-secondary text-white">
-                    <h4 class="mb-0">Genre Comparison</h4>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-8">
-                            <div id="comparison-chart-container" style="height: 300px;">
-                                <div class="text-center py-3 text-muted">
-                                    <i class="fas fa-chart-bar fa-3x mb-3"></i>
-                                    <p>Select genres to compare them</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="mb-3">
-                                <label class="form-label">Select Genres to Compare</label>
-                                <div class="genre-selection-container" style="max-height: 200px; overflow-y: auto;">
-                                    {% for genre in genres|slice:":20" %}
-                                        <div class="form-check">
-                                            <input class="form-check-input genre-compare-checkbox" type="checkbox" value="{{ genre }}" id="genre-{{ forloop.counter }}">
-                                            <label class="form-check-label" for="genre-{{ forloop.counter }}">
-                                                {{ genre }}
-                                            </label>
-                                        </div>
-                                    {% endfor %}
-                                </div>
-                            </div>
-                            <button id="compare-genres-btn" class="btn btn-primary">Compare Genres</button>
-                            <button id="export-comparison-btn" class="btn btn-outline-secondary mt-2" disabled>
-                                <i class="fas fa-download"></i> Export
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    
     <!-- Loading indicator -->
     <div id="loading-indicator" class="htmx-indicator text-center py-5">
         <div class="spinner-border text-primary" role="status"></div>
@@ -93,39 +57,6 @@
     <div id="genre-content">
         {% include "films_app/partials/genre_content.html" %}
     </div>
-    
-    <!-- Export Options Modal -->
-    <div class="modal fade" id="exportModal" tabindex="-1" aria-labelledby="exportModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="exportModalLabel">Export Chart Data</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label">Export Format</label>
-                        <select class="form-select" id="export-format">
-                            <option value="png">PNG Image</option>
-                            <option value="csv">CSV Data</option>
-                            <option value="json">JSON Data</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Chart to Export</label>
-                        <select class="form-select" id="export-chart">
-                            <option value="current">Current Chart</option>
-                            <option value="comparison">Comparison Chart</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-primary" id="do-export-btn">Export</button>
-                </div>
-            </div>
-        </div>
-    </div>
 </div>
 {% endblock %}
 
@@ -133,9 +64,6 @@
 <!-- Chart.js is needed for both the main page and the partial -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-<!-- FileSaver.js for export functionality -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
-
 <!-- Genre Analysis JavaScript -->
-<script src="/static/js/genre_analysis.js"></script>
+<script src="{% static 'js/genre_analysis.js' %}"></script>
 {% endblock %} 
