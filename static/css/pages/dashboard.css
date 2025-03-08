@@ -29,6 +29,28 @@
 
 .dashboard-chart-card .card-body {
     padding: 1.5rem;
+    overflow: hidden;
+}
+
+/* Responsive chart adjustments */
+@media (max-width: 768px) {
+    .dashboard-chart-card {
+        margin-bottom: 1.5rem;
+    }
+    
+    #activityChart, #genreChart {
+        max-height: 200px;
+    }
+}
+
+/* Genre chart specific styles */
+#genreChart {
+    max-height: 300px;
+}
+
+/* Activity chart specific styles */
+#activityChart {
+    max-height: 250px;
 }
 
 /* Activity list */

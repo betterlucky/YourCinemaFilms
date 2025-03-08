@@ -109,7 +109,7 @@
                     </a>
                 </div>
                 <div class="card-body">
-                    <canvas id="activityChart" height="300"></canvas>
+                    <canvas id="activityChart" height="250"></canvas>
                 </div>
             </div>
         </div>
@@ -225,6 +225,9 @@
 {% endblock %}
 
 {% block extra_js %}
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <script>
     // Define data from Django templates as global variables
     var activityDates = {{ activity_dates|safe }};
@@ -236,13 +239,36 @@
         // Activity timeline chart
         const activityCtx = document.getElementById('activityChart').getContext('2d');
         
+        // Limit the number of data points to display to prevent overcrowding
+        let displayDates = activityDates;
+        let displayCounts = activityCounts;
+        
+        // If we have more than 14 data points, sample them to reduce clutter
+        if (activityDates && activityDates.length > 14) {
+            // For simplicity, we'll just take every nth element to get about 14 points
+            const step = Math.ceil(activityDates.length / 14);
+            displayDates = [];
+            displayCounts = [];
+            
+            for (let i = 0; i < activityDates.length; i += step) {
+                displayDates.push(activityDates[i]);
+                displayCounts.push(activityCounts[i]);
+            }
+            
+            // Always include the last data point
+            if (displayDates[displayDates.length - 1] !== activityDates[activityDates.length - 1]) {
+                displayDates.push(activityDates[activityDates.length - 1]);
+                displayCounts.push(activityCounts[activityCounts.length - 1]);
+            }
+        }
+        
         const activityChart = new Chart(activityCtx, {
             type: 'line',
             data: {
-                labels: activityDates,
+                labels: displayDates,
                 datasets: [{
                     label: 'Votes',
-                    data: activityCounts,
+                    data: displayCounts,
                     backgroundColor: 'rgba(13, 110, 253, 0.1)',
                     borderColor: 'rgba(13, 110, 253, 1)',
                     borderWidth: 2,
@@ -252,12 +278,29 @@
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: false,
+                maintainAspectRatio: true,
                 scales: {
                     y: {
                         beginAtZero: true,
                         ticks: {
                             precision: 0
+                        },
+                        grid: {
+                            display: true,
+                            drawBorder: true,
+                            drawOnChartArea: true,
+                            drawTicks: true,
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        },
+                        ticks: {
+                            maxRotation: 45,
+                            minRotation: 0,
+                            autoSkip: true,
+                            maxTicksLimit: 8
                         }
                     }
                 },
@@ -279,12 +322,27 @@
         
         // Genre chart
         const genreCtx = document.getElementById('genreChart').getContext('2d');
+        
+        // Limit the number of genres to display to prevent overcrowding
+        let limitedGenreLabels = genreLabels;
+        let limitedGenreData = genreData;
+        
+        // If we have more than 8 genres, only show top 7 and group the rest as "Other"
+        if (genreLabels && genreLabels.length > 8) {
+            limitedGenreLabels = genreLabels.slice(0, 7);
+            limitedGenreLabels.push('Other');
+            
+            limitedGenreData = genreData.slice(0, 7);
+            const otherSum = genreData.slice(7).reduce((a, b) => a + b, 0);
+            limitedGenreData.push(otherSum);
+        }
+        
         const genreChart = new Chart(genreCtx, {
             type: 'pie',
             data: {
-                labels: genreLabels,
+                labels: limitedGenreLabels,
                 datasets: [{
-                    data: genreData,
+                    data: limitedGenreData,
                     backgroundColor: [
                         'rgba(0, 123, 255, 0.7)',     // Blue
                         'rgba(220, 53, 69, 0.7)',     // Red
@@ -314,7 +372,7 @@
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: false,
+                maintainAspectRatio: true,
                 plugins: {
                     legend: {
                         position: 'right',
