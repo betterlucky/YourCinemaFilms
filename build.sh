@@ -26,6 +26,7 @@ fi
 # Make scripts executable
 echo "Making scripts executable..."
 chmod +x update_cinema_cache.py
+chmod +x update_fixtures.py
 
 # Create static directory if it doesn't exist
 echo "Creating static directories..."
@@ -48,6 +49,12 @@ ls -la staticfiles || echo "Static files directory not found or empty"
 echo "Setting up database..."
 python ensure_db.py || {
   echo "Database setup failed, but continuing..."
+}
+
+# Update fixtures to include popularity field
+echo "Updating fixtures..."
+python update_fixtures.py || {
+  echo "Updating fixtures failed, but continuing..."
 }
 
 # Explicitly run migrations for films_app to ensure Achievement model is created
