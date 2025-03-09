@@ -25,18 +25,24 @@
     
     {% block extra_css %}{% endblock %}
 </head>
-<body>
+<body class="{% if user.is_authenticated %}user-authenticated{% endif %}">
     <!-- Simple Navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container">
-            <a class="navbar-brand" href="{% url 'films_app:home' %}">YourCinemaFilms</a>
+            <a class="navbar-brand" href="{% url 'root_landing' %}">YourCinemaFilms</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarBasic" aria-controls="navbarBasic" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarBasic">
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'films_app:home' %}">Home</a>
+                        <a class="nav-link" href="{% url 'root_landing' %}">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'films_app:classics' %}">Classic Films</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'films_app:cinema' %}">Current & Upcoming</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'films_app:dashboard' %}">Dashboard</a>
@@ -119,7 +125,9 @@
                 <div class="col-md-3">
                     <h5>Links</h5>
                     <ul class="list-unstyled">
-                        <li><a href="{% url 'films_app:home' %}" class="text-white">Home</a></li>
+                        <li><a href="{% url 'root_landing' %}" class="text-white">Home</a></li>
+                        <li><a href="{% url 'films_app:classics' %}" class="text-white">Classic Films</a></li>
+                        <li><a href="{% url 'films_app:cinema' %}" class="text-white">Current & Upcoming</a></li>
                         <li><a href="{% url 'films_app:dashboard' %}" class="text-white">Dashboard</a></li>
                         <li><a href="{% url 'films_app:genre_analysis' %}" class="text-white">Genres</a></li>
                     </ul>
@@ -153,7 +161,7 @@
     <!-- Search Script -->
     <script>
         // Define Django template variables as global variables
-        var loginUrl = "{% url 'account_login' %}?next={% url 'films_app:home' %}";
+        var loginUrl = "{% url 'account_login' %}?next={% url 'films_app:classics' %}";
         var isAuthenticated = {% if user.is_authenticated %}true{% else %}false{% endif %};
         
         $(document).ready(function() {

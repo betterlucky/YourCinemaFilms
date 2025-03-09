@@ -5,7 +5,7 @@ from django.dispatch import receiver
 
 
 class Film(models.Model):
-    """Model representing a film from OMDB API."""
+    """Model representing a film from TMDB API."""
     imdb_id = models.CharField(max_length=20, unique=True)
     title = models.CharField(max_length=255)
     year = models.CharField(max_length=10)
@@ -16,6 +16,11 @@ class Film(models.Model):
     runtime = models.CharField(max_length=20, blank=True, null=True)
     actors = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    
+    # Cinema-specific fields
+    is_in_cinema = models.BooleanField(default=False, help_text="Whether this film is currently in UK cinemas")
+    uk_release_date = models.DateField(blank=True, null=True, help_text="UK release date for this film")
+    uk_certification = models.CharField(max_length=10, blank=True, null=True, help_text="UK certification (e.g., PG, 12A, 15)")
     
     def __str__(self):
         return f"{self.title} ({self.year})"
@@ -42,6 +47,14 @@ class Film(models.Model):
             genres.add(tag.tag)
         
         return sorted(list(genres))
+    
+    @property
+    def is_coming_soon(self):
+        """Check if film is coming soon (has a future UK release date)."""
+        from datetime import date
+        if self.uk_release_date and self.uk_release_date > date.today():
+            return True
+        return False
 
 
 class GenreTag(models.Model):
@@ -74,6 +87,21 @@ class Vote(models.Model):
     
     def __str__(self):
         return f"{self.user.username} voted for {self.film.title}"
+
+
+class CinemaVote(models.Model):
+    """Model representing a user's vote for a cinema film (current or upcoming)."""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='cinema_votes')
+    film = models.ForeignKey(Film, on_delete=models.CASCADE, related_name='cinema_votes')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        unique_together = ('user', 'film')
+        ordering = ['-updated_at']
+    
+    def __str__(self):
+        return f"{self.user.username} voted for cinema film {self.film.title}"
 
 
 class UserProfile(models.Model):
@@ -210,11 +238,23 @@ class UserProfile(models.Model):
     
     @property
     def vote_count(self):
+        """Get the number of votes cast by the user."""
         return self.user.votes.count()
     
     @property
     def can_vote(self):
+        """Check if the user can vote for more films."""
         return self.vote_count < 10
+    
+    @property
+    def cinema_vote_count(self):
+        """Get the number of cinema votes cast by the user."""
+        return self.user.cinema_votes.count()
+    
+    @property
+    def can_cinema_vote(self):
+        """Check if the user can vote for more cinema films."""
+        return self.cinema_vote_count < 3
     
     @property
     def primary_email(self):
@@ -429,4 +469,27 @@ class Achievement(models.Model):
     @property
     def icon(self):
         """Get the Font Awesome icon for this achievement."""
-        return self.ACHIEVEMENT_ICONS.get(self.achievement_type, 'fa-award') 
+        return self.ACHIEVEMENT_ICONS.get(self.achievement_type, 'fa-award')
+
+
+class Activity(models.Model):
+    """Model for tracking user activity."""
+    ACTIVITY_TYPES = [
+        ('vote', 'Vote'),
+        ('tag', 'Genre Tag'),
+        ('profile', 'Profile Update'),
+        ('login', 'Login'),
+    ]
+    
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='activities')
+    activity_type = models.CharField(max_length=20, choices=ACTIVITY_TYPES)
+    film = models.ForeignKey(Film, on_delete=models.SET_NULL, null=True, blank=True, related_name='activities')
+    description = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        verbose_name_plural = 'Activities'
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"{self.user.username} - {self.activity_type} - {self.created_at.strftime('%Y-%m-%d %H:%M')}" 

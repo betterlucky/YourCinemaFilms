@@ -270,8 +270,11 @@ ACCOUNT_CONFIRM_EMAIL_ON_GET = True
 ACCOUNT_EMAIL_CONFIRMATION_EXPIRE_DAYS = 3
 ACCOUNT_EMAIL_SUBJECT_PREFIX = 'YourCinemaFilms - '
 
-# OMDB API settings
-OMDB_API_KEY = os.getenv('OMDB_API_KEY', '')
+# TMDB API settings
+TMDB_API_KEY = os.getenv('TMDB_API_KEY', '')
+
+# Cinema settings
+UPCOMING_FILMS_MONTHS = int(os.getenv('UPCOMING_FILMS_MONTHS', '6'))  # Number of months to look ahead for upcoming films
 
 # CORS settings
 CORS_ALLOW_ALL_ORIGINS = False

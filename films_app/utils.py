@@ -1,8 +1,12 @@
 import re
 import requests
+import json
+import os
+import time
 from django.conf import settings
 from django.http import HttpResponse
 from .models import Film, GenreTag, Vote
+from .tmdb_api import get_movie_by_imdb_id, search_movies, format_tmdb_data_for_film
 
 # List of common profanity words to filter
 # This is a basic list - in a production environment, you would use a more comprehensive list
@@ -101,9 +105,9 @@ def validate_genre_tag(tag):
     
     return True, ""
 
-def fetch_and_update_film_from_omdb(imdb_id, force_update=False):
+def fetch_and_update_film_from_tmdb(imdb_id, force_update=False):
     """
-    Fetch film details from OMDB API and update or create the film in the database.
+    Fetch film details from TMDB API and update or create the film in the database.
     
     Args:
         imdb_id (str): The IMDb ID of the film
@@ -121,47 +125,74 @@ def fetch_and_update_film_from_omdb(imdb_id, force_update=False):
     if film and not force_update:
         return film, created
     
-    # Fetch from OMDB API
-    api_key = settings.OMDB_API_KEY
-    url = f"http://www.omdbapi.com/?apikey={api_key}&i={imdb_id}&plot=full"
-    
     try:
-        response = requests.get(url)
-        data = response.json()
+        # Fetch from TMDB API using IMDb ID
+        tmdb_data = get_movie_by_imdb_id(imdb_id)
         
-        if data.get('Response') == 'True':
+        if tmdb_data:
+            # Format the TMDB data for our Film model
+            formatted_data = format_tmdb_data_for_film(tmdb_data)
+            
             if film:
                 # Update existing film
-                film.title = data.get('Title', film.title)
-                film.year = data.get('Year', film.year)
-                film.poster_url = data.get('Poster', film.poster_url)
-                film.director = data.get('Director', film.director)
-                film.plot = data.get('Plot', film.plot)
-                film.genres = data.get('Genre', film.genres)
-                film.runtime = data.get('Runtime', film.runtime)
-                film.actors = data.get('Actors', film.actors)
+                film.title = formatted_data.get('title', film.title)
+                film.year = formatted_data.get('year', film.year)
+                film.poster_url = formatted_data.get('poster_url', film.poster_url)
+                film.director = formatted_data.get('director', film.director)
+                film.plot = formatted_data.get('plot', film.plot)
+                film.genres = formatted_data.get('genres', film.genres)
+                film.runtime = formatted_data.get('runtime', film.runtime)
+                film.actors = formatted_data.get('actors', film.actors)
                 film.save()
             else:
                 # Create new film
                 film = Film(
                     imdb_id=imdb_id,
-                    title=data.get('Title', ''),
-                    year=data.get('Year', ''),
-                    poster_url=data.get('Poster', ''),
-                    director=data.get('Director', ''),
-                    plot=data.get('Plot', ''),
-                    genres=data.get('Genre', ''),
-                    runtime=data.get('Runtime', ''),
-                    actors=data.get('Actors', '')
+                    title=formatted_data.get('title', ''),
+                    year=formatted_data.get('year', ''),
+                    poster_url=formatted_data.get('poster_url', ''),
+                    director=formatted_data.get('director', ''),
+                    plot=formatted_data.get('plot', ''),
+                    genres=formatted_data.get('genres', ''),
+                    runtime=formatted_data.get('runtime', ''),
+                    actors=formatted_data.get('actors', '')
                 )
                 film.save()
                 created = True
                 
             return film, created
         else:
-            raise ValueError(f"Film not found: {data.get('Error', 'Unknown error')}")
+            raise ValueError(f"Film not found in TMDB with IMDb ID: {imdb_id}")
     except Exception as e:
-        raise ValueError(f"Error fetching film from OMDB: {str(e)}")
+        raise ValueError(f"Error fetching film from TMDB: {str(e)}")
+
+# Cache functions for TMDB data
+def get_cache_directory():
+    """Get or create the cache directory."""
+    cache_dir = os.path.join(settings.BASE_DIR, 'cache')
+    os.makedirs(cache_dir, exist_ok=True)
+    return cache_dir
+
+def get_cached_search_results(query):
+    """Get cached search results if available."""
+    cache_dir = get_cache_directory()
+    cache_file = os.path.join(cache_dir, f"search_{query.replace(' ', '_')}.json")
+    
+    if os.path.exists(cache_file):
+        # Check if cache is fresh (less than 1 day old)
+        if (os.path.getmtime(cache_file) > (time.time() - 86400)):
+            with open(cache_file, 'r') as f:
+                return json.load(f)
+    
+    return None
+
+def cache_search_results(query, results):
+    """Cache search results to a JSON file."""
+    cache_dir = get_cache_directory()
+    cache_file = os.path.join(cache_dir, f"search_{query.replace(' ', '_')}.json")
+    
+    with open(cache_file, 'w') as f:
+        json.dump(results, f)
 
 def require_http_method(request, method='POST'):
     """

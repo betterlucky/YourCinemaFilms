@@ -20,4 +20,18 @@ def display_period(period):
         'week': 'Past Week'
     }
     
-    return period_map.get(period, 'Unknown Period') 
+    return period_map.get(period, 'Unknown Period')
+
+@register.filter
+def has_user_voted(cinema_votes, user_id):
+    """
+    Check if a user has voted for a film.
+    
+    Args:
+        cinema_votes: The cinema_votes queryset for a film
+        user_id: The user ID to check
+        
+    Returns:
+        bool: True if the user has voted for the film, False otherwise
+    """
+    return cinema_votes.filter(user_id=user_id).exists() 

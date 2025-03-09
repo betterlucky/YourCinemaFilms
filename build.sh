@@ -20,8 +20,12 @@ if [ -n "$DATABASE_URL" ]; then
   DB_URL_MASKED=$(echo $DATABASE_URL | sed -E 's/(:\/\/[^:]+:)[^@]+(@)/\1*****\2/')
   echo "Database URL: $DB_URL_MASKED"
 else
-  echo "WARNING: DATABASE_URL environment variable is not set!"
+  echo "DATABASE_URL is not set"
 fi
+
+# Make scripts executable
+echo "Making scripts executable..."
+chmod +x update_cinema_cache.py
 
 # Create static directory if it doesn't exist
 echo "Creating static directories..."

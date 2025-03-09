@@ -1,0 +1,47 @@
+/* Classics page specific styles */
+
+/* Main search container */
+.main-search-container {
+    position: relative;
+    z-index: 1000;
+    margin-bottom: 2rem;
+}
+
+/* Override card overflow for search container */
+.card.main-search-container {
+    overflow: visible;
+}
+
+/* Main search form */
+#main-search-form {
+    position: relative;
+    width: 100%;
+}
+
+/* Main search results dropdown */
+#main-search-results {
+    position: absolute !important;
+    z-index: 9999 !important;
+    width: 100% !important;
+    top: 100% !important;
+    left: 0 !important;
+    max-height: 400px !important;
+    overflow-y: auto !important;
+    background-color: #fff !important;
+    border: 1px solid rgba(0, 0, 0, 0.125) !important;
+    border-radius: 0.25rem !important;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+    margin-top: 5px !important;
+}
+
+/* Ensure the dropdown is visible when it has content */
+#main-search-results:not(:empty) {
+    display: block !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .main-search-results {
+        max-height: 300px;
+    }
+} 
