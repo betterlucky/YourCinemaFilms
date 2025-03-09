@@ -3,7 +3,7 @@ import json
 import time
 from django.core.management.base import BaseCommand
 from django.conf import settings
-from films_app.models import Film
+from films_app.models import Film, PageTracker
 from films_app.utils import fetch_and_update_film_from_tmdb, get_cache_directory
 from films_app.tmdb_api import search_movies, get_now_playing_movies, get_upcoming_movies
 from datetime import datetime
@@ -123,19 +123,23 @@ class Command(BaseCommand):
             get_movies_func = get_upcoming_movies
             is_in_cinema = False
         
-        # Get movies one page at a time
-        page = 1
-        total_processed = 0
+        # Get the next page to process from the PageTracker
+        page = PageTracker.get_next_page(movie_type)
+        self.stdout.write(f'Starting with page {page} for {movie_type} movies')
         
-        while True:
-            # Get a batch of movies
-            movies = get_movies_func(page=page)
+        total_processed = 0
+        pages_processed = 0
+        
+        while pages_processed < max_pages:
+            # Get a batch of movies with popularity sorting
+            movies, total_pages = get_movies_func(page=page, sort_by='popularity.desc')
             
             # If no movies returned, we've processed all pages
             if not movies:
+                self.stdout.write(f'No more movies found for {movie_type} at page {page}')
                 break
             
-            self.stdout.write(f'Processing {len(movies)} {movie_type} movies (page {page})')
+            self.stdout.write(f'Processing {len(movies)} {movie_type} movies (page {page} of {total_pages})')
             
             # Process each movie in the batch
             for i, movie_data in enumerate(movies):
@@ -196,11 +200,16 @@ class Command(BaseCommand):
                 except Exception as e:
                     self.stdout.write(self.style.ERROR(f'Error processing movie: {str(e)}'))
             
-            # Move to the next page
-            page += 1
+            # Update the page tracker
+            PageTracker.update_tracker(movie_type, page, total_pages)
             
-            # Check if we've reached the maximum number of pages
-            if page > max_pages:
+            # Move to the next page or wrap around to page 1 if we've reached the end
+            page = page + 1 if page < total_pages else 1
+            pages_processed += 1
+            
+            # If we've wrapped around to page 1, we've processed all available pages
+            if page == 1 and pages_processed < max_pages:
+                self.stdout.write(f'Processed all available pages for {movie_type} movies')
                 break
         
         self.stdout.write(f'Processed {total_processed} {movie_type} movies')

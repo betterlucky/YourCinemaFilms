@@ -263,6 +263,9 @@ def format_tmdb_data_for_film(tmdb_data):
                         uk_release_date = date_obj.strftime('%Y-%m-%d')
                         break
     
+    # Extract popularity score
+    popularity = tmdb_data.get('popularity', 0.0)
+    
     return {
         'imdb_id': imdb_id,
         'title': tmdb_data.get('title', ''),
@@ -274,18 +277,21 @@ def format_tmdb_data_for_film(tmdb_data):
         'runtime': runtime,
         'actors': actors,
         'uk_certification': uk_certification,
-        'uk_release_date': uk_release_date
+        'uk_release_date': uk_release_date,
+        'popularity': popularity
     }
 
-def get_now_playing_movies(page=1):
+def get_now_playing_movies(page=1, sort_by='popularity.desc'):
     """
     Get movies that are currently playing in theaters in the UK.
     
     Args:
         page (int, optional): Page number to fetch. Defaults to 1.
+        sort_by (str, optional): How to sort the results. Defaults to 'popularity.desc'.
     
     Returns:
         list: List of movies currently in UK theaters for the specified page
+        int: Total number of pages available
     """
     import logging
     logger = logging.getLogger(__name__)
@@ -295,21 +301,27 @@ def get_now_playing_movies(page=1):
         'api_key': settings.TMDB_API_KEY,
         'language': 'en-GB',  # British English
         'region': 'GB',       # United Kingdom
-        'page': page
+        'page': page,
+        'sort_by': sort_by    # Sort by popularity by default
     }
     
     movies = []
+    total_pages = 1
+    
     try:
-        logger.info(f"Fetching now playing movies page {page}")
+        logger.info(f"Fetching now playing movies page {page} (sort: {sort_by})")
         response = requests.get(url, params=params)
         data = response.json()
         
-        # If we've gone beyond the available pages, return empty list
-        if page > data.get('total_pages', 1):
-            logger.info(f"No more pages available (requested page {page}, total pages {data.get('total_pages', 1)})")
-            return []
+        # Store total pages
+        total_pages = data.get('total_pages', 1)
         
-        logger.info(f"Processing {len(data.get('results', []))} movies from page {page} of {data.get('total_pages', 1)}")
+        # If we've gone beyond the available pages, return empty list
+        if page > total_pages:
+            logger.info(f"No more pages available (requested page {page}, total pages {total_pages})")
+            return [], total_pages
+        
+        logger.info(f"Processing {len(data.get('results', []))} movies from page {page} of {total_pages}")
         
         # Process each movie to get full details
         for movie in data.get('results', []):
@@ -317,15 +329,17 @@ def get_now_playing_movies(page=1):
             if movie_details:
                 formatted_data = format_tmdb_data_for_film(movie_details)
                 formatted_data['is_in_cinema'] = True
+                # Add popularity from the original results
+                formatted_data['popularity'] = movie.get('popularity', 0.0)
                 movies.append(formatted_data)
         
         logger.info(f"Processed {len(movies)} now playing movies from page {page}")
     except Exception as e:
         logger.error(f"Error fetching now playing movies (page {page}): {e}")
     
-    return movies
+    return movies, total_pages
 
-def get_upcoming_movies(time_window_months=None, page=1):
+def get_upcoming_movies(time_window_months=None, page=1, sort_by='popularity.desc'):
     """
     Get movies scheduled for UK release in the next X months.
     
@@ -333,9 +347,11 @@ def get_upcoming_movies(time_window_months=None, page=1):
         time_window_months (int, optional): Number of months to look ahead.
             If None, uses the UPCOMING_FILMS_MONTHS setting.
         page (int, optional): Page number to fetch. Defaults to 1.
+        sort_by (str, optional): How to sort the results. Defaults to 'popularity.desc'.
         
     Returns:
         list: List of upcoming movies for the specified page
+        int: Total number of pages available
     """
     from datetime import datetime, timedelta
     import logging
@@ -357,21 +373,27 @@ def get_upcoming_movies(time_window_months=None, page=1):
         'region': 'GB',       # United Kingdom
         'page': page,
         'release_date.gte': today,
-        'release_date.lte': future_date
+        'release_date.lte': future_date,
+        'sort_by': sort_by    # Sort by popularity by default
     }
     
     movies = []
+    total_pages = 1
+    
     try:
-        logger.info(f"Fetching upcoming movies page {page} (window: {time_window_months} months)")
+        logger.info(f"Fetching upcoming movies page {page} (window: {time_window_months} months, sort: {sort_by})")
         response = requests.get(url, params=params)
         data = response.json()
         
-        # If we've gone beyond the available pages, return empty list
-        if page > data.get('total_pages', 1):
-            logger.info(f"No more pages available (requested page {page}, total pages {data.get('total_pages', 1)})")
-            return []
+        # Store total pages
+        total_pages = data.get('total_pages', 1)
         
-        logger.info(f"Processing {len(data.get('results', []))} movies from page {page} of {data.get('total_pages', 1)}")
+        # If we've gone beyond the available pages, return empty list
+        if page > total_pages:
+            logger.info(f"No more pages available (requested page {page}, total pages {total_pages})")
+            return [], total_pages
+        
+        logger.info(f"Processing {len(data.get('results', []))} movies from page {page} of {total_pages}")
         
         # Process each movie to get full details
         for movie in data.get('results', []):
@@ -379,10 +401,12 @@ def get_upcoming_movies(time_window_months=None, page=1):
             if movie_details:
                 formatted_data = format_tmdb_data_for_film(movie_details)
                 formatted_data['is_in_cinema'] = False  # Not in cinema yet
+                # Add popularity from the original results
+                formatted_data['popularity'] = movie.get('popularity', 0.0)
                 movies.append(formatted_data)
         
         logger.info(f"Processed {len(movies)} upcoming movies from page {page}")
     except Exception as e:
         logger.error(f"Error fetching upcoming movies (page {page}): {e}")
     
-    return movies 
+    return movies, total_pages 
