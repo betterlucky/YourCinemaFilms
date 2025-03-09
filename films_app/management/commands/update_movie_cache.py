@@ -89,73 +89,107 @@ class Command(BaseCommand):
             Film.objects.all().update(is_in_cinema=False)
             self.stdout.write('Reset cinema status for all films')
         
-        # Get now playing movies
-        self.stdout.write('Fetching now playing movies...')
-        now_playing = get_now_playing_movies()
-        self.stdout.write(f'Found {len(now_playing)} now playing movies')
+        # Process now playing movies
+        self.stdout.write('Fetching and processing now playing movies...')
+        self._process_movie_batch('now_playing')
         
-        # Get upcoming movies
-        self.stdout.write('Fetching upcoming movies...')
-        upcoming = get_upcoming_movies()
-        self.stdout.write(f'Found {len(upcoming)} upcoming movies')
-        
-        # Combine and process all movies
-        all_movies = now_playing + upcoming
-        self.stdout.write(f'Processing {len(all_movies)} total cinema films')
-        
-        for i, movie_data in enumerate(all_movies):
-            try:
-                imdb_id = movie_data.get('imdb_id')
-                if not imdb_id:
-                    self.stdout.write(self.style.WARNING(f'Skipping movie with no IMDb ID: {movie_data.get("title")}'))
-                    continue
-                
-                # Try to get existing film or create a new one
-                film, created = Film.objects.get_or_create(
-                    imdb_id=imdb_id,
-                    defaults={
-                        'title': movie_data.get('title', ''),
-                        'year': movie_data.get('year', ''),
-                        'poster_url': movie_data.get('poster_url'),
-                        'director': movie_data.get('director', ''),
-                        'plot': movie_data.get('plot', ''),
-                        'genres': movie_data.get('genres', ''),
-                        'runtime': movie_data.get('runtime', ''),
-                        'actors': movie_data.get('actors', ''),
-                        'is_in_cinema': movie_data.get('is_in_cinema', False),
-                        'uk_certification': movie_data.get('uk_certification'),
-                    }
-                )
-                
-                # Update film data if it already existed
-                if not created:
-                    film.title = movie_data.get('title', film.title)
-                    film.year = movie_data.get('year', film.year)
-                    film.poster_url = movie_data.get('poster_url', film.poster_url)
-                    film.director = movie_data.get('director', film.director)
-                    film.plot = movie_data.get('plot', film.plot)
-                    film.genres = movie_data.get('genres', film.genres)
-                    film.runtime = movie_data.get('runtime', film.runtime)
-                    film.actors = movie_data.get('actors', film.actors)
-                    film.is_in_cinema = movie_data.get('is_in_cinema', film.is_in_cinema)
-                    film.uk_certification = movie_data.get('uk_certification', film.uk_certification)
-                
-                # Update UK release date
-                if movie_data.get('uk_release_date'):
-                    try:
-                        film.uk_release_date = datetime.strptime(movie_data['uk_release_date'], '%Y-%m-%d').date()
-                    except ValueError:
-                        self.stdout.write(self.style.WARNING(f'Invalid UK release date format: {movie_data["uk_release_date"]}'))
-                
-                film.save()
-                
-                status = 'Created' if created else 'Updated'
-                self.stdout.write(f'{status} {i+1}/{len(all_movies)}: {film.title}')
-            
-            except Exception as e:
-                self.stdout.write(self.style.ERROR(f'Error processing movie: {str(e)}'))
+        # Process upcoming movies
+        self.stdout.write('Fetching and processing upcoming movies...')
+        self._process_movie_batch('upcoming')
         
         self.stdout.write(self.style.SUCCESS('Cinema database cache update completed'))
+    
+    def _process_movie_batch(self, movie_type):
+        """Process a batch of movies to reduce memory usage.
+        
+        Args:
+            movie_type (str): Type of movies to process ('now_playing' or 'upcoming')
+        """
+        # Get the appropriate function based on movie type
+        if movie_type == 'now_playing':
+            get_movies_func = get_now_playing_movies
+            is_in_cinema = True
+        else:  # upcoming
+            get_movies_func = get_upcoming_movies
+            is_in_cinema = False
+        
+        # Get movies one page at a time
+        page = 1
+        total_processed = 0
+        
+        while True:
+            # Get a batch of movies
+            movies = get_movies_func(page=page)
+            
+            # If no movies returned, we've processed all pages
+            if not movies:
+                break
+            
+            self.stdout.write(f'Processing {len(movies)} {movie_type} movies (page {page})')
+            
+            # Process each movie in the batch
+            for i, movie_data in enumerate(movies):
+                try:
+                    imdb_id = movie_data.get('imdb_id')
+                    if not imdb_id:
+                        self.stdout.write(self.style.WARNING(f'Skipping movie with no IMDb ID: {movie_data.get("title")}'))
+                        continue
+                    
+                    # Set the is_in_cinema flag based on movie type
+                    movie_data['is_in_cinema'] = is_in_cinema
+                    
+                    # Try to get existing film or create a new one
+                    film, created = Film.objects.get_or_create(
+                        imdb_id=imdb_id,
+                        defaults={
+                            'title': movie_data.get('title', ''),
+                            'year': movie_data.get('year', ''),
+                            'poster_url': movie_data.get('poster_url'),
+                            'director': movie_data.get('director', ''),
+                            'plot': movie_data.get('plot', ''),
+                            'genres': movie_data.get('genres', ''),
+                            'runtime': movie_data.get('runtime', ''),
+                            'actors': movie_data.get('actors', ''),
+                            'is_in_cinema': movie_data.get('is_in_cinema', False),
+                            'uk_certification': movie_data.get('uk_certification'),
+                            'popularity': movie_data.get('popularity', 0.0),
+                        }
+                    )
+                    
+                    # Update film data if it already existed
+                    if not created:
+                        film.title = movie_data.get('title', film.title)
+                        film.year = movie_data.get('year', film.year)
+                        film.poster_url = movie_data.get('poster_url', film.poster_url)
+                        film.director = movie_data.get('director', film.director)
+                        film.plot = movie_data.get('plot', film.plot)
+                        film.genres = movie_data.get('genres', film.genres)
+                        film.runtime = movie_data.get('runtime', film.runtime)
+                        film.actors = movie_data.get('actors', film.actors)
+                        film.is_in_cinema = movie_data.get('is_in_cinema', film.is_in_cinema)
+                        film.uk_certification = movie_data.get('uk_certification', film.uk_certification)
+                        film.popularity = movie_data.get('popularity', film.popularity)
+                    
+                    # Update UK release date
+                    if movie_data.get('uk_release_date'):
+                        try:
+                            film.uk_release_date = datetime.strptime(movie_data['uk_release_date'], '%Y-%m-%d').date()
+                        except ValueError:
+                            self.stdout.write(self.style.WARNING(f'Invalid UK release date format: {movie_data["uk_release_date"]}'))
+                    
+                    film.save()
+                    
+                    total_processed += 1
+                    status = 'Created' if created else 'Updated'
+                    self.stdout.write(f'{status} {total_processed}: {film.title}')
+                
+                except Exception as e:
+                    self.stdout.write(self.style.ERROR(f'Error processing movie: {str(e)}'))
+            
+            # Move to the next page
+            page += 1
+        
+        self.stdout.write(f'Processed {total_processed} {movie_type} movies')
 
     def update_json_cache(self, force):
         """Update the JSON cache files."""

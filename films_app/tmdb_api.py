@@ -229,25 +229,39 @@ def format_tmdb_data_for_film(tmdb_data):
         'uk_release_date': uk_release_date
     }
 
-def get_now_playing_movies():
+def get_now_playing_movies(page=1):
     """
     Get movies that are currently playing in theaters in the UK.
     
+    Args:
+        page (int, optional): Page number to fetch. Defaults to 1.
+    
     Returns:
-        list: List of movies currently in UK theaters
+        list: List of movies currently in UK theaters for the specified page
     """
+    import logging
+    logger = logging.getLogger(__name__)
+    
     url = get_api_url("movie/now_playing")
     params = {
         'api_key': settings.TMDB_API_KEY,
         'language': 'en-GB',  # British English
         'region': 'GB',       # United Kingdom
-        'page': 1
+        'page': page
     }
     
     movies = []
     try:
+        logger.info(f"Fetching now playing movies page {page}")
         response = requests.get(url, params=params)
         data = response.json()
+        
+        # If we've gone beyond the available pages, return empty list
+        if page > data.get('total_pages', 1):
+            logger.info(f"No more pages available (requested page {page}, total pages {data.get('total_pages', 1)})")
+            return []
+        
+        logger.info(f"Processing {len(data.get('results', []))} movies from page {page} of {data.get('total_pages', 1)}")
         
         # Process each movie to get full details
         for movie in data.get('results', []):
@@ -256,23 +270,28 @@ def get_now_playing_movies():
                 formatted_data = format_tmdb_data_for_film(movie_details)
                 formatted_data['is_in_cinema'] = True
                 movies.append(formatted_data)
+        
+        logger.info(f"Processed {len(movies)} now playing movies from page {page}")
     except Exception as e:
-        print(f"Error fetching now playing movies: {e}")
+        logger.error(f"Error fetching now playing movies (page {page}): {e}")
     
     return movies
 
-def get_upcoming_movies(time_window_months=None):
+def get_upcoming_movies(time_window_months=None, page=1):
     """
     Get movies scheduled for UK release in the next X months.
     
     Args:
         time_window_months (int, optional): Number of months to look ahead.
             If None, uses the UPCOMING_FILMS_MONTHS setting.
+        page (int, optional): Page number to fetch. Defaults to 1.
         
     Returns:
-        list: List of upcoming movies
+        list: List of upcoming movies for the specified page
     """
     from datetime import datetime, timedelta
+    import logging
+    logger = logging.getLogger(__name__)
     
     # Use the setting if time_window_months is not provided
     if time_window_months is None:
@@ -288,15 +307,23 @@ def get_upcoming_movies(time_window_months=None):
         'api_key': settings.TMDB_API_KEY,
         'language': 'en-GB',  # British English
         'region': 'GB',       # United Kingdom
-        'page': 1,
+        'page': page,
         'release_date.gte': today,
         'release_date.lte': future_date
     }
     
     movies = []
     try:
+        logger.info(f"Fetching upcoming movies page {page} (window: {time_window_months} months)")
         response = requests.get(url, params=params)
         data = response.json()
+        
+        # If we've gone beyond the available pages, return empty list
+        if page > data.get('total_pages', 1):
+            logger.info(f"No more pages available (requested page {page}, total pages {data.get('total_pages', 1)})")
+            return []
+        
+        logger.info(f"Processing {len(data.get('results', []))} movies from page {page} of {data.get('total_pages', 1)}")
         
         # Process each movie to get full details
         for movie in data.get('results', []):
@@ -305,7 +332,9 @@ def get_upcoming_movies(time_window_months=None):
                 formatted_data = format_tmdb_data_for_film(movie_details)
                 formatted_data['is_in_cinema'] = False  # Not in cinema yet
                 movies.append(formatted_data)
+        
+        logger.info(f"Processed {len(movies)} upcoming movies from page {page}")
     except Exception as e:
-        print(f"Error fetching upcoming movies: {e}")
+        logger.error(f"Error fetching upcoming movies (page {page}): {e}")
     
     return movies 
