@@ -1,8 +1,14 @@
 import requests
 from django.conf import settings
 import logging
+import os
+import json
+import time
 
 logger = logging.getLogger(__name__)
+
+# In-memory cache for movie details to reduce API calls during a single run
+_movie_details_cache = {}
 
 def sort_and_limit_films(films, limit=None, sort_by='popularity'):
     """
@@ -86,6 +92,31 @@ def get_movie_details(tmdb_id):
     Returns:
         dict: The movie details from TMDB
     """
+    # Check in-memory cache first
+    cache_key = f"tmdb_{tmdb_id}"
+    if cache_key in _movie_details_cache:
+        logger.debug(f"Using cached details for TMDB ID {tmdb_id}")
+        return _movie_details_cache[cache_key]
+    
+    # Check disk cache
+    cache_dir = os.path.join(settings.BASE_DIR, 'cache')
+    os.makedirs(cache_dir, exist_ok=True)
+    cache_file = os.path.join(cache_dir, f"movie_{tmdb_id}.json")
+    
+    # If cache file exists and is less than 7 days old, use it
+    if os.path.exists(cache_file):
+        file_age = time.time() - os.path.getmtime(cache_file)
+        if file_age < 7 * 24 * 60 * 60:  # 7 days in seconds
+            try:
+                with open(cache_file, 'r', encoding='utf-8') as f:
+                    logger.debug(f"Using disk cache for TMDB ID {tmdb_id}")
+                    data = json.load(f)
+                    _movie_details_cache[cache_key] = data  # Update in-memory cache
+                    return data
+            except Exception as e:
+                logger.warning(f"Error reading cache file for TMDB ID {tmdb_id}: {e}")
+    
+    # Fetch from API
     url = get_api_url(f"movie/{tmdb_id}")
     params = {
         'api_key': settings.TMDB_API_KEY,
@@ -93,8 +124,25 @@ def get_movie_details(tmdb_id):
         'append_to_response': 'credits,release_dates,external_ids'
     }
     
-    response = requests.get(url, params=params)
-    return response.json()
+    try:
+        logger.debug(f"Fetching details for TMDB ID {tmdb_id} from API")
+        response = requests.get(url, params=params)
+        data = response.json()
+        
+        # Save to cache
+        _movie_details_cache[cache_key] = data  # Update in-memory cache
+        
+        # Save to disk cache
+        try:
+            with open(cache_file, 'w', encoding='utf-8') as f:
+                json.dump(data, f, ensure_ascii=False)
+        except Exception as e:
+            logger.warning(f"Error writing cache file for TMDB ID {tmdb_id}: {e}")
+        
+        return data
+    except Exception as e:
+        logger.error(f"Error fetching details for TMDB ID {tmdb_id}: {e}")
+        return None
 
 def get_movie_by_imdb_id(imdb_id):
     """
