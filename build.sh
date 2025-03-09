@@ -27,6 +27,7 @@ fi
 echo "Making scripts executable..."
 chmod +x update_cinema_cache.py
 chmod +x update_fixtures.py
+chmod +x fix_database_schema.py
 
 # Create static directory if it doesn't exist
 echo "Creating static directories..."
@@ -70,6 +71,12 @@ python manage.py migrate films_app --noinput || {
 echo "Running comprehensive migrations script..."
 python run_migrations.py || {
   echo "Comprehensive migrations failed, but continuing..."
+}
+
+# Run the database schema fix script
+echo "Running database schema fix script..."
+python fix_database_schema.py || {
+  echo "Database schema fix failed, but continuing..."
 }
 
 # Update the site domain
