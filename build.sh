@@ -48,14 +48,8 @@ ls -la
 echo "Static files directory:"
 ls -la staticfiles || echo "Static files directory not found or empty"
 
-# Reset the database completely
-echo "Resetting database..."
-python reset_database.py --force || {
-  echo "Database reset failed, but continuing..."
-}
-
-# Fix the Film table schema
-echo "Fixing Film table schema..."
+# Fix the Film table schema if needed
+echo "Fixing Film table schema if needed..."
 python fix_film_schema.py || {
   echo "Film schema fix failed, but continuing..."
 }
