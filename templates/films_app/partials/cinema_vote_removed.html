@@ -1,0 +1,11 @@
+<div class="alert alert-success mb-3">
+    <i class="fas fa-check-circle me-2"></i> Your vote for <strong>{{ film.title }}</strong> has been removed.
+</div>
+
+<div hx-swap-oob="true" id="user-cinema-vote-status">
+    {% include 'films_app/partials/user_cinema_vote_status.html' with user_cinema_votes=user_cinema_votes cinema_votes_remaining=cinema_votes_remaining %}
+</div>
+
+<div class="text-center py-3">
+    <a href="{% url 'films_app:cinema' %}" class="btn btn-primary">Back to Cinema Films</a>
+</div> 

@@ -1,0 +1,128 @@
+{% extends 'base.html' %}
+
+{% block title %}Welcome to Your Cinema Films{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row mb-5 justify-content-center">
+        <div class="col-md-10 text-center">
+            <h1 class="display-3 mb-4">Welcome to Your Cinema Films</h1>
+            <p class="lead mb-4">
+                Your ultimate platform for discovering and voting on films for the big screen experience.
+            </p>
+            {% if not user.is_authenticated %}
+                <div class="mt-4 mb-5">
+                    <a href="{% url 'account_signup' %}" class="btn btn-primary btn-lg me-2">Sign Up</a>
+                    <a href="{% url 'account_login' %}" class="btn btn-outline-primary btn-lg">Log In</a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="row mb-5">
+        <div class="col-12 text-center mb-5">
+            <h2 class="display-5 mb-4">Choose Your Cinema Experience</h2>
+            <p class="lead">Select which film collection you'd like to explore</p>
+        </div>
+        
+        <div class="col-md-6 mb-4">
+            <div class="card h-100 shadow-lg border-0 route-card">
+                <div class="card-body text-center p-5">
+                    <div class="mb-4">
+                        <i class="fas fa-film fa-5x text-primary"></i>
+                    </div>
+                    <h3 class="card-title mb-3">Classic Film Collection</h3>
+                    <p class="card-text mb-4">
+                        Explore our extensive collection of historic and classic films. 
+                        Vote for your favorites and help decide which timeless classics 
+                        should return to the big screen.
+                    </p>
+                    <a href="{% url 'films_app:classics' %}" class="btn btn-primary btn-lg">
+                        Explore Classic Films
+                    </a>
+                </div>
+                <div class="card-footer bg-light text-center py-3">
+                    <span class="badge bg-success">Available Now</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6 mb-4">
+            <div class="card h-100 shadow-lg border-0 route-card">
+                <div class="card-body text-center p-5">
+                    <div class="mb-4">
+                        <i class="fas fa-ticket-alt fa-5x text-danger"></i>
+                    </div>
+                    <h3 class="card-title mb-3">Current & Upcoming Releases</h3>
+                    <p class="card-text mb-4">
+                        Discover films currently showing in theaters and upcoming releases.
+                        Stay updated on the latest cinema offerings and plan your next 
+                        movie night.
+                    </p>
+                    <a href="{% url 'films_app:cinema' %}" class="btn btn-outline-danger btn-lg">
+                        Explore Coming Soon
+                    </a>
+                </div>
+                <div class="card-footer bg-light text-center py-3">
+                    <span class="badge bg-warning text-dark">Under Development</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mt-5">
+        <div class="col-md-8 mx-auto text-center">
+            <h3 class="mb-4">Why Choose Your Cinema Films?</h3>
+            <div class="row">
+                <div class="col-md-4 mb-4">
+                    <div class="feature-icon mb-3">
+                        <i class="fas fa-vote-yea fa-3x text-primary"></i>
+                    </div>
+                    <h5>Vote for Your Favorites</h5>
+                    <p>Help decide which films deserve the big screen experience</p>
+                </div>
+                <div class="col-md-4 mb-4">
+                    <div class="feature-icon mb-3">
+                        <i class="fas fa-users fa-3x text-primary"></i>
+                    </div>
+                    <h5>Join the Community</h5>
+                    <p>Connect with other film enthusiasts and share your passion</p>
+                </div>
+                <div class="col-md-4 mb-4">
+                    <div class="feature-icon mb-3">
+                        <i class="fas fa-chart-bar fa-3x text-primary"></i>
+                    </div>
+                    <h5>Discover Trends</h5>
+                    <p>Explore analytics and insights about film preferences</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .route-card {
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        border-radius: 10px;
+        overflow: hidden;
+    }
+    
+    .route-card:hover {
+        transform: translateY(-10px);
+        box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+    }
+    
+    .feature-icon {
+        height: 70px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .card-footer {
+        border-top: none;
+    }
+</style>
+{% endblock %} 

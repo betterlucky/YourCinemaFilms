@@ -1,45 +1,76 @@
 import json
+import os
 import requests
-from datetime import datetime, timedelta
+import logging
+from datetime import datetime, timedelta, date
 from dateutil.relativedelta import relativedelta
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
+from django.contrib.admin.views.decorators import staff_member_required
 from django.http import JsonResponse, HttpResponse, FileResponse, HttpResponseNotAllowed
 from django.conf import settings
 from django.contrib import messages
 from django.db.models import Count, Q, F
 from django.utils import timezone
 from django.contrib.auth.models import User
-import logging
-from allauth.socialaccount.models import SocialAccount
-import os
-import time
-from django.utils.translation import gettext as _
-from django.template.loader import render_to_string
-from django.core.cache import cache
-from django.db.models.functions import Trim
-from django.utils.safestring import mark_safe
 from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
-from django.db.models import Count, Q, F, Value, CharField
-from django.db.models.functions import Concat
-from django.views.decorators.http import require_POST
-from django.db import models
+from django.views.decorators.http import require_http_methods
+from django.views.decorators.csrf import csrf_exempt
+from django.urls import reverse
+from django.template.loader import render_to_string
+from allauth.socialaccount.models import SocialAccount
+from django.db import connection
+from django.core.management import call_command
+from io import StringIO
+import sys
 
-from .models import Film, Vote, UserProfile, GenreTag
+from .models import Film, Vote, UserProfile, GenreTag, Activity, CinemaVote
 from .utils import (
-    validate_genre_tag, 
-    fetch_and_update_film_from_omdb, 
-    require_http_method, 
-    validate_and_format_genre_tag,
-    count_film_votes,
-    filter_votes_by_period
+    fetch_and_update_film_from_tmdb,
+    filter_profanity, validate_and_format_genre_tag, require_http_method,
+    count_film_votes, get_date_range_from_period, filter_votes_by_period,
+    get_cached_search_results, cache_search_results
 )
+from .tmdb_api import search_movies
 # Import forms if they exist in your project
 # from .forms import FilmSearchForm, UploadProfileImageForm
 
 
-def home(request):
-    """Home page view."""
+def landing(request):
+    """Landing page view that introduces the app and offers route options."""
+    return render(request, 'films_app/landing.html')
+
+
+def cinema(request):
+    """Cinema page view for current and upcoming releases."""
+    # Get films that are in cinema or coming soon
+    now_playing_films = Film.objects.filter(is_in_cinema=True).order_by('title')
+    upcoming_films = Film.objects.filter(
+        is_in_cinema=False, 
+        uk_release_date__isnull=False,
+        uk_release_date__gt=date.today()
+    ).order_by('uk_release_date')
+    
+    # Get user's cinema votes if authenticated
+    user_cinema_votes = []
+    cinema_votes_remaining = 3
+    
+    if request.user.is_authenticated:
+        user_cinema_votes = CinemaVote.objects.filter(user=request.user).select_related('film')
+        cinema_votes_remaining = 3 - user_cinema_votes.count()
+    
+    context = {
+        'now_playing_films': now_playing_films,
+        'upcoming_films': upcoming_films,
+        'user_cinema_votes': user_cinema_votes,
+        'cinema_votes_remaining': cinema_votes_remaining,
+    }
+    
+    return render(request, 'films_app/cinema.html', context)
+
+
+def classics(request):
+    """Classic films page view."""
     try:
         # Get top films based on votes
         top_films = get_top_films_data(limit=10)
@@ -48,20 +79,19 @@ def home(request):
             'top_films': top_films,
         }
         
+        # If user is authenticated, get their votes
         if request.user.is_authenticated:
-            # Get user's votes and remaining votes
             user_votes, votes_remaining = get_user_votes_and_remaining(request.user)
-            context['user_votes'] = user_votes
-            context['votes_remaining'] = votes_remaining
+            context.update({
+                'user_votes': user_votes,
+                'votes_remaining': votes_remaining,
+            })
         
-        return render(request, 'films_app/home.html', context)
+        return render(request, 'films_app/classics.html', context)
     except Exception as e:
-        # If there's an error (like missing tables), show a simple page
-        error_message = str(e)
-        return render(request, 'films_app/error.html', {
-            'error_message': error_message,
-            'is_database_error': 'relation' in error_message and 'does not exist' in error_message
-        })
+        logging.error(f"Error in classics view: {e}")
+        messages.error(request, _("An error occurred while loading the classics page. Please try again later."))
+        return render(request, 'films_app/error.html', {'error_message': str(e)})
 
 
 @login_required
@@ -72,21 +102,38 @@ def profile(request):
     # Get user's votes and remaining votes
     user_votes, votes_remaining = get_user_votes_and_remaining(request.user)
     
-    # Check if the user has a Google account (case-insensitive)
-    google_accounts = SocialAccount.objects.filter(user=request.user, provider='google')
-    has_google_account = google_accounts.exists()
-    
-    logger.info(f"Final has_google_account value: {has_google_account}")
-    
     # Get user achievements
     from films_app.models import Achievement
     achievements = Achievement.objects.filter(user=request.user)
+    
+    # Check for Google accounts using raw SQL query
+    with connection.cursor() as cursor:
+        cursor.execute(
+            "SELECT COUNT(*) FROM socialaccount_socialaccount WHERE user_id = %s AND LOWER(provider) = 'google'",
+            [request.user.id]
+        )
+        google_account_count = cursor.fetchone()[0]
+    
+    has_google_account = google_account_count > 0
+    logger.info(f"User: {request.user.username}, Has Google account (SQL): {has_google_account}")
+    
+    # Get all social accounts using raw SQL
+    with connection.cursor() as cursor:
+        cursor.execute(
+            "SELECT id, LOWER(provider) as provider FROM socialaccount_socialaccount WHERE user_id = %s",
+            [request.user.id]
+        )
+        social_accounts_raw = cursor.fetchall()
+    
+    # Convert to a list of dictionaries for the template
+    social_accounts = [{'id': row[0], 'provider': row[1]} for row in social_accounts_raw]
+    logger.info(f"Social accounts (SQL): {social_accounts}")
     
     context = {
         'profile': request.user.profile,
         'user_votes': user_votes,
         'votes_remaining': votes_remaining,
-        'social_accounts': google_accounts,
+        'social_accounts': social_accounts,
         'has_google_account': has_google_account,
         'achievements': achievements,
     }
@@ -183,7 +230,7 @@ def edit_profile(request):
 
 
 def search_films(request):
-    """Search films using OMDB API."""
+    """Search films using TMDB API."""
     query = request.GET.get('query', '')
     
     if not query or len(query) < 3:
@@ -194,49 +241,56 @@ def search_films(request):
             return render(request, 'films_app/partials/search_results.html', {'results': []})
         return JsonResponse({'results': []})
     
-    api_key = settings.OMDB_API_KEY
-    url = f"http://www.omdbapi.com/?apikey={api_key}&s={query}&type=movie"
-    
-    try:
-        response = requests.get(url)
-        data = response.json()
-        
-        if data.get('Response') == 'True':
-            results = data.get('Search', [])
+    # Try to get cached results first
+    cached_results = get_cached_search_results(query)
+    if cached_results:
+        results = cached_results
+    else:
+        # Fetch from TMDB API
+        try:
+            tmdb_data = search_movies(query)
             
-            if request.htmx:
-                # Check which target is being used
-                if request.htmx.target == 'search-results':
-                    return render(request, 'films_app/partials/modal_search_results.html', {'results': results})
-                # Check for navbar or main search targets
-                if request.htmx.target == 'navbar-search-results':
-                    return render(request, 'films_app/partials/search_results.html', {'results': results})
-                if request.htmx.target == 'main-search-results':
-                    return render(request, 'films_app/partials/search_results.html', {'results': results})
-                return render(request, 'films_app/partials/search_results.html', {'results': results})
-            return JsonResponse({'results': results})
-        else:
-            if request.htmx:
-                # Check which target is being used
-                if request.htmx.target == 'search-results':
-                    return render(request, 'films_app/partials/modal_search_results.html', {'results': []})
-                return render(request, 'films_app/partials/search_results.html', {'results': []})
-            return JsonResponse({'results': []})
-    except Exception as e:
-        if request.htmx:
-            # Check which target is being used
-            if request.htmx.target == 'search-results':
-                return render(request, 'films_app/partials/modal_search_results.html', {'results': []})
-            return render(request, 'films_app/partials/search_results.html', {'results': []})
-        return JsonResponse({'error': str(e)}, status=500)
+            if tmdb_data.get('results'):
+                # Format results to match the expected structure in templates
+                results = []
+                for movie in tmdb_data['results']:
+                    # Format each movie to match the structure expected by the template
+                    formatted_movie = {
+                        'imdbID': movie.get('id'),  # Using TMDB ID temporarily
+                        'Title': movie.get('title', ''),
+                        'Year': movie.get('release_date', '')[:4] if movie.get('release_date') else '',
+                        'Poster': f"https://image.tmdb.org/t/p/w500{movie.get('poster_path')}" if movie.get('poster_path') else '',
+                        'tmdb_id': movie.get('id'),  # Store TMDB ID for later use
+                    }
+                    results.append(formatted_movie)
+                
+                # Cache the results
+                cache_search_results(query, results)
+            else:
+                results = []
+        except Exception as e:
+            logging.error(f"Error searching TMDB: {str(e)}")
+            results = []
+    
+    if request.htmx:
+        # Check which target is being used
+        if request.htmx.target == 'search-results':
+            return render(request, 'films_app/partials/modal_search_results.html', {'results': results})
+        # Check for navbar or main search targets
+        if request.htmx.target == 'navbar-search-results':
+            return render(request, 'films_app/partials/search_results.html', {'results': results})
+        if request.htmx.target == 'main-search-results':
+            return render(request, 'films_app/partials/search_results.html', {'results': results})
+        return render(request, 'films_app/partials/search_results.html', {'results': results})
+    return JsonResponse({'results': results})
 
 
 @login_required
 def film_detail(request, imdb_id):
     """Get detailed information about a film."""
     try:
-        # Fetch or update film from OMDB
-        film, created = fetch_and_update_film_from_omdb(imdb_id)
+        # Fetch or update film from TMDB
+        film, created = fetch_and_update_film_from_tmdb(imdb_id)
         
         # Check if user has voted for this film and can vote
         has_voted = False
@@ -271,7 +325,7 @@ def film_detail(request, imdb_id):
         return render(request, 'films_app/film_detail.html', context)
     except ValueError as e:
         messages.error(request, str(e))
-        return redirect('films_app:home')
+        return redirect('films_app:classics')
 
 
 @login_required
@@ -355,7 +409,7 @@ def remove_vote(request, vote_id):
             return HttpResponse(response_html)
     
     # For non-HTMX requests, redirect back to the referring page
-    return redirect(request.META.get('HTTP_REFERER', 'films_app:profile'))
+    return redirect(request.META.get('HTTP_REFERER', 'films_app:classics'))
 
 
 @login_required
@@ -986,7 +1040,7 @@ def demographic_analysis(request):
     # Only staff can access this view
     if not request.user.is_staff:
         messages.error(request, "You don't have permission to access this page.")
-        return redirect('films_app:home')
+        return redirect('films_app:classics')
     
     # Get demographic data
     gender_data = UserProfile.objects.exclude(gender='NS').values('gender').annotate(
@@ -1017,7 +1071,7 @@ def demographic_analysis(request):
 def debug_profile(request, username):
     """Debug view for profile information."""
     if not request.user.is_authenticated or not request.user.is_superuser:
-        return redirect('films_app:home')
+        return redirect('films_app:classics')
     
     # Get the user by username
     target_user = get_object_or_404(User, username=username)
@@ -1381,45 +1435,59 @@ def get_google_profile_image(request):
     Get the Google profile image URL for the current user.
     """
     logger = logging.getLogger(__name__)
+    logger.info(f"Attempting to get Google profile image for user: {request.user.username}")
     
-    # Try to find a Google account for the user (case-insensitive)
-    social_accounts = SocialAccount.objects.filter(user=request.user)
-    google_account = None
+    # Try to find a Google account using raw SQL
+    from django.db import connection
+    with connection.cursor() as cursor:
+        cursor.execute(
+            "SELECT id, uid, extra_data FROM socialaccount_socialaccount WHERE user_id = %s AND LOWER(provider) = 'google'",
+            [request.user.id]
+        )
+        google_account_raw = cursor.fetchone()
     
-    for account in social_accounts:
-        if account.provider.lower() == 'google':
-            google_account = account
-            break
-    
-    if google_account and 'picture' in google_account.extra_data:
-        picture_url = google_account.extra_data['picture']
-        logger.info(f"Found Google profile picture URL: {picture_url}")
+    if google_account_raw:
+        account_id, account_uid, extra_data_json = google_account_raw
+        logger.info(f"Found Google account: {account_id}")
         
-        # Update the profile with the Google profile picture URL
-        profile = request.user.profile
-        profile.profile_picture_url = picture_url
-        profile.google_account_id = google_account.uid
-        profile.save()
-        
-        messages.success(request, _("Google profile picture set successfully."))
-        return redirect('films_app:profile')
-    
-    # If no Google account found or no picture in the account
-    logger.warning(f"No Google account found for {request.user.username}")
-    messages.warning(request, _("No Google account connected. Please connect a Google account to use this feature."))
+        import json
+        try:
+            extra_data = json.loads(extra_data_json)
+            logger.info(f"Extra data: {extra_data}")
+            
+            if 'picture' in extra_data:
+                picture_url = extra_data['picture']
+                logger.info(f"Found Google profile picture URL: {picture_url}")
+                
+                # Update the profile with the Google profile picture URL
+                profile = request.user.profile
+                profile.profile_picture_url = picture_url
+                profile.google_account_id = account_uid
+                profile.save()
+                
+                messages.success(request, _("Google profile picture set successfully."))
+                return redirect('films_app:profile')
+            else:
+                logger.warning(f"No picture found in Google account extra data")
+                messages.warning(request, _("No profile picture found in your Google account."))
+        except json.JSONDecodeError:
+            logger.error(f"Failed to parse extra_data JSON: {extra_data_json}")
+            messages.error(request, _("Failed to retrieve profile picture from Google account."))
+    else:
+        logger.warning(f"No Google account found for {request.user.username}")
+        messages.warning(request, _("No Google account connected. Please connect a Google account to use this feature."))
     
     return redirect('films_app:profile')
 
 
 @login_required
-def update_film_from_omdb(request, imdb_id):
-    """Update film information from OMDB API."""
+def update_film_from_tmdb(request, imdb_id):
+    """Update film information from TMDB API."""
     try:
-        # Fetch or update film from OMDB with force_update=True
-        from .utils import fetch_and_update_film_from_omdb
-        film, _ = fetch_and_update_film_from_omdb(imdb_id, force_update=True)
+        # Fetch or update film from TMDB with force_update=True
+        film, _ = fetch_and_update_film_from_tmdb(imdb_id, force_update=True)
         
-        messages.success(request, f"Successfully updated '{film.title}' with the latest information from OMDB, including genres: {film.genres}")
+        messages.success(request, f"Successfully updated '{film.title}' with the latest information from TMDB, including genres: {film.genres}")
         return redirect('films_app:film_detail', imdb_id=imdb_id)
     except ValueError as e:
         messages.error(request, str(e))
@@ -1473,4 +1541,146 @@ def user_can_vote(user, film=None):
     if user_votes_count >= 10:
         return False, "max_votes_reached"
     
-    return True, None 
+    return True, None
+
+@login_required
+def vote_for_cinema_film(request, imdb_id):
+    """Vote for a cinema film."""
+    # Check if method is POST
+    method_error = require_http_method(request)
+    if method_error:
+        return method_error
+    
+    # Get or create film
+    film = get_object_or_404(Film, imdb_id=imdb_id)
+    
+    # Check if film is in cinema or coming soon
+    if not film.is_in_cinema and not film.is_coming_soon:
+        return HttpResponseBadRequest("This film is not currently in cinemas or coming soon.")
+    
+    # Check if user already voted for this film
+    if CinemaVote.objects.filter(user=request.user, film=film).exists():
+        # Return the "already voted" button
+        return render(request, 'films_app/partials/cinema_voted_button.html', {'film': film})
+    
+    # Check if user has reached the maximum number of votes
+    if CinemaVote.objects.filter(user=request.user).count() >= 3:
+        # Return the "max votes reached" button
+        return render(request, 'films_app/partials/cinema_max_votes_button.html')
+    
+    # Create vote
+    vote = CinemaVote(user=request.user, film=film)
+    vote.save()
+    
+    # Get updated vote count for the film
+    vote_count = CinemaVote.objects.filter(film=film).count()
+    
+    # Return the success button with updated vote count
+    response_html = f"""
+    {render_to_string('films_app/partials/cinema_voted_button.html', {'film': film}, request=request)}
+    <div hx-swap-oob="true" id="cinema-film-vote-count-{film.imdb_id}">
+        {render_to_string('films_app/partials/vote_count_badge.html', {'vote_count': vote_count}, request=request)}
+    </div>
+    """
+    
+    # Also update the user's vote status
+    response_html += f"""
+    <div hx-swap-oob="true" id="user-cinema-vote-status">
+        {render_to_string('films_app/partials/user_cinema_vote_status.html', 
+                         {'user_cinema_votes': CinemaVote.objects.filter(user=request.user),
+                          'cinema_votes_remaining': 3 - CinemaVote.objects.filter(user=request.user).count()}, 
+                         request=request)}
+    </div>
+    """
+    
+    # Log activity
+    Activity.objects.create(
+        user=request.user,
+        activity_type='vote',
+        film=film,
+        description=f"Voted for cinema film: {film.title}"
+    )
+    
+    return HttpResponse(response_html)
+
+
+@login_required
+def remove_cinema_vote(request, vote_id):
+    """Remove a cinema vote."""
+    # Check if method is POST or DELETE (for HTMX)
+    if request.method not in ['POST', 'DELETE']:
+        return HttpResponseNotAllowed(['POST', 'DELETE'])
+    
+    # Get vote
+    vote = get_object_or_404(CinemaVote, id=vote_id, user=request.user)
+    film = vote.film
+    
+    # Delete vote
+    vote.delete()
+    
+    # Log activity
+    Activity.objects.create(
+        user=request.user,
+        activity_type='vote',
+        film=film,
+        description=f"Removed vote for cinema film: {film.title}"
+    )
+    
+    # Return success message
+    return render(request, 'films_app/partials/cinema_vote_removed.html', {
+        'film': film,
+        'user_cinema_votes': CinemaVote.objects.filter(user=request.user),
+        'cinema_votes_remaining': 3 - CinemaVote.objects.filter(user=request.user).count()
+    })
+
+
+@login_required
+def get_cinema_vote_status(request):
+    """Get the user's cinema vote status."""
+    user_cinema_votes = CinemaVote.objects.filter(user=request.user).select_related('film')
+    cinema_votes_remaining = 3 - user_cinema_votes.count()
+    
+    return render(request, 'films_app/partials/user_cinema_vote_status.html', {
+        'user_cinema_votes': user_cinema_votes,
+        'cinema_votes_remaining': cinema_votes_remaining
+    })
+
+
+@staff_member_required
+def update_cinema_cache(request):
+    """Update the cinema cache with current and upcoming UK releases."""
+    from django.core.management import call_command
+    from io import StringIO
+    import sys
+    
+    if request.method != 'POST':
+        return HttpResponseNotAllowed(['POST'])
+    
+    # Capture command output
+    output = StringIO()
+    sys.stdout = output
+    
+    try:
+        # Run the management command with cinema-only flag
+        call_command('update_movie_cache', cinema_only=True, force=True)
+        result = output.getvalue()
+        status = 'success'
+    except Exception as e:
+        result = f"Error: {str(e)}"
+        status = 'error'
+    finally:
+        # Reset stdout
+        sys.stdout = sys.__stdout__
+    
+    # Format the output for display
+    formatted_output = result.replace('\n', '<br>')
+    
+    # Return the result
+    if status == 'success':
+        return render(request, 'films_app/partials/cache_update_success.html', {
+            'output': formatted_output
+        })
+    else:
+        return render(request, 'films_app/partials/cache_update_error.html', {
+            'output': formatted_output
+        }) 

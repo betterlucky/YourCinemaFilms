@@ -1,0 +1,12 @@
+<button class="btn btn-sm btn-remove-vote"
+        hx-post="{% url 'films_app:remove_cinema_vote' vote_id=vote.id %}"
+        hx-confirm="Are you sure you want to remove this vote?"
+        hx-target="closest .col-md-3"
+        hx-swap="outerHTML"
+        hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+        hx-indicator="#remove-cinema-vote-indicator-{{ vote.id }}">
+    Remove Vote
+    <span id="remove-cinema-vote-indicator-{{ vote.id }}" class="htmx-indicator">
+        <i class="fas fa-spinner fa-spin"></i>
+    </span>
+</button> 
