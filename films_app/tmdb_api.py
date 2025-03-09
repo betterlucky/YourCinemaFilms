@@ -1,5 +1,31 @@
 import requests
 from django.conf import settings
+import logging
+
+logger = logging.getLogger(__name__)
+
+def sort_and_limit_films(films, limit=None, sort_by='popularity'):
+    """
+    Sort a list of films by the specified attribute and limit the results.
+    
+    Args:
+        films (list): List of film dictionaries
+        limit (int, optional): Maximum number of films to return
+        sort_by (str, optional): Attribute to sort by, defaults to 'popularity'
+        
+    Returns:
+        list: Sorted and limited list of films
+    """
+    logger.info(f"Sorting {len(films)} films by {sort_by} and limiting to {limit if limit else 'all'}")
+    
+    # Sort the films by the specified attribute in descending order
+    sorted_films = sorted(films, key=lambda x: x.get(sort_by, 0), reverse=True)
+    
+    # Limit the results if specified
+    if limit and limit > 0:
+        return sorted_films[:limit]
+    
+    return sorted_films
 
 def get_api_url(endpoint):
     """
