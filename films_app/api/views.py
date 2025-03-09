@@ -21,6 +21,7 @@ class FilmListAPIView(generics.ListAPIView):
     """API view to list films."""
     queryset = Film.objects.all()
     serializer_class = FilmSerializer
+    permission_classes = [permissions.AllowAny]
 
 
 class FilmDetailAPIView(generics.RetrieveAPIView):
@@ -28,6 +29,7 @@ class FilmDetailAPIView(generics.RetrieveAPIView):
     queryset = Film.objects.all()
     serializer_class = FilmSerializer
     lookup_field = 'imdb_id'
+    permission_classes = [permissions.AllowAny]
 
 
 class VoteListCreateAPIView(generics.ListCreateAPIView):

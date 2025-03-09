@@ -346,6 +346,7 @@ def search_films(request):
     return JsonResponse({'results': results})
 
 
+@permission_classes([AllowAny])
 def film_detail(request, imdb_id):
     """Get detailed information about a film."""
     try:
@@ -1581,7 +1582,7 @@ def get_google_profile_image(request):
     return redirect('films_app:profile')
 
 
-@permission_classes([AllowAny])
+@login_required
 def update_film_from_tmdb(request, imdb_id):
     """Update film information from TMDB API."""
     try:
@@ -1741,6 +1742,9 @@ def remove_cinema_vote(request, vote_id):
 
 
 
+
+
+
 @login_required
 def get_cinema_vote_status(request):
     """Get the user's cinema vote status."""
@@ -1751,6 +1755,9 @@ def get_cinema_vote_status(request):
         'user_cinema_votes': user_cinema_votes,
         'cinema_votes_remaining': cinema_votes_remaining
     })
+
+
+
 
 
 
