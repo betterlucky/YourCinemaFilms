@@ -28,6 +28,7 @@ echo "Making scripts executable..."
 chmod +x update_cinema_cache.py
 chmod +x update_fixtures.py
 chmod +x fix_database_schema.py
+chmod +x reset_database.py
 
 # Create static directory if it doesn't exist
 echo "Creating static directories..."
@@ -45,6 +46,12 @@ echo "Directory structure:"
 ls -la
 echo "Static files directory:"
 ls -la staticfiles || echo "Static files directory not found or empty"
+
+# Reset the database completely
+echo "Resetting database..."
+python reset_database.py --force || {
+  echo "Database reset failed, but continuing..."
+}
 
 # Run the database setup script
 echo "Setting up database..."
