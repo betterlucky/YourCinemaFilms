@@ -38,6 +38,18 @@ def check_column_exists(table, column):
         """, [table, column])
         return cursor.fetchone()[0]
 
+def check_table_exists(table):
+    """Check if a table exists in the database."""
+    with connection.cursor() as cursor:
+        cursor.execute("""
+            SELECT EXISTS (
+                SELECT FROM information_schema.tables 
+                WHERE table_schema = 'public'
+                AND table_name = %s
+            );
+        """, [table])
+        return cursor.fetchone()[0]
+
 def add_missing_columns():
     """Add missing columns to the Film table."""
     logger.info("Checking and adding missing columns to the Film table")
@@ -92,7 +104,7 @@ def add_missing_columns():
 
 def create_cinemavote_table():
     """Create the CinemaVote table if it doesn't exist."""
-    if check_column_exists('films_app_cinemavote', 'id'):
+    if check_table_exists('films_app_cinemavote'):
         logger.info("Table films_app_cinemavote already exists, skipping creation")
         return True
     
@@ -122,6 +134,41 @@ def create_cinemavote_table():
             return True
     except Exception as e:
         logger.error(f"Error creating films_app_cinemavote table: {str(e)}")
+        return False
+
+def create_pagetracker_table():
+    """Create the PageTracker table if it doesn't exist."""
+    if check_table_exists('films_app_pagetracker'):
+        logger.info("Table films_app_pagetracker already exists, skipping creation")
+        return True
+    
+    logger.info("Creating films_app_pagetracker table")
+    try:
+        with connection.cursor() as cursor:
+            # Create the table
+            cursor.execute("""
+                CREATE TABLE "films_app_pagetracker" (
+                    "id" bigserial NOT NULL PRIMARY KEY,
+                    "movie_type" varchar(20) NOT NULL,
+                    "last_page" integer NOT NULL,
+                    "total_pages" integer NOT NULL,
+                    "last_updated" timestamp with time zone NOT NULL
+                );
+            """)
+            
+            # Create unique index on movie_type
+            cursor.execute('CREATE UNIQUE INDEX "films_app_pagetracker_movie_type_idx" ON "films_app_pagetracker" ("movie_type");')
+            
+            # Insert initial records
+            cursor.execute("""
+                INSERT INTO "films_app_pagetracker" ("movie_type", "last_page", "total_pages", "last_updated")
+                VALUES ('now_playing', 0, 1, NOW()), ('upcoming', 0, 1, NOW());
+            """)
+            
+            logger.info("Table films_app_pagetracker created successfully")
+            return True
+    except Exception as e:
+        logger.error(f"Error creating films_app_pagetracker table: {str(e)}")
         return False
 
 def fix_migration_state():
@@ -176,6 +223,10 @@ def main():
     
     # Create the CinemaVote table
     if not create_cinemavote_table():
+        success = False
+    
+    # Create the PageTracker table
+    if not create_pagetracker_table():
         success = False
     
     # Fix migration state
