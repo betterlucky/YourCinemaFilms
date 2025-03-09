@@ -33,8 +33,9 @@ def main():
     logger.info(f"Starting cinema cache update at {start_time}")
     
     try:
-        # Run the management command with cinema-only flag
-        call_command('update_movie_cache', cinema_only=True)
+        # Run the management command with limited pages to avoid timeouts
+        logger.info("Running update_movie_cache with type=cinema and max_pages=2")
+        call_command('update_movie_cache', type='cinema', max_pages=2)
         
         end_time = datetime.now()
         duration = end_time - start_time

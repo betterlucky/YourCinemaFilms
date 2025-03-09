@@ -12,10 +12,24 @@ class Command(BaseCommand):
     help = 'Update the film cache with data from TMDB API'
 
     def add_arguments(self, parser):
+        """Add command arguments."""
+        parser.add_argument(
+            '--type',
+            type=str,
+            choices=['all', 'db', 'json', 'cinema'],
+            default='all',
+            help='Type of cache to update'
+        )
         parser.add_argument(
             '--force',
             action='store_true',
-            help='Force update even if cache is recent',
+            help='Force update even if cache is recent'
+        )
+        parser.add_argument(
+            '--max-pages',
+            type=int,
+            default=2,
+            help='Maximum number of pages to process per movie type'
         )
         parser.add_argument(
             '--cache-type',
@@ -31,27 +45,22 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
+        """Handle the command."""
+        cache_type = options['type']
         force = options['force']
-        cache_type = options['cache_type']
-        cinema_only = options['cinema_only']
+        max_pages = options['max_pages']
         
-        self.stdout.write(self.style.SUCCESS(f'Starting cache update (type: {cache_type})'))
+        self.stdout.write(f'Starting cache update (type: {cache_type})')
         
-        # Update database cache if requested
-        if cache_type in ['db', 'both']:
-            if cinema_only:
-                self.update_cinema_db_cache(force)
-            else:
-                self.update_db_cache(force)
-                self.update_cinema_db_cache(force)
+        if cache_type in ['all', 'db']:
+            self.update_db_cache(force)
         
-        # Update JSON cache if requested
-        if cache_type in ['json', 'both']:
-            if cinema_only:
-                self.update_cinema_json_cache(force)
-            else:
-                self.update_json_cache(force)
-                self.update_cinema_json_cache(force)
+        if cache_type in ['all', 'json']:
+            self.update_json_cache(force)
+        
+        if cache_type in ['all', 'cinema']:
+            self.update_cinema_db_cache(force, max_pages)
+            self.update_cinema_json_cache(force)
         
         self.stdout.write(self.style.SUCCESS('Cache update completed'))
 
@@ -80,7 +89,7 @@ class Command(BaseCommand):
         
         self.stdout.write(self.style.SUCCESS('Database cache update completed'))
 
-    def update_cinema_db_cache(self, force):
+    def update_cinema_db_cache(self, force, max_pages):
         """Update the database cache with current and upcoming cinema films."""
         self.stdout.write('Updating cinema films in database...')
         
@@ -91,19 +100,20 @@ class Command(BaseCommand):
         
         # Process now playing movies
         self.stdout.write('Fetching and processing now playing movies...')
-        self._process_movie_batch('now_playing')
+        self._process_movie_batch('now_playing', max_pages)
         
         # Process upcoming movies
         self.stdout.write('Fetching and processing upcoming movies...')
-        self._process_movie_batch('upcoming')
+        self._process_movie_batch('upcoming', max_pages)
         
         self.stdout.write(self.style.SUCCESS('Cinema database cache update completed'))
     
-    def _process_movie_batch(self, movie_type):
+    def _process_movie_batch(self, movie_type, max_pages):
         """Process a batch of movies to reduce memory usage.
         
         Args:
             movie_type (str): Type of movies to process ('now_playing' or 'upcoming')
+            max_pages (int): Maximum number of pages to process
         """
         # Get the appropriate function based on movie type
         if movie_type == 'now_playing':
@@ -188,6 +198,10 @@ class Command(BaseCommand):
             
             # Move to the next page
             page += 1
+            
+            # Check if we've reached the maximum number of pages
+            if page > max_pages:
+                break
         
         self.stdout.write(f'Processed {total_processed} {movie_type} movies')
 

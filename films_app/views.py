@@ -1720,6 +1720,9 @@ def update_cinema_cache(request):
     from django.core.management import call_command
     from io import StringIO
     import sys
+    import logging
+    
+    logger = logging.getLogger(__name__)
     
     if request.method != 'POST':
         return HttpResponseNotAllowed(['POST'])
@@ -1729,13 +1732,16 @@ def update_cinema_cache(request):
     sys.stdout = output
     
     try:
-        # Run the management command with cinema-only flag
-        call_command('update_movie_cache', cinema_only=True, force=True)
+        # Run the management command with limited pages to avoid timeouts
+        logger.info("Starting cinema cache update with max_pages=2")
+        call_command('update_movie_cache', type='cinema', force=True, max_pages=2)
         result = output.getvalue()
         status = 'success'
+        logger.info("Cinema cache update completed successfully")
     except Exception as e:
         result = f"Error: {str(e)}"
         status = 'error'
+        logger.error(f"Cinema cache update failed: {str(e)}")
     finally:
         # Reset stdout
         sys.stdout = sys.__stdout__
