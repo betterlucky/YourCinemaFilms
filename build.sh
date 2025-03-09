@@ -23,14 +23,6 @@ else
   echo "DATABASE_URL is not set"
 fi
 
-# Make scripts executable
-echo "Making scripts executable..."
-chmod +x update_cinema_cache.py
-chmod +x update_fixtures.py
-chmod +x fix_database_schema.py
-chmod +x reset_database.py
-chmod +x fix_film_schema.py
-
 # Create static directory if it doesn't exist
 echo "Creating static directories..."
 mkdir -p staticfiles
@@ -38,65 +30,59 @@ mkdir -p static
 
 # Collect static files
 echo "Collecting static files..."
-python manage.py collectstatic --noinput || {
-  echo "Static file collection failed, but continuing..."
-}
+python manage.py collectstatic --noinput
 
-# List directories for debugging
-echo "Directory structure:"
-ls -la
-echo "Static files directory:"
-ls -la staticfiles || echo "Static files directory not found or empty"
+# Wait for database to be available
+echo "Waiting for database to be available..."
+python -c "
+import os
+import sys
+import time
+import django
+from django.db import connection
+from django.db.utils import OperationalError
 
-# Fix the Film table schema if needed
-echo "Fixing Film table schema if needed..."
-python fix_film_schema.py || {
-  echo "Film schema fix failed, but continuing..."
-}
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'films_project.settings')
+django.setup()
 
-# Run the database setup script
-echo "Setting up database..."
-python ensure_db.py || {
-  echo "Database setup failed, but continuing..."
-}
+retries = 0
+max_retries = 5
+retry_interval = 5
 
-# Update fixtures to include popularity field
-echo "Updating fixtures..."
-python update_fixtures.py || {
-  echo "Updating fixtures failed, but continuing..."
-}
+while retries < max_retries:
+    try:
+        connection.ensure_connection()
+        print('Database connection successful!')
+        sys.exit(0)
+    except OperationalError as e:
+        retries += 1
+        print(f'Database connection failed (attempt {retries}/{max_retries}): {e}')
+        if retries < max_retries:
+            print(f'Retrying in {retry_interval} seconds...')
+            time.sleep(retry_interval)
 
-# Explicitly run migrations for films_app to ensure Achievement model is created
-echo "Running migrations for films_app..."
-python manage.py makemigrations films_app --noinput || {
-  echo "Making migrations for films_app failed, but continuing..."
-}
-python manage.py migrate films_app --noinput || {
-  echo "Migrating films_app failed, but continuing..."
-}
+print('Failed to connect to the database after multiple attempts.')
+sys.exit(1)
+"
 
-# Run the comprehensive migrations script
-echo "Running comprehensive migrations script..."
-python run_migrations.py || {
-  echo "Comprehensive migrations failed, but continuing..."
-}
+# Run migrations
+echo "Running migrations..."
+# First, make migrations to ensure all model changes are captured
+python manage.py makemigrations --noinput
 
-# Run the database schema fix script
-echo "Running database schema fix script..."
-python fix_database_schema.py || {
-  echo "Database schema fix failed, but continuing..."
-}
+# Apply migrations
+python manage.py migrate --noinput
 
-# Update the site domain
+# Update site domain for OAuth
 echo "Updating site domain..."
-python update_site_domain.py || {
-  echo "Site domain update failed, but continuing..."
-}
+python update_site_domain.py
 
 # Set up Google OAuth
 echo "Setting up Google OAuth..."
-python setup_google_oauth.py || {
-  echo "Google OAuth setup failed, but continuing..."
-}
+python setup_google_oauth.py
+
+# Update cinema cache
+echo "Updating cinema cache..."
+python update_cinema_cache.py
 
 echo "Build process completed successfully!" 

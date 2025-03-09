@@ -26,47 +26,45 @@
         </div>
         
         <div class="col-md-6 mb-4">
-            <div class="card h-100 shadow-lg border-0 route-card">
-                <div class="card-body text-center p-5">
-                    <div class="mb-4">
-                        <i class="fas fa-film fa-5x text-primary"></i>
+            <a href="{% url 'films_app:classics' %}" class="card-link text-decoration-none">
+                <div class="card h-100 shadow-lg border-0 route-card">
+                    <div class="card-body text-center p-5">
+                        <div class="mb-4">
+                            <i class="fas fa-film fa-5x text-primary"></i>
+                        </div>
+                        <h3 class="card-title mb-3">Classic Film Collection</h3>
+                        <p class="card-text mb-4">
+                            Explore our extensive collection of historic and classic films. 
+                            Vote for your favorites and help decide which timeless classics 
+                            should return to the big screen.
+                        </p>
+                        <span class="btn btn-primary btn-lg mt-auto">
+                            Explore Classic Films
+                        </span>
                     </div>
-                    <h3 class="card-title mb-3">Classic Film Collection</h3>
-                    <p class="card-text mb-4">
-                        Explore our extensive collection of historic and classic films. 
-                        Vote for your favorites and help decide which timeless classics 
-                        should return to the big screen.
-                    </p>
-                    <a href="{% url 'films_app:classics' %}" class="btn btn-primary btn-lg">
-                        Explore Classic Films
-                    </a>
                 </div>
-                <div class="card-footer bg-light text-center py-3">
-                    <span class="badge bg-success">Available Now</span>
-                </div>
-            </div>
+            </a>
         </div>
         
         <div class="col-md-6 mb-4">
-            <div class="card h-100 shadow-lg border-0 route-card">
-                <div class="card-body text-center p-5">
-                    <div class="mb-4">
-                        <i class="fas fa-ticket-alt fa-5x text-danger"></i>
+            <a href="{% url 'films_app:cinema' %}" class="card-link text-decoration-none">
+                <div class="card h-100 shadow-lg border-0 route-card">
+                    <div class="card-body text-center p-5">
+                        <div class="mb-4">
+                            <i class="fas fa-ticket-alt fa-5x text-danger"></i>
+                        </div>
+                        <h3 class="card-title mb-3">Current & Upcoming Releases</h3>
+                        <p class="card-text mb-4">
+                            Discover films currently showing in theaters and upcoming releases.
+                            Stay updated on the latest cinema offerings and plan your next 
+                            movie night.
+                        </p>
+                        <span class="btn btn-outline-danger btn-lg mt-auto">
+                            Explore Current & Upcoming Films
+                        </span>
                     </div>
-                    <h3 class="card-title mb-3">Current & Upcoming Releases</h3>
-                    <p class="card-text mb-4">
-                        Discover films currently showing in theaters and upcoming releases.
-                        Stay updated on the latest cinema offerings and plan your next 
-                        movie night.
-                    </p>
-                    <a href="{% url 'films_app:cinema' %}" class="btn btn-outline-danger btn-lg">
-                        Explore Current & Upcoming Films
-                    </a>
                 </div>
-                <div class="card-footer bg-light text-center py-3">
-                    <span class="badge bg-success">Available Now</span>
-                </div>
-            </div>
+            </a>
         </div>
     </div>
     
@@ -107,11 +105,22 @@
         transition: transform 0.3s ease, box-shadow 0.3s ease;
         border-radius: 10px;
         overflow: hidden;
+        height: 100%;
     }
     
-    .route-card:hover {
+    .card-link:hover .route-card {
         transform: translateY(-10px);
         box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+    }
+    
+    .card-link {
+        display: block;
+        color: inherit;
+        height: 100%;
+    }
+    
+    .card-link:hover {
+        color: inherit;
     }
     
     .feature-icon {
@@ -123,6 +132,28 @@
     
     .card-footer {
         border-top: none;
+    }
+    
+    /* Ensure card bodies have the same height */
+    .row.mb-5 {
+        display: flex;
+        flex-wrap: wrap;
+    }
+    
+    .row.mb-5 > .col-md-6 {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .card-body {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+    }
+    
+    /* Push the button to the bottom */
+    .card-body .btn {
+        margin-top: auto;
     }
 </style>
 {% endblock %} 
