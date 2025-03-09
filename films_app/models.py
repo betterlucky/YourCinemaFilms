@@ -21,6 +21,7 @@ class Film(models.Model):
     is_in_cinema = models.BooleanField(default=False, help_text="Whether this film is currently in UK cinemas")
     uk_release_date = models.DateField(blank=True, null=True, help_text="UK release date for this film")
     uk_certification = models.CharField(max_length=10, blank=True, null=True, help_text="UK certification (e.g., PG, 12A, 15)")
+    popularity = models.FloatField(default=0, help_text="Popularity score from TMDB API")
     
     def __str__(self):
         return f"{self.title} ({self.year})"
