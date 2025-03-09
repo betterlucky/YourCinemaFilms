@@ -27,6 +27,8 @@ import sys
 import re
 import base64
 import urllib.parse
+from rest_framework.decorators import permission_classes
+from rest_framework.permissions import AllowAny
 
 # Try to import PIL, but don't fail if it's not available
 try:
@@ -260,24 +262,38 @@ def search_films(request):
     """Search films using TMDB API."""
     query = request.GET.get('query', '')
     
+    # Debug information
+    print(f"Search query: {query}")
+    print(f"Is HTMX request: {hasattr(request, 'htmx')}")
+    if hasattr(request, 'htmx'):
+        print(f"HTMX target: {request.htmx.target}")
+    
     if not query or len(query) < 3:
-        if request.htmx:
+        if hasattr(request, 'htmx'):
             # Check which target is being used
-            if request.htmx.target == 'search-results':
+            target_id = request.htmx.target
+            print(f"Empty results for target: {target_id}")
+            
+            if target_id == 'search-results':
                 return render(request, 'films_app/partials/modal_search_results.html', {'results': []})
-            return render(request, 'films_app/partials/search_results.html', {'results': []})
+            else:
+                # Use the same template for all other search targets
+                return render(request, 'films_app/partials/search_results.html', {'results': []})
         return JsonResponse({'results': []})
     
     # Try to get cached results first
     cached_results = get_cached_search_results(query)
     if cached_results:
         results = cached_results
+        print(f"Using cached results: {len(results)} items")
     else:
         # Fetch from TMDB API
         try:
+            print(f"Fetching results from TMDB API for: {query}")
             tmdb_data = search_movies(query)
             
             if tmdb_data.get('results'):
+                print(f"TMDB returned {len(tmdb_data['results'])} results")
                 # Format results to match the expected structure in templates
                 results = []
                 for movie in tmdb_data['results']:
@@ -308,28 +324,39 @@ def search_films(request):
                 # Cache the results
                 cache_search_results(query, results)
             else:
+                print("TMDB returned no results")
                 results = []
         except Exception as e:
             logging.error(f"Error searching TMDB: {str(e)}")
+            print(f"Error searching TMDB: {str(e)}")
             results = []
     
-    if request.htmx:
+    if hasattr(request, 'htmx'):
         # Check which target is being used
-        if request.htmx.target == 'search-results':
+        target_id = request.htmx.target
+        print(f"Returning results for HTMX target: {target_id}")
+        
+        if target_id == 'search-results':
             return render(request, 'films_app/partials/modal_search_results.html', {'results': results})
-        # Check for navbar or main search targets
-        if request.htmx.target == 'navbar-search-results':
+        else:
+            # Use the same template for all other search targets
+            print(f"Using search_results.html template for target: {target_id}")
             return render(request, 'films_app/partials/search_results.html', {'results': results})
-        if request.htmx.target == 'main-search-results':
-            return render(request, 'films_app/partials/main_search_results.html', {'results': results})
-        return render(request, 'films_app/partials/search_results.html', {'results': results})
+    
     return JsonResponse({'results': results})
 
 
-@login_required
 def film_detail(request, imdb_id):
     """Get detailed information about a film."""
     try:
+        # Initialize skip_fetch variable
+        skip_fetch = False
+        
+        # Check if this is a numeric ID (likely a TMDB ID without the prefix)
+        if imdb_id.isdigit():
+            # Convert to tmdb-prefixed format
+            imdb_id = f"tmdb-{imdb_id}"
+        
         # Check if this is a TMDB ID (prefixed with 'tmdb-')
         if imdb_id.startswith('tmdb-'):
             # Extract the TMDB ID
@@ -365,20 +392,24 @@ def film_detail(request, imdb_id):
         has_voted = False
         user_vote = None
         can_vote = False
+        user_tags = []
         
         if request.user.is_authenticated:
             can_vote, _ = user_can_vote(request.user, film)
             user_vote = Vote.objects.filter(user=request.user, film=film).first()
             has_voted = user_vote is not None
+            # Get user tags for this film
+            user_tags = GenreTag.objects.filter(film=film, user=request.user)
         
         # Get vote count
         vote_count = count_film_votes(film)
         
-        # Get user tags for this film
-        user_tags = GenreTag.objects.filter(film=film, user=request.user)
-        
         # Get all approved tags for this film
-        approved_tags = GenreTag.objects.filter(film=film, is_approved=True).exclude(user=request.user)
+        approved_tags = GenreTag.objects.filter(film=film, is_approved=True)
+        
+        # If user is authenticated, exclude their tags from approved tags
+        if request.user.is_authenticated:
+            approved_tags = approved_tags.exclude(user=request.user)
         
         context = {
             'film': film,
@@ -389,6 +420,7 @@ def film_detail(request, imdb_id):
             'approved_tags': approved_tags,
             'genres': film.genre_list,
             'all_genres': film.all_genres,
+            'is_authenticated': request.user.is_authenticated,
         }
         
         return render(request, 'films_app/film_detail.html', context)
@@ -1549,10 +1581,15 @@ def get_google_profile_image(request):
     return redirect('films_app:profile')
 
 
-@login_required
+@permission_classes([AllowAny])
 def update_film_from_tmdb(request, imdb_id):
     """Update film information from TMDB API."""
     try:
+        # Check if this is a numeric ID (likely a TMDB ID without the prefix)
+        if imdb_id.isdigit():
+            # Convert to tmdb-prefixed format
+            imdb_id = f"tmdb-{imdb_id}"
+            
         # Fetch or update film from TMDB with force_update=True
         film, _ = fetch_and_update_film_from_tmdb(imdb_id, force_update=True)
         
@@ -1703,6 +1740,7 @@ def remove_cinema_vote(request, vote_id):
     })
 
 
+
 @login_required
 def get_cinema_vote_status(request):
     """Get the user's cinema vote status."""
@@ -1713,6 +1751,8 @@ def get_cinema_vote_status(request):
         'user_cinema_votes': user_cinema_votes,
         'cinema_votes_remaining': cinema_votes_remaining
     })
+
+
 
 
 @staff_member_required

@@ -29,6 +29,11 @@
         max-height: 400px;
         overflow-y: auto;
         z-index: 9999;
+        display: none;
+    }
+    
+    #main-search-results:not(:empty) {
+        display: block;
     }
     
     /* Search result item styles */
@@ -162,6 +167,7 @@
                                        hx-get="{% url 'films_app:search_films' %}"
                                        hx-trigger="keyup changed delay:500ms, search"
                                        hx-target="#main-search-results"
+                                       hx-swap="innerHTML"
                                        hx-indicator="#main-search-loading"
                                        name="query"
                                        autocomplete="off">
@@ -295,6 +301,9 @@
                 return;
             }
             
+            // Trigger HTMX request manually
+            htmx.trigger(mainSearchInput, 'search');
+            
             // If user is not logged in, redirect to login page
             if (!document.body.classList.contains('user-authenticated')) {
                 window.location.href = document.getElementById('login-url').dataset.url;
@@ -318,14 +327,40 @@
     });
     
     // HTMX events
+    document.addEventListener('htmx:beforeSend', function(event) {
+        console.log('HTMX request being sent:', event.detail);
+        if (event.detail.target.id === 'main-search-input') {
+            console.log('Search request for:', event.detail.requestConfig.parameters.query);
+        }
+    });
+    
     document.addEventListener('htmx:afterSwap', function(event) {
+        console.log('HTMX response received:', event.detail);
         if (event.detail.target.id === 'main-search-results') {
+            console.log('Search results content:', event.detail.target.innerHTML);
             // If there's no content, hide the results container
             if (event.detail.target.innerHTML.trim() === '') {
                 event.detail.target.style.display = 'none';
             } else {
                 event.detail.target.style.display = 'block';
+                
+                // No need to add click event listeners to search result links anymore
+                // since we've removed the authentication requirement from the film_detail view
             }
+        }
+    });
+    
+    // Add event listener for htmx:beforeRequest to show loading indicator
+    document.addEventListener('htmx:beforeRequest', function(event) {
+        if (event.detail.target.id === 'main-search-input') {
+            document.getElementById('main-search-loading').style.display = 'block';
+        }
+    });
+    
+    // Add event listener for htmx:afterRequest to hide loading indicator
+    document.addEventListener('htmx:afterRequest', function(event) {
+        if (event.detail.target.id === 'main-search-input') {
+            document.getElementById('main-search-loading').style.display = 'none';
         }
     });
 </script>
