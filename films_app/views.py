@@ -116,7 +116,7 @@ def classics(request):
         return render(request, 'films_app/classics.html', context)
     except Exception as e:
         logging.error(f"Error in classics view: {e}")
-        messages.error(request, _("An error occurred while loading the classics page. Please try again later."))
+        messages.error(request, "An error occurred while loading the classics page. Please try again later.")
         return render(request, 'films_app/error.html', {'error_message': str(e)})
 
 
