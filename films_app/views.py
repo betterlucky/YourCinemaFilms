@@ -27,7 +27,14 @@ import sys
 import re
 import base64
 import urllib.parse
-from PIL import Image
+
+# Try to import PIL, but don't fail if it's not available
+try:
+    from PIL import Image
+    PIL_AVAILABLE = True
+except ImportError:
+    PIL_AVAILABLE = False
+    logging.warning("PIL not available. Image processing features will be disabled.")
 
 from .models import Film, Vote, UserProfile, GenreTag, Activity, CinemaVote
 from .utils import (
