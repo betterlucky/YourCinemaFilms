@@ -29,6 +29,7 @@ chmod +x update_cinema_cache.py
 chmod +x update_fixtures.py
 chmod +x fix_database_schema.py
 chmod +x reset_database.py
+chmod +x fix_film_schema.py
 
 # Create static directory if it doesn't exist
 echo "Creating static directories..."
@@ -51,6 +52,12 @@ ls -la staticfiles || echo "Static files directory not found or empty"
 echo "Resetting database..."
 python reset_database.py --force || {
   echo "Database reset failed, but continuing..."
+}
+
+# Fix the Film table schema
+echo "Fixing Film table schema..."
+python fix_film_schema.py || {
+  echo "Film schema fix failed, but continuing..."
 }
 
 # Run the database setup script
