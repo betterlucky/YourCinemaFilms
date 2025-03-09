@@ -54,6 +54,19 @@ services:
       - key: TMDB_SORT_BY
         value: "popularity.desc"
 
+  - type: job
+    name: create-cinemavote-table
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python create_cinemavote_table.py
+    envVars:
+      - key: DJANGO_SETTINGS_MODULE
+        value: films_project.settings
+      - key: DATABASE_URL
+        fromDatabase:
+          name: yourcinemafilms-db
+          property: connectionString
+
 databases:
   - name: yourcinemafilms-db
     databaseName: yourcinemafilms
