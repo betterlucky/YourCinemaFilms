@@ -54,6 +54,19 @@ services:
       - key: TMDB_SORT_BY
         value: "popularity.desc"
 
+  - type: job
+    name: apply-migrations
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python apply_migrations.py
+    envVars:
+      - key: DJANGO_SETTINGS_MODULE
+        value: films_project.settings
+      - key: DATABASE_URL
+        fromDatabase:
+          name: yourcinemafilms-db
+          property: connectionString
+
 databases:
   - name: yourcinemafilms-db
     databaseName: yourcinemafilms
