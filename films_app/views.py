@@ -90,6 +90,7 @@ def cinema(request):
         'total_now_playing': Film.objects.filter(is_in_cinema=True).count(),
         'total_upcoming': all_upcoming_films.count(),
         'max_films': max_films,
+        'upcoming_films_months': getattr(settings, 'UPCOMING_FILMS_MONTHS', 6),
     }
     
     return render(request, 'films_app/cinema.html', context)
