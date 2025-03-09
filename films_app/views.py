@@ -31,7 +31,7 @@ from .utils import (
     count_film_votes, get_date_range_from_period, filter_votes_by_period,
     get_cached_search_results, cache_search_results
 )
-from .tmdb_api import search_movies
+from .tmdb_api import search_movies, sort_and_limit_films
 # Import forms if they exist in your project
 # from .forms import FilmSearchForm, UploadProfileImageForm
 
@@ -43,13 +43,25 @@ def landing(request):
 
 def cinema(request):
     """Cinema page view for current and upcoming releases."""
+    from datetime import date
+    from .models import Film, CinemaVote
+    from django.conf import settings
+    
+    # Get the maximum number of films to display
+    max_films = getattr(settings, 'MAX_CINEMA_FILMS', 20)
+    
     # Get films that are in cinema or coming soon
-    now_playing_films = Film.objects.filter(is_in_cinema=True).order_by('title')
-    upcoming_films = Film.objects.filter(
+    now_playing_films = Film.objects.filter(is_in_cinema=True).order_by('-popularity')[:max_films]
+    
+    # Get all upcoming films first
+    all_upcoming_films = Film.objects.filter(
         is_in_cinema=False, 
         uk_release_date__isnull=False,
         uk_release_date__gt=date.today()
-    ).order_by('uk_release_date')
+    ).order_by('-popularity')
+    
+    # Limit to the most popular ones
+    upcoming_films = all_upcoming_films[:max_films]
     
     # Get user's cinema votes if authenticated
     user_cinema_votes = []
@@ -64,6 +76,9 @@ def cinema(request):
         'upcoming_films': upcoming_films,
         'user_cinema_votes': user_cinema_votes,
         'cinema_votes_remaining': cinema_votes_remaining,
+        'total_now_playing': Film.objects.filter(is_in_cinema=True).count(),
+        'total_upcoming': all_upcoming_films.count(),
+        'max_films': max_films,
     }
     
     return render(request, 'films_app/cinema.html', context)
@@ -1683,4 +1698,58 @@ def update_cinema_cache(request):
     else:
         return render(request, 'films_app/partials/cache_update_error.html', {
             'output': formatted_output
-        }) 
+        })
+
+def filter_cinema_films(request):
+    """Filter cinema films based on a search query."""
+    from datetime import date
+    from .models import Film, CinemaVote
+    from django.conf import settings
+    from django.db.models import Q
+    
+    logger = logging.getLogger(__name__)
+    
+    # Get the search query
+    query = request.GET.get('query', '').strip()
+    logger.info(f"Filtering cinema films with query: '{query}'")
+    
+    # Get the maximum number of films to display
+    max_films = getattr(settings, 'MAX_CINEMA_FILMS', 20)
+    
+    # Base queryset for now playing films
+    now_playing_base = Film.objects.filter(is_in_cinema=True)
+    
+    # Base queryset for upcoming films
+    upcoming_base = Film.objects.filter(
+        is_in_cinema=False, 
+        uk_release_date__isnull=False,
+        uk_release_date__gt=date.today()
+    )
+    
+    # Apply search filter if query is provided
+    if query:
+        now_playing_filtered = now_playing_base.filter(title__icontains=query).order_by('-popularity')
+        upcoming_filtered = upcoming_base.filter(title__icontains=query).order_by('-popularity')
+    else:
+        now_playing_filtered = now_playing_base.order_by('-popularity')
+        upcoming_filtered = upcoming_base.order_by('-popularity')
+    
+    # Limit to the most popular ones
+    now_playing_films = now_playing_filtered[:max_films]
+    upcoming_films = upcoming_filtered[:max_films]
+    
+    # Get user's cinema votes if authenticated
+    user_cinema_votes = []
+    if request.user.is_authenticated:
+        user_cinema_votes = CinemaVote.objects.filter(user=request.user).select_related('film')
+    
+    context = {
+        'now_playing_films': now_playing_films,
+        'upcoming_films': upcoming_films,
+        'total_now_playing': now_playing_filtered.count(),
+        'total_upcoming': upcoming_filtered.count(),
+        'max_films': max_films,
+        'query': query,
+    }
+    
+    return render(request, 'films_app/partials/cinema_films.html', context) 

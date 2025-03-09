@@ -48,6 +48,11 @@ LOGGING = {
             'level': os.getenv('DJANGO_LOG_LEVEL', 'INFO'),
             'propagate': False,
         },
+        'films_app': {
+            'handlers': ['console'],
+            'level': os.getenv('FILMS_APP_LOG_LEVEL', 'INFO'),
+            'propagate': False,
+        },
     },
 }
 
@@ -275,6 +280,7 @@ TMDB_API_KEY = os.getenv('TMDB_API_KEY', '')
 
 # Cinema settings
 UPCOMING_FILMS_MONTHS = int(os.getenv('UPCOMING_FILMS_MONTHS', '6'))  # Number of months to look ahead for upcoming films
+MAX_CINEMA_FILMS = int(os.getenv('MAX_CINEMA_FILMS', '20'))  # Maximum number of films to display in each section
 
 # CORS settings
 CORS_ALLOW_ALL_ORIGINS = False
