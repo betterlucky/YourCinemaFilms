@@ -31,6 +31,8 @@ services:
         sync: false
       - key: UPCOMING_FILMS_MONTHS
         value: "6"
+      - key: TMDB_SORT_BY
+        value: "popularity.desc"
 
   - type: cron
     name: update-cinema-cache
@@ -49,6 +51,8 @@ services:
           property: connectionString
       - key: UPCOMING_FILMS_MONTHS
         value: "6"
+      - key: TMDB_SORT_BY
+        value: "popularity.desc"
 
 databases:
   - name: yourcinemafilms-db

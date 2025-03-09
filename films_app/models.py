@@ -493,4 +493,41 @@ class Activity(models.Model):
         ordering = ['-created_at']
     
     def __str__(self):
-        return f"{self.user.username} - {self.activity_type} - {self.created_at.strftime('%Y-%m-%d %H:%M')}" 
+        return f"{self.user.username} - {self.activity_type} - {self.created_at.strftime('%Y-%m-%d %H:%M')}"
+
+
+class PageTracker(models.Model):
+    """Model to track the last processed page for each movie type."""
+    
+    MOVIE_TYPE_CHOICES = [
+        ('now_playing', 'Now Playing'),
+        ('upcoming', 'Upcoming'),
+    ]
+    
+    movie_type = models.CharField(max_length=20, choices=MOVIE_TYPE_CHOICES, unique=True)
+    last_page = models.IntegerField(default=0)
+    total_pages = models.IntegerField(default=0)
+    last_updated = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return f"{self.get_movie_type_display()} - Page {self.last_page} of {self.total_pages}"
+    
+    @classmethod
+    def get_next_page(cls, movie_type):
+        """Get the next page to process for the given movie type."""
+        tracker, created = cls.objects.get_or_create(movie_type=movie_type)
+        
+        # If this is a new tracker or we've processed all pages, start from page 1
+        if created or tracker.last_page >= tracker.total_pages:
+            return 1
+        
+        # Otherwise, return the next page
+        return tracker.last_page + 1
+    
+    @classmethod
+    def update_tracker(cls, movie_type, current_page, total_pages):
+        """Update the tracker with the current page and total pages."""
+        tracker, _ = cls.objects.get_or_create(movie_type=movie_type)
+        tracker.last_page = current_page
+        tracker.total_pages = total_pages
+        tracker.save() 
