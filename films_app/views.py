@@ -10,7 +10,8 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.http import JsonResponse, HttpResponse, FileResponse, HttpResponseNotAllowed
 from django.conf import settings
 from django.contrib import messages
-from django.db.models import Count, Q, F
+from django.db.models import Count, Q, F, Sum, Avg, Case, When, IntegerField, Subquery, OuterRef
+from django.db.models.functions import TruncMonth, TruncYear
 from django.utils import timezone
 from django.contrib.auth.models import User
 from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
@@ -23,15 +24,18 @@ from django.db import connection
 from django.core.management import call_command
 from io import StringIO
 import sys
+import re
+import base64
+import urllib.parse
+from PIL import Image
 
 from .models import Film, Vote, UserProfile, GenreTag, Activity, CinemaVote
 from .utils import (
-    fetch_and_update_film_from_tmdb,
-    filter_profanity, validate_and_format_genre_tag, require_http_method,
+    contains_profanity, validate_and_format_genre_tag, require_http_method,
     count_film_votes, get_date_range_from_period, filter_votes_by_period,
-    get_cached_search_results, cache_search_results
+    get_cached_search_results, cache_search_results, fetch_and_update_film_from_tmdb
 )
-from .tmdb_api import search_movies, sort_and_limit_films
+from .tmdb_api import search_movies, sort_and_limit_films, get_movie_details, format_tmdb_data_for_film
 # Import forms if they exist in your project
 # from .forms import FilmSearchForm, UploadProfileImageForm
 
@@ -269,9 +273,23 @@ def search_films(request):
                 # Format results to match the expected structure in templates
                 results = []
                 for movie in tmdb_data['results']:
+                    # Get the IMDb ID for the movie
+                    imdb_id = None
+                    try:
+                        # Try to get the movie details which include external IDs
+                        movie_details = get_movie_details(movie.get('id'))
+                        if movie_details and 'external_ids' in movie_details:
+                            imdb_id = movie_details['external_ids'].get('imdb_id')
+                    except Exception as e:
+                        logging.warning(f"Error getting IMDb ID for movie {movie.get('id')}: {str(e)}")
+                    
+                    # If we couldn't get an IMDb ID, use the TMDB ID as a fallback
+                    if not imdb_id:
+                        imdb_id = f"tmdb-{movie.get('id')}"
+                    
                     # Format each movie to match the structure expected by the template
                     formatted_movie = {
-                        'imdbID': movie.get('id'),  # Using TMDB ID temporarily
+                        'imdbID': imdb_id,  # Use the actual IMDb ID or TMDB ID with prefix
                         'Title': movie.get('title', ''),
                         'Year': movie.get('release_date', '')[:4] if movie.get('release_date') else '',
                         'Poster': f"https://image.tmdb.org/t/p/w500{movie.get('poster_path')}" if movie.get('poster_path') else '',
@@ -295,7 +313,7 @@ def search_films(request):
         if request.htmx.target == 'navbar-search-results':
             return render(request, 'films_app/partials/search_results.html', {'results': results})
         if request.htmx.target == 'main-search-results':
-            return render(request, 'films_app/partials/search_results.html', {'results': results})
+            return render(request, 'films_app/partials/main_search_results.html', {'results': results})
         return render(request, 'films_app/partials/search_results.html', {'results': results})
     return JsonResponse({'results': results})
 
@@ -304,8 +322,36 @@ def search_films(request):
 def film_detail(request, imdb_id):
     """Get detailed information about a film."""
     try:
-        # Fetch or update film from TMDB
-        film, created = fetch_and_update_film_from_tmdb(imdb_id)
+        # Check if this is a TMDB ID (prefixed with 'tmdb-')
+        if imdb_id.startswith('tmdb-'):
+            # Extract the TMDB ID
+            tmdb_id = imdb_id.replace('tmdb-', '')
+            
+            # Get movie details from TMDB
+            try:
+                movie_details = get_movie_details(tmdb_id)
+                if movie_details and 'external_ids' in movie_details and movie_details['external_ids'].get('imdb_id'):
+                    # Use the IMDb ID from the movie details
+                    imdb_id = movie_details['external_ids'].get('imdb_id')
+                else:
+                    # If we can't get an IMDb ID, create a film with the TMDB ID
+                    formatted_data = format_tmdb_data_for_film(movie_details)
+                    film, created = Film.objects.get_or_create(
+                        imdb_id=imdb_id,  # Use the original tmdb-prefixed ID
+                        defaults=formatted_data
+                    )
+                    # Skip the fetch_and_update_film_from_tmdb call
+                    skip_fetch = True
+            except Exception as e:
+                logging.error(f"Error getting movie details for TMDB ID {tmdb_id}: {str(e)}")
+                return render(request, 'films_app/error.html', {'error': 'Film not found'})
+        else:
+            # This is a regular IMDb ID
+            skip_fetch = False
+        
+        # Fetch or update film from TMDB if not skipped
+        if not skip_fetch:
+            film, created = fetch_and_update_film_from_tmdb(imdb_id)
         
         # Check if user has voted for this film and can vote
         has_voted = False
