@@ -78,7 +78,7 @@
     top: 100%;
     left: 0;
     right: 0;
-    z-index: 1050;
+    z-index: 9999; /* Very high z-index to ensure it's above everything */
     max-height: 400px;
     overflow-y: auto;
     background-color: var(--white);
@@ -87,6 +87,27 @@
     box-shadow: var(--box-shadow);
     margin-top: 5px;
     display: none;
+}
+
+/* Main search container in classics.html */
+.main-search-container {
+    position: relative;
+    z-index: 15000; /* Ensure this is lower than the dropdown */
+}
+
+/* Main search form in classics.html */
+#main-search-form {
+    position: relative;
+    width: 100%;
+}
+
+/* Specific styling for the main search dropdown in classics.html */
+.main-search-results {
+    z-index: 20000; /* Ensure this is higher than other elements */
+    position: absolute;
+    width: 100%;
+    top: 100%;
+    display: block; /* Ensure it's visible */
 }
 
 .search-results-dropdown:not(:empty) {
@@ -176,4 +197,24 @@
     .search-result-year {
         font-size: 0.8rem;
     }
+}
+
+/* HTMX-specific styles */
+[hx-target] {
+    position: relative;
+}
+
+/* Ensure HTMX-loaded content is visible */
+.htmx-settling .search-results-dropdown {
+    display: block !important;
+}
+
+/* Ensure the dropdown is visible when it has content */
+.search-results-dropdown:not(:empty) {
+    display: block !important;
+}
+
+.search-results {
+    position: relative; /* or absolute, depending on your layout */
+    z-index: 1000; /* Increase this value as needed */
 } 

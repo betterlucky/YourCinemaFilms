@@ -77,29 +77,6 @@
                             </a>
                         </p>
                     {% endif %}
-                    
-                    <!-- Add a debug section for troubleshooting -->
-                    {% if user.is_superuser %}
-                    <div class="mt-3 p-2 border rounded bg-light">
-                        <h6 class="text-muted">Debug Info (Admin Only)</h6>
-                        <p class="mb-1 small"><strong>Location Privacy:</strong> {{ profile.location_privacy }}</p>
-                        <p class="mb-1 small"><strong>Location Value:</strong> "{{ profile.location }}"</p>
-                        <p class="mb-1 small"><strong>Is Owner:</strong> {{ is_owner }}</p>
-                        <p class="mb-1 small"><strong>Is Authenticated:</strong> {{ user.is_authenticated }}</p>
-                        <p class="mb-1 small"><strong>Should Show Location:</strong> 
-                            {% if profile.location and profile.location_privacy == 'public' or is_owner or profile.location_privacy == 'users' and user.is_authenticated %}
-                                Yes
-                            {% else %}
-                                No
-                            {% endif %}
-                        </p>
-                        <div class="mt-2">
-                            <a href="{% url 'films_app:debug_profile' username=profile_user.username %}" class="btn btn-sm btn-warning">
-                                <i class="fas fa-bug me-1"></i>Full Debug View
-                            </a>
-                        </div>
-                    </div>
-                    {% endif %}
                 </div>
             </div>
             
@@ -194,7 +171,7 @@
                 </div>
                 <div class="card-body text-center">
                     <p class="text-muted">{% trans "You haven't voted for any films yet." %}</p>
-                    <a href="{% url 'films_app:home' %}" class="btn btn-primary">
+                    <a href="{% url 'films_app:classics' %}" class="btn btn-primary">
                         <i class="fas fa-film me-2"></i>{% trans "Discover Films" %}
                     </a>
                 </div>

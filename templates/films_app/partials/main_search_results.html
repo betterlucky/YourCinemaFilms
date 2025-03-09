@@ -1,0 +1,20 @@
+{% if results %}
+    <div style="background-color: white; border: 1px solid rgba(0,0,0,.125); border-radius: 0.25rem; box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15); max-height: 400px; overflow-y: auto; width: 100%; position: absolute; z-index: 10000; top: 100%; left: 0;">
+        {% for film in results %}
+            <a href="{% url 'films_app:film_detail' film.imdbID %}" class="search-result-link" style="display: block; padding: 0.75rem; text-decoration: none; color: #212529; border-bottom: 1px solid rgba(0,0,0,.125);">
+                <div class="search-result-item" style="display: flex; align-items: center;">
+                    <img src="{{ film.Poster|default:'https://via.placeholder.com/150x225?text=No+Poster' }}" 
+                         class="search-result-poster" alt="{{ film.Title }}" style="width: 50px; height: 75px; object-fit: cover; margin-right: 1rem;">
+                    <div class="search-result-info" style="flex: 1;">
+                        <div class="search-result-title" style="font-weight: bold; margin-bottom: 0.25rem;">{{ film.Title }}</div>
+                        <div class="search-result-year" style="font-size: 0.875rem; color: #6c757d;">{{ film.Year }}</div>
+                    </div>
+                </div>
+            </a>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="text-center p-2" style="background-color: white; border: 1px solid rgba(0,0,0,.125); border-radius: 0.25rem; box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15); position: absolute; z-index: 10000; top: 100%; left: 0; width: 100%;">
+        <small>No results found</small>
+    </div>
+{% endif %} 

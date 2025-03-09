@@ -15,4 +15,5 @@
 @import 'utils/utilities.css';
 
 /* Import page-specific styles */
-@import 'pages/dashboard.css'; 
+@import 'pages/dashboard.css';
+@import 'pages/classics.css'; 

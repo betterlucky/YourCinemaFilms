@@ -12,7 +12,8 @@ from rest_framework.views import APIView
 from django.core.cache import cache
 
 from ..models import Film, Vote, UserProfile, GenreTag
-from ..utils import validate_genre_tag, filter_votes_by_period
+from ..utils import validate_genre_tag, filter_votes_by_period, get_cached_search_results, cache_search_results
+from ..tmdb_api import search_movies
 from .serializers import FilmSerializer, VoteSerializer, UserProfileSerializer, GenreTagSerializer
 
 
@@ -118,21 +119,37 @@ class GenreTagDetailAPIView(generics.RetrieveDestroyAPIView):
 
 @api_view(['GET'])
 def search_films(request):
-    """API endpoint to search films using OMDB API."""
+    """API endpoint to search films using TMDB API."""
     query = request.query_params.get('query', '')
     
     if not query or len(query) < 3:
         return Response({'results': []})
     
-    api_key = settings.OMDB_API_KEY
-    url = f"http://www.omdbapi.com/?apikey={api_key}&s={query}&type=movie"
+    # Try to get cached results first
+    cached_results = get_cached_search_results(query)
+    if cached_results:
+        return Response({'results': cached_results})
     
+    # Fetch from TMDB API
     try:
-        response = requests.get(url)
-        data = response.json()
+        tmdb_data = search_movies(query)
         
-        if data.get('Response') == 'True':
-            results = data.get('Search', [])
+        if tmdb_data.get('results'):
+            # Format results to match the expected structure in templates
+            results = []
+            for movie in tmdb_data['results']:
+                # Format each movie to match the structure expected by the client
+                formatted_movie = {
+                    'imdbID': movie.get('id'),  # Using TMDB ID temporarily
+                    'Title': movie.get('title', ''),
+                    'Year': movie.get('release_date', '')[:4] if movie.get('release_date') else '',
+                    'Poster': f"https://image.tmdb.org/t/p/w500{movie.get('poster_path')}" if movie.get('poster_path') else '',
+                    'tmdb_id': movie.get('id'),  # Store TMDB ID for later use
+                }
+                results.append(formatted_movie)
+            
+            # Cache the results
+            cache_search_results(query, results)
             return Response({'results': results})
         else:
             return Response({'results': []})

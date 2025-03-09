@@ -13,7 +13,7 @@ services:
         value: ".onrender.com"
       - key: DJANGO_SETTINGS_MODULE
         value: films_project.settings
-      - key: OMDB_API_KEY
+      - key: TMDB_API_KEY
         sync: false
       - key: GOOGLE_CLIENT_ID
         sync: false
@@ -29,6 +29,26 @@ services:
         sync: false
       - key: DJANGO_SUPERUSER_PASSWORD
         sync: false
+      - key: UPCOMING_FILMS_MONTHS
+        value: "6"
+
+  - type: cron
+    name: update-cinema-cache
+    env: python
+    schedule: "0 0 * * *"  # Run at midnight UTC every day
+    buildCommand: pip install -r requirements.txt
+    startCommand: python update_cinema_cache.py
+    envVars:
+      - key: DJANGO_SETTINGS_MODULE
+        value: films_project.settings
+      - key: TMDB_API_KEY
+        sync: false
+      - key: DATABASE_URL
+        fromDatabase:
+          name: yourcinemafilms-db
+          property: connectionString
+      - key: UPCOMING_FILMS_MONTHS
+        value: "6"
 
 databases:
   - name: yourcinemafilms-db

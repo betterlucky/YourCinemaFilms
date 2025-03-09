@@ -98,11 +98,11 @@
                 <a href="https://www.imdb.com/title/{{ film.imdb_id }}/" target="_blank" class="btn btn-outline-secondary me-2">
                     <i class="fab fa-imdb me-1"></i>View on IMDb
                 </a>
-                <a href="{% url 'films_app:home' %}" class="btn btn-outline-primary">
+                <a href="{% url 'films_app:classics' %}" class="btn btn-outline-primary">
                     <i class="fas fa-arrow-left me-1"></i>Back to Home
                 </a>
-                <a href="{% url 'films_app:update_film_from_omdb' film.imdb_id %}" class="btn btn-outline-info">
-                    <i class="fas fa-sync-alt me-1"></i>Update from OMDB
+                <a href="{% url 'films_app:update_film_from_tmdb' film.imdb_id %}" class="btn btn-outline-info">
+                    <i class="fas fa-sync-alt me-1"></i>Update from TMDB
                 </a>
             </div>
         </div>
