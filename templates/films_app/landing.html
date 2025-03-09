@@ -8,7 +8,7 @@
         <div class="col-md-10 text-center">
             <h1 class="display-3 mb-4">Welcome to Your Cinema Films</h1>
             <p class="lead mb-4">
-                Your ultimate platform for discovering and voting on films for the big screen experience.
+                Your voice in deciding which films deserve the big screen experience. Vote for classics you'd love to see in theaters and discover what's currently showing.
             </p>
             {% if not user.is_authenticated %}
                 <div class="mt-4 mb-5">
@@ -34,9 +34,9 @@
                         </div>
                         <h3 class="card-title mb-3">Classic Film Collection</h3>
                         <p class="card-text mb-4">
-                            Explore our extensive collection of historic and classic films. 
-                            Vote for your favorites and help decide which timeless classics 
-                            should return to the big screen.
+                            Cast your vote for classic films you'd love to see return to theaters. 
+                            Browse our curated collection, discover timeless masterpieces, and help 
+                            influence which classics get screened next.
                         </p>
                         <span class="btn btn-primary btn-lg mt-auto">
                             Explore Classic Films
@@ -55,11 +55,11 @@
                         </div>
                         <h3 class="card-title mb-3">Current & Upcoming Releases</h3>
                         <p class="card-text mb-4">
-                            Discover films currently showing in theaters and upcoming releases.
-                            Stay updated on the latest cinema offerings and plan your next 
-                            movie night.
+                            Explore films currently in theaters and upcoming releases.
+                            Get the latest information on new releases, vote for films you're 
+                            excited about, and plan your next cinema visit.
                         </p>
-                        <span class="btn btn-outline-danger btn-lg mt-auto">
+                        <span class="btn btn-danger btn-lg mt-auto">
                             Explore Current & Upcoming Films
                         </span>
                     </div>
@@ -68,7 +68,7 @@
         </div>
     </div>
     
-    <div class="row mt-5">
+    <div class="row mt-5 mb-5">
         <div class="col-md-8 mx-auto text-center">
             <h3 class="mb-4">Why Choose Your Cinema Films?</h3>
             <div class="row">
@@ -76,24 +76,152 @@
                     <div class="feature-icon mb-3">
                         <i class="fas fa-vote-yea fa-3x text-primary"></i>
                     </div>
-                    <h5>Vote for Your Favorites</h5>
-                    <p>Help decide which films deserve the big screen experience</p>
+                    <h5>Your Vote Matters</h5>
+                    <p>Directly influence which classic films return to the big screen</p>
                 </div>
                 <div class="col-md-4 mb-4">
                     <div class="feature-icon mb-3">
                         <i class="fas fa-users fa-3x text-primary"></i>
                     </div>
                     <h5>Join the Community</h5>
-                    <p>Connect with other film enthusiasts and share your passion</p>
+                    <p>Connect with fellow film enthusiasts who share your passion</p>
                 </div>
                 <div class="col-md-4 mb-4">
                     <div class="feature-icon mb-3">
                         <i class="fas fa-chart-bar fa-3x text-primary"></i>
                     </div>
                     <h5>Discover Trends</h5>
-                    <p>Explore analytics and insights about film preferences</p>
+                    <p>See which films are most popular and explore viewing patterns</p>
                 </div>
             </div>
+        </div>
+    </div>
+    
+    <!-- About & FAQ Section -->
+    <div class="row mt-5">
+        <div class="col-lg-10 mx-auto">
+            <h2 class="text-center mb-4">About Your Cinema Films</h2>
+            <p class="lead text-center mb-5">
+                Your Cinema Films is a platform that bridges the gap between audiences and cinema programming. 
+                We believe that moviegoers should have a say in what films are shown on the big screen.
+            </p>
+            
+            <div class="accordion" id="faqAccordion">
+                <!-- FAQ Item 1 -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="headingOne">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="false" aria-controls="collapseOne">
+                            How does voting work?
+                        </button>
+                    </h2>
+                    <div id="collapseOne" class="accordion-collapse collapse" aria-labelledby="headingOne" data-bs-parent="#faqAccordion">
+                        <div class="accordion-body">
+                            <p>
+                                For classic films, you can vote for up to 10 films that you'd like to see return to theaters. 
+                                For current and upcoming releases, you can vote for up to 3 films you're most excited about.
+                                Our cinema partners use this data to make programming decisions.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- FAQ Item 2 -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="headingTwo">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
+                            Do I need an account to vote?
+                        </button>
+                    </h2>
+                    <div id="collapseTwo" class="accordion-collapse collapse" aria-labelledby="headingTwo" data-bs-parent="#faqAccordion">
+                        <div class="accordion-body">
+                            <p>
+                                Yes, you need to create a free account to vote for films. This helps us prevent duplicate voting 
+                                and allows you to manage your votes over time. You can easily sign up using your email or Google account.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- FAQ Item 3 -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="headingThree">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
+                            How are films selected for the platform?
+                        </button>
+                    </h2>
+                    <div id="collapseThree" class="accordion-collapse collapse" aria-labelledby="headingThree" data-bs-parent="#faqAccordion">
+                        <div class="accordion-body">
+                            <p>
+                                Our classic film collection includes a curated selection of significant and beloved films from cinema history.
+                                Current and upcoming releases are sourced from official UK cinema release schedules. If you'd like to suggest 
+                                a film that's not in our database, please contact us.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- FAQ Item 4 -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="headingFour">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFour" aria-expanded="false" aria-controls="collapseFour">
+                            Can I change my votes?
+                        </button>
+                    </h2>
+                    <div id="collapseFour" class="accordion-collapse collapse" aria-labelledby="headingFour" data-bs-parent="#faqAccordion">
+                        <div class="accordion-body">
+                            <p>
+                                Yes, you can change your votes at any time. Simply go to your profile page to see your current votes,
+                                and you can remove votes for films you're no longer interested in to make room for new selections.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- FAQ Item 5 -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="headingFive">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFive" aria-expanded="false" aria-controls="collapseFive">
+                            How can I stay updated on film screenings?
+                        </button>
+                    </h2>
+                    <div id="collapseFive" class="accordion-collapse collapse" aria-labelledby="headingFive" data-bs-parent="#faqAccordion">
+                        <div class="accordion-body">
+                            <p>
+                                We regularly update our Current & Upcoming section with the latest cinema releases. 
+                                For information about special screenings of classic films based on user votes, 
+                                check the dashboard for announcements or follow us on social media.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Contact Section -->
+    <div class="row mt-5 pt-4">
+        <div class="col-lg-8 mx-auto text-center">
+            <h2 class="mb-4">Contact Us</h2>
+            <p class="lead mb-4">
+                Have questions, suggestions, or feedback? We'd love to hear from you!
+            </p>
+            <a href="mailto:classicsbackonscreen@gmail.com" class="text-decoration-none">
+                <div class="contact-card p-4 mb-4 mx-auto" style="max-width: 500px;">
+                    <div class="d-flex align-items-center justify-content-center mb-3">
+                        <i class="fas fa-envelope fa-2x text-primary me-3"></i>
+                        <h5 class="mb-0">Email Us</h5>
+                    </div>
+                    <p class="mb-3">
+                        For general inquiries, film suggestions, or partnership opportunities:
+                    </p>
+                    <div class="email-button py-2 px-3 d-inline-block">
+                        classicsbackonscreen@gmail.com
+                    </div>
+                </div>
+            </a>
+            <p class="text-muted mt-4">
+                We aim to respond to all inquiries within 48 hours during business days.
+            </p>
         </div>
     </div>
 </div>
@@ -154,6 +282,58 @@
     /* Push the button to the bottom */
     .card-body .btn {
         margin-top: auto;
+    }
+    
+    /* FAQ Accordion Styling */
+    .accordion-item {
+        border: none;
+        margin-bottom: 1rem;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    }
+    
+    .accordion-button {
+        font-weight: 600;
+        padding: 1.25rem;
+        background-color: #f8f9fa;
+    }
+    
+    .accordion-button:not(.collapsed) {
+        color: #0d6efd;
+        background-color: #e7f1ff;
+    }
+    
+    .accordion-body {
+        padding: 1.5rem;
+        background-color: #fff;
+    }
+    
+    /* Contact Section Styling */
+    .contact-card {
+        background-color: #f8f9fa;
+        border-radius: 10px;
+        box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        color: #212529;
+    }
+    
+    a:hover .contact-card {
+        transform: translateY(-5px);
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+    
+    .email-button {
+        background-color: #e7f1ff;
+        color: #0d6efd;
+        border-radius: 5px;
+        font-weight: 500;
+        transition: background-color 0.2s ease;
+    }
+    
+    a:hover .email-button {
+        background-color: #0d6efd;
+        color: white;
     }
 </style>
 {% endblock %} 
