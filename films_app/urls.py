@@ -9,6 +9,7 @@ urlpatterns = [
     path('landing-page/', views.landing, name='landing'),
     path('classic-films/', views.classics, name='classics'),
     path('cinema/', views.cinema, name='cinema'),
+    path('filter-cinema-films/', views.filter_cinema_films, name='filter_cinema_films'),
     path('profile/', views.profile, name='profile'),
     path('profile/edit/', views.edit_profile, name='edit_profile'),
     path('profile/image/', views.proxy_profile_image, name='profile_image'),
