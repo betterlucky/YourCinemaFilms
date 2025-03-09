@@ -36,7 +36,7 @@ except ImportError:
     PIL_AVAILABLE = False
     logging.warning("PIL not available. Image processing features will be disabled.")
 
-from .models import Film, Vote, UserProfile, GenreTag, Activity, CinemaVote
+from .models import Film, Vote, UserProfile, GenreTag, Activity, CinemaVote, PageTracker
 from .utils import (
     contains_profanity, validate_and_format_genre_tag, require_http_method,
     count_film_votes, get_date_range_from_period, filter_votes_by_period,
@@ -1722,11 +1722,28 @@ def update_cinema_cache(request):
     from io import StringIO
     import sys
     import logging
+    from datetime import datetime, timedelta
+    from films_app.models import PageTracker
     
     logger = logging.getLogger(__name__)
     
     if request.method != 'POST':
         return HttpResponseNotAllowed(['POST'])
+    
+    # Check if an update was performed recently
+    try:
+        # Get the most recently updated tracker
+        latest_tracker = PageTracker.objects.order_by('-last_updated').first()
+        
+        if latest_tracker and (datetime.now().replace(tzinfo=latest_tracker.last_updated.tzinfo) - latest_tracker.last_updated) < timedelta(hours=1):
+            message = f"Skipping update - last update was at {latest_tracker.last_updated.strftime('%Y-%m-%d %H:%M:%S')}, less than 1 hour ago"
+            logger.info(message)
+            return render(request, 'films_app/partials/cache_update_result.html', {
+                'status': 'info',
+                'result': message
+            })
+    except Exception as e:
+        logger.warning(f"Error checking last update time: {str(e)}")
     
     # Capture command output
     output = StringIO()
