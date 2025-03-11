@@ -233,7 +233,7 @@
                 <div class="col-12">
                     <h2 class="border-bottom pb-2">Now Playing in UK Cinemas</h2>
                     <p class="text-muted">
-                        Showing the {{ now_playing_films|length }} most popular films out of {{ total_now_playing }} currently in UK cinemas.
+                        Showing page {{ now_playing_page }} of {{ now_playing_num_pages }} ({{ now_playing_films|length }} films out of {{ total_now_playing }} currently in UK cinemas).
                     </p>
                 </div>
             </div>
@@ -288,6 +288,59 @@
                     </div>
                 {% endfor %}
             </div>
+            
+            <!-- Now Playing Pagination -->
+            {% if now_playing_num_pages > 1 %}
+                <div class="row mb-5">
+                    <div class="col-12">
+                        <nav aria-label="Now playing films pagination">
+                            <ul class="pagination justify-content-center">
+                                {% if now_playing_has_previous %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?now_playing_page={{ now_playing_previous_page }}&upcoming_page={{ upcoming_page }}">
+                                            Previous
+                                        </a>
+                                    </li>
+                                {% else %}
+                                    <li class="page-item disabled">
+                                        <span class="page-link">Previous</span>
+                                    </li>
+                                {% endif %}
+                                
+                                {% for p in now_playing_num_pages|get_page_range:now_playing_page %}
+                                    {% if p == now_playing_page %}
+                                        <li class="page-item active">
+                                            <span class="page-link">{{ p }}</span>
+                                        </li>
+                                    {% elif p == '...' %}
+                                        <li class="page-item disabled">
+                                            <span class="page-link">{{ p }}</span>
+                                        </li>
+                                    {% else %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="?now_playing_page={{ p }}&upcoming_page={{ upcoming_page }}">
+                                                {{ p }}
+                                            </a>
+                                        </li>
+                                    {% endif %}
+                                {% endfor %}
+                                
+                                {% if now_playing_has_next %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?now_playing_page={{ now_playing_next_page }}&upcoming_page={{ upcoming_page }}">
+                                            Next
+                                        </a>
+                                    </li>
+                                {% else %}
+                                    <li class="page-item disabled">
+                                        <span class="page-link">Next</span>
+                                    </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                    </div>
+                </div>
+            {% endif %}
         {% else %}
             <div class="row mb-5">
                 <div class="col-12">
@@ -304,7 +357,7 @@
                 <div class="col-12">
                     <h2 class="border-bottom pb-2">Coming Soon to UK Cinemas</h2>
                     <p class="text-muted">
-                        Showing the {{ upcoming_films|length }} most popular films out of {{ total_upcoming }} coming to UK cinemas in the next {{ upcoming_films_months }} months.
+                        Showing page {{ upcoming_page }} of {{ upcoming_num_pages }} ({{ upcoming_films|length }} films out of {{ total_upcoming }} coming to UK cinemas in the next {{ upcoming_films_months }} months).
                     </p>
                 </div>
             </div>
@@ -359,6 +412,59 @@
                     </div>
                 {% endfor %}
             </div>
+            
+            <!-- Upcoming Pagination -->
+            {% if upcoming_num_pages > 1 %}
+                <div class="row mb-5">
+                    <div class="col-12">
+                        <nav aria-label="Upcoming films pagination">
+                            <ul class="pagination justify-content-center">
+                                {% if upcoming_has_previous %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?now_playing_page={{ now_playing_page }}&upcoming_page={{ upcoming_previous_page }}">
+                                            Previous
+                                        </a>
+                                    </li>
+                                {% else %}
+                                    <li class="page-item disabled">
+                                        <span class="page-link">Previous</span>
+                                    </li>
+                                {% endif %}
+                                
+                                {% for p in upcoming_num_pages|get_page_range:upcoming_page %}
+                                    {% if p == upcoming_page %}
+                                        <li class="page-item active">
+                                            <span class="page-link">{{ p }}</span>
+                                        </li>
+                                    {% elif p == '...' %}
+                                        <li class="page-item disabled">
+                                            <span class="page-link">{{ p }}</span>
+                                        </li>
+                                    {% else %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="?now_playing_page={{ now_playing_page }}&upcoming_page={{ p }}">
+                                                {{ p }}
+                                            </a>
+                                        </li>
+                                    {% endif %}
+                                {% endfor %}
+                                
+                                {% if upcoming_has_next %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?now_playing_page={{ now_playing_page }}&upcoming_page={{ upcoming_next_page }}">
+                                            Next
+                                        </a>
+                                    </li>
+                                {% else %}
+                                    <li class="page-item disabled">
+                                        <span class="page-link">Next</span>
+                                    </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                    </div>
+                </div>
+            {% endif %}
         {% else %}
             <div class="row">
                 <div class="col-12">
