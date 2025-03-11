@@ -1,17 +1,23 @@
 {% if results %}
     {% for film in results %}
-        <a href="{% url 'films_app:film_detail' film.imdbID %}?source=classics" class="search-result-link" data-film-id="{{ film.imdbID }}" {% if film.is_in_cinema %}data-in-cinema="true"{% endif %}>
+        <a href="{% url 'films_app:film_detail' film.imdbID %}?source=classics" class="search-result-link" data-film-id="{{ film.imdbID }}" {% if film.is_in_cinema %}data-in-cinema="true"{% endif %} {% if film.is_upcoming %}data-upcoming="true"{% endif %}>
             <div class="search-result-item">
                 <img src="{{ film.Poster|default:'https://via.placeholder.com/150x225?text=No+Poster' }}" 
                      class="search-result-poster" alt="{{ film.Title }}">
                 <div class="search-result-info">
                     <div class="search-result-title">{{ film.Title }}</div>
                     <div class="search-result-year">{{ film.Year }}</div>
-                    {% if film.is_in_cinema %}
-                    <div class="search-result-cinema-badge">
+                    <div class="search-result-badges">
+                        {% if film.is_in_cinema %}
                         <span class="badge bg-success">In Cinemas Now</span>
+                        {% elif film.is_upcoming %}
+                        <span class="badge bg-info">Coming Soon</span>
+                        {% endif %}
+                        
+                        {% if film.uk_certification %}
+                        <span class="badge bg-secondary ms-1">{{ film.uk_certification }}</span>
+                        {% endif %}
                     </div>
-                    {% endif %}
                 </div>
             </div>
         </a>

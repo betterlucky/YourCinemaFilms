@@ -87,6 +87,6 @@ chmod +x update_cinema_cache.py update_release_status.py
 
 # Update cinema cache
 echo "Updating cinema cache..."
-python update_cinema_cache.py
+python manage.py update_movie_cache --all-pages
 
 echo "Build process completed successfully!" 

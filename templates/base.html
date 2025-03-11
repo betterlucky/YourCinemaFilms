@@ -202,19 +202,10 @@
                     return;
                 }
                 
-                // Redirect to search page with query
-                window.location.href = "{% url 'films_app:search_films' %}?query=" + encodeURIComponent(query);
-            });
-            
-            // Handle clicking on search results
-            $(document).on('click', '.search-result-link', function(e) {
-                e.preventDefault();
-                const filmId = $(this).data('film-id');
-                const inCinema = $(this).data('in-cinema');
-                
-                // Navigate to the film detail page
-                window.location.href = "{% url 'films_app:film_detail' 'FILM_ID' %}".replace('FILM_ID', filmId) + 
-                    (inCinema ? "?source=cinema" : "?source=classics");
+                // If user is not logged in, redirect to login page
+                if (!isAuthenticated) {
+                    window.location.href = loginUrl;
+                }
             });
             
             // Hide search results when clicking outside

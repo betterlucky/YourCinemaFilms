@@ -123,14 +123,33 @@ def get_movie_details(tmdb_id, include_raw=False):
     params = {
         'api_key': settings.TMDB_API_KEY,
         'language': 'en-GB',  # British English
-        # Only append the specific data we need, not everything
+        # Always include release_dates to get certification information
         'append_to_response': 'credits,release_dates,external_ids'
     }
     
     try:
         logger.debug(f"Fetching details for TMDB ID {tmdb_id} from API")
         response = requests.get(url, params=params)
+        response.raise_for_status()  # Raise an exception for HTTP errors
         data = response.json()
+        
+        # Log release dates information for debugging
+        if 'release_dates' in data:
+            logger.debug(f"Release dates data received for TMDB ID {tmdb_id}")
+            if 'results' in data['release_dates']:
+                gb_data = None
+                for country_data in data['release_dates']['results']:
+                    if country_data['iso_3166_1'] == 'GB':
+                        gb_data = country_data
+                        logger.debug(f"GB release data found: {gb_data}")
+                        break
+                
+                if not gb_data:
+                    logger.debug(f"No GB release data found in {[c['iso_3166_1'] for c in data['release_dates']['results']]}")
+            else:
+                logger.debug(f"No 'results' key in release_dates data")
+        else:
+            logger.debug(f"No release_dates data received for TMDB ID {tmdb_id}")
         
         # If include_raw is True, add the raw response data
         if include_raw:
@@ -150,7 +169,7 @@ def get_movie_details(tmdb_id, include_raw=False):
         
         return data
     except Exception as e:
-        logger.error(f"Error fetching details for TMDB ID {tmdb_id}: {e}")
+        logger.error(f"Error fetching movie details for TMDB ID {tmdb_id}: {e}")
         return None
 
 def get_movie_by_imdb_id(imdb_id, include_raw=False):
@@ -201,17 +220,66 @@ def get_uk_certification(release_dates):
     Returns:
         str: The UK certification or None if not found
     """
-    if not release_dates or 'results' not in release_dates:
+    if not release_dates:
+        logger.debug("No release_dates data provided")
         return None
     
+    if 'results' not in release_dates:
+        logger.debug("No 'results' key in release_dates data")
+        return None
+    
+    # Log the structure of release_dates for debugging
+    logger.debug(f"Release dates data contains {len(release_dates['results'])} country entries")
+    
     # Find the UK release data
+    uk_data = None
     for country_data in release_dates['results']:
         if country_data['iso_3166_1'] == 'GB':
-            # Get the certification from the most recent release date
-            for release in country_data['release_dates']:
-                if release.get('certification'):
-                    return release['certification']
+            uk_data = country_data
+            logger.debug(f"Found UK release data: {uk_data}")
+            break
     
+    if not uk_data:
+        logger.debug("No UK (GB) release data found")
+        return None
+    
+    if 'release_dates' not in uk_data or not uk_data['release_dates']:
+        logger.debug("No release_dates in UK data")
+        return None
+    
+    logger.debug(f"UK release dates: {uk_data['release_dates']}")
+    
+    # First try to find theatrical release certification (type 3)
+    for release in uk_data['release_dates']:
+        if release.get('type') == 3 and release.get('certification'):
+            logger.debug(f"Found theatrical release certification: {release['certification']}")
+            return release['certification']
+    
+    # If no theatrical release, try digital release (type 4)
+    for release in uk_data['release_dates']:
+        if release.get('type') == 4 and release.get('certification'):
+            logger.debug(f"Found digital release certification: {release['certification']}")
+            return release['certification']
+    
+    # If no theatrical or digital release, try physical release (type 5)
+    for release in uk_data['release_dates']:
+        if release.get('type') == 5 and release.get('certification'):
+            logger.debug(f"Found physical release certification: {release['certification']}")
+            return release['certification']
+    
+    # If no theatrical, digital, or physical release, try premiere (type 1)
+    for release in uk_data['release_dates']:
+        if release.get('type') == 1 and release.get('certification'):
+            logger.debug(f"Found premiere certification: {release['certification']}")
+            return release['certification']
+    
+    # If still no certification, try any certification
+    for release in uk_data['release_dates']:
+        if release.get('certification'):
+            logger.debug(f"Found non-theatrical certification: {release['certification']}")
+            return release['certification']
+    
+    logger.debug("No certification found in UK release data")
     return None
 
 def format_tmdb_data_for_film(tmdb_data):
@@ -287,21 +355,22 @@ def format_tmdb_data_for_film(tmdb_data):
         formatted_data['actors'] = None
     
     # Extract UK certification
-    release_dates = tmdb_data.get('release_dates', {}).get('results', [])
+    release_dates = tmdb_data.get('release_dates')
     uk_certification = get_uk_certification(release_dates)
     if uk_certification:
         formatted_data['uk_certification'] = uk_certification
     
     # Extract UK release date
-    for release in release_dates:
-        if release.get('iso_3166_1') == 'GB':
-            for release_type in release.get('release_dates', []):
-                if release_type.get('type') in [2, 3]:  # Theatrical release types
-                    if release_type.get('release_date'):
-                        # Convert to YYYY-MM-DD format
-                        date_obj = datetime.fromisoformat(release_type['release_date'].replace('Z', '+00:00'))
-                        formatted_data['uk_release_date'] = date_obj.strftime('%Y-%m-%d')
-                        break
+    if release_dates and 'results' in release_dates:
+        for release in release_dates['results']:
+            if release.get('iso_3166_1') == 'GB':
+                for release_type in release.get('release_dates', []):
+                    if release_type.get('type') in [2, 3]:  # Theatrical release types
+                        if release_type.get('release_date'):
+                            # Convert to YYYY-MM-DD format
+                            date_obj = datetime.fromisoformat(release_type['release_date'].replace('Z', '+00:00'))
+                            formatted_data['uk_release_date'] = date_obj.strftime('%Y-%m-%d')
+                            break
     
     return formatted_data
 

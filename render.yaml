@@ -41,7 +41,7 @@ services:
     env: python
     schedule: "0 0 * * *"  # Run at midnight UTC every day
     buildCommand: pip install -r requirements.txt
-    startCommand: python update_cinema_cache.py
+    startCommand: python manage.py update_movie_cache --all-pages --force
     envVars:
       - key: DJANGO_SETTINGS_MODULE
         value: films_project.settings

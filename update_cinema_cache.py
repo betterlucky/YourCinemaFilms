@@ -99,38 +99,17 @@ def main():
         cleanup_old_cache_files()
         
         # Run the management command with improved parameters
-        logger.info("Starting cinema cache update with improved parameters")
-        
-        # Determine optimal max_pages based on current time
-        current_month = datetime.now().month
-        current_day = datetime.now().day
-        is_weekend = datetime.now().weekday() >= 4
-        
-        # Base max_pages value
-        max_pages = 5
-        
-        # Adjust based on season, day of month, and day of week
-        if current_month in [5, 6, 7, 8, 11, 12]:  # Summer and winter months
-            max_pages = max(max_pages, 8)
-            logger.info(f"Peak movie season detected - increasing max pages to {max_pages}")
-        
-        if current_day <= 7:  # First week of the month
-            max_pages = max(max_pages, 7)
-            logger.info(f"Beginning of month detected - increasing max pages to {max_pages}")
-        
-        if is_weekend:  # Friday, Saturday, Sunday
-            max_pages = max(max_pages, 6)
-            logger.info(f"Weekend detected - increasing max pages to {max_pages}")
+        logger.info("Starting cinema cache update with --all-pages option")
         
         # Process all films with optimized parameters
         call_command(
             'update_movie_cache',
             force=True,
-            max_pages=max_pages,
-            batch_size=5,  # Balanced batch size for performance
-            batch_delay=2,  # Reasonable delay between batches
+            all_pages=True,  # Process all available pages
+            batch_size=5,    # Balanced batch size for performance
+            batch_delay=2,   # Reasonable delay between batches
             prioritize_flags=True,
-            time_window=6  # 6 months for upcoming films
+            time_window=6    # 6 months for upcoming films
         )
         
         end_time = datetime.now()
