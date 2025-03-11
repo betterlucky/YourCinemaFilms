@@ -19,6 +19,7 @@ class Film(models.Model):
     
     # Cinema-specific fields
     is_in_cinema = models.BooleanField(default=False, help_text="Whether this film is currently in UK cinemas")
+    is_upcoming = models.BooleanField(default=False, help_text="Whether this film is scheduled for future UK release")
     uk_release_date = models.DateField(blank=True, null=True, help_text="UK release date for this film")
     uk_certification = models.CharField(max_length=10, blank=True, null=True, help_text="UK certification (e.g., PG, 12A, 15)")
     popularity = models.FloatField(default=0, help_text="Popularity score from TMDB API")

@@ -61,9 +61,7 @@ def cinema(request):
     """View for cinema films."""
     today = timezone.now().date()
     
-    # Get current and upcoming films
-    # Use a weighted combination of revenue, popularity and vote count for sorting
-    # This gives preference to films that are commercially successful, popular, and have significant votes
+    # Get current films - those marked as in cinema and with release date today or earlier
     now_playing_films = Film.objects.filter(
         is_in_cinema=True, 
         uk_release_date__lte=today
@@ -71,14 +69,12 @@ def cinema(request):
         select={'combined_score': '(revenue / 10000000) * 0.5 + popularity * 0.3 + (vote_count / 100) * 0.2'}
     ).order_by('-combined_score')[:20]
     
-    # For upcoming films, we need to include both films marked as in_cinema=True with future dates
-    # and films specifically marked as upcoming (is_in_cinema=False with future dates)
+    # Get upcoming films - those marked with is_upcoming=True
     upcoming_films = Film.objects.filter(
-        uk_release_date__gt=today,
-        uk_release_date__lte=today + timezone.timedelta(days=90)
+        is_upcoming=True
     ).extra(
         select={'combined_score': '(revenue / 10000000) * 0.5 + popularity * 0.3 + (vote_count / 100) * 0.2'}
-    ).order_by('-combined_score')[:20]
+    ).order_by('uk_release_date')[:20]
     
     # Get total counts
     total_now_playing = Film.objects.filter(
@@ -87,8 +83,7 @@ def cinema(request):
     ).count()
     
     total_upcoming = Film.objects.filter(
-        uk_release_date__gt=today,
-        uk_release_date__lte=today + timezone.timedelta(days=90)
+        is_upcoming=True
     ).count()
     
     # Get user's cinema votes if authenticated
@@ -98,8 +93,9 @@ def cinema(request):
         user_cinema_votes = CinemaVote.objects.filter(user=request.user).select_related('film')
         user_voted_films = [vote.film.imdb_id for vote in user_cinema_votes]
     
-    # Calculate upcoming films months
-    upcoming_films_months = 3
+    # Get the time window for upcoming films from settings
+    from django.conf import settings
+    upcoming_films_months = getattr(settings, 'UPCOMING_FILMS_MONTHS', 6)
     
     context = {
         'now_playing_films': now_playing_films,
@@ -2034,11 +2030,9 @@ def filter_cinema_films(request):
         uk_release_date__lte=today
     )
     
-    # For upcoming films, we need to include both films marked as in_cinema=True with future dates
-    # and films specifically marked as upcoming (is_in_cinema=False with future dates)
+    # For upcoming films, use the is_upcoming flag
     upcoming_filter = Q(
-        uk_release_date__gt=today,
-        uk_release_date__lte=today + timezone.timedelta(days=90)
+        is_upcoming=True
     )
     
     # Add title filter if query is provided
@@ -2048,7 +2042,7 @@ def filter_cinema_films(request):
     
     # Get filtered films
     now_playing_films = Film.objects.filter(now_playing_filter).order_by('-popularity')[:20]
-    upcoming_films = Film.objects.filter(upcoming_filter).order_by('-popularity')[:20]
+    upcoming_films = Film.objects.filter(upcoming_filter).order_by('uk_release_date')[:20]
     
     # Get total counts
     total_now_playing = Film.objects.filter(now_playing_filter).count()
@@ -2061,8 +2055,9 @@ def filter_cinema_films(request):
         user_cinema_votes = CinemaVote.objects.filter(user=request.user).select_related('film')
         user_voted_films = [vote.film.imdb_id for vote in user_cinema_votes]
     
-    # Calculate upcoming films months
-    upcoming_films_months = 3
+    # Get the time window for upcoming films from settings
+    from django.conf import settings
+    upcoming_films_months = getattr(settings, 'UPCOMING_FILMS_MONTHS', 6)
     
     context = {
         'now_playing_films': now_playing_films,
