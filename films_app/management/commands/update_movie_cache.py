@@ -21,58 +21,72 @@ class Command(BaseCommand):
         parser.add_argument(
             '--max-pages',
             type=int,
-            default=5,
-            help='Maximum number of pages to fetch from TMDB API (default: 5)',
+            default=10,
+            help='Maximum number of pages to process (0 for all pages)',
         )
         parser.add_argument(
             '--batch-size',
             type=int,
             default=10,
-            help='Number of films to process in each batch (default: 10)',
+            help='Number of films to process in each batch',
         )
         parser.add_argument(
             '--batch-delay',
             type=int,
             default=2,
-            help='Delay in seconds between processing batches (default: 2)',
-        )
-        parser.add_argument(
-            '--prioritize-flags',
-            action='store_true',
-            default=True,
-            help='Prioritize processing films flagged for status checks (default: True)',
+            help='Delay in seconds between processing batches',
         )
         parser.add_argument(
             '--time-window',
             type=int,
             default=6,
-            help='Time window in months for upcoming films (default: 6)',
+            help='Time window in months for upcoming films',
+        )
+        parser.add_argument(
+            '--prioritize-flags',
+            action='store_true',
+            default=True,
+            help='Prioritize films flagged for status checks',
+        )
+        parser.add_argument(
+            '--all-pages',
+            action='store_true',
+            help='Process all available pages (overrides max-pages)',
         )
 
     def handle(self, *args, **options):
         """Handle the command execution."""
         force = options.get('force', False)
-        max_pages = options.get('max_pages', 5)
+        max_pages = options.get('max_pages', 10)
+        all_pages = options.get('all_pages', False)
+        
+        # If all_pages is True, set max_pages to 0 to process all pages
+        if all_pages:
+            max_pages = 0
+            self.stdout.write('All pages option selected - will process all available pages')
         
         # Calculate dynamic max_pages based on the current date
         # More pages during peak movie seasons (summer and winter holidays)
         current_month = datetime.now().month
-        if current_month in [5, 6, 7, 8, 11, 12]:  # Summer and winter months
-            max_pages = max(max_pages, 10)  # Increase pages during peak seasons
+        if current_month in [5, 6, 7, 8, 11, 12] and max_pages > 0:  # Summer and winter months
+            max_pages = max(max_pages, 15)  # Increase pages during peak seasons
             self.stdout.write(f'Peak movie season detected - increasing max pages to {max_pages}')
         
         # Check if we're near the beginning of the month when new releases often come out
         current_day = datetime.now().day
-        if current_day <= 7:  # First week of the month
-            max_pages = max(max_pages, 8)  # Increase pages for new releases
+        if current_day <= 7 and max_pages > 0:  # First week of the month
+            max_pages = max(max_pages, 12)  # Increase pages for new releases
             self.stdout.write(f'Beginning of month detected - increasing max pages to {max_pages}')
         
         # Check if it's a weekend when more people watch movies
-        if datetime.now().weekday() >= 4:  # Friday, Saturday, Sunday
-            max_pages = max(max_pages, 7)  # Increase pages for weekends
+        if datetime.now().weekday() >= 4 and max_pages > 0:  # Friday, Saturday, Sunday
+            max_pages = max(max_pages, 10)  # Increase pages for weekends
             self.stdout.write(f'Weekend detected - increasing max pages to {max_pages}')
         
-        self.stdout.write(f'Using max_pages: {max_pages}')
+        if max_pages == 0:
+            self.stdout.write('Using unlimited pages - will process all available pages')
+        else:
+            self.stdout.write(f'Using max_pages: {max_pages}')
         
         # Update the database cache
         self.update_cinema_db_cache(force, max_pages, options)
@@ -161,18 +175,19 @@ class Command(BaseCommand):
         
         # Process now playing movies with smarter pagination
         self.stdout.write('Fetching and processing now playing movies...')
+        # Set max_pages to 0 to process all pages
         now_playing_films = self._process_movie_batch('now_playing', max_pages, batch_size, batch_delay)
         for film in now_playing_films:
             processed_film_ids.add(film.imdb_id)
         
         # Process upcoming movies with smarter pagination, prioritizing films with closer release dates
         self.stdout.write('Fetching and processing upcoming movies...')
-        # First process films releasing in the next month
+        # First process films releasing in the next month - set max_pages to 0 to process all pages
         upcoming_films_soon = self._process_movie_batch('upcoming', max_pages // 2, batch_size, batch_delay, time_window_months=1)
         for film in upcoming_films_soon:
             processed_film_ids.add(film.imdb_id)
         
-        # Then process films releasing in the next 6 months
+        # Then process films releasing in the next 6 months - set max_pages to 0 to process all pages
         upcoming_films_later = self._process_movie_batch('upcoming', max_pages // 2, batch_size, batch_delay, time_window_months=time_window_months)
         for film in upcoming_films_later:
             processed_film_ids.add(film.imdb_id)
@@ -315,15 +330,28 @@ class Command(BaseCommand):
             is_in_cinema = False
             is_upcoming = True
         
+        # Get the first page to determine total_pages
+        if movie_type == 'upcoming' and time_window_months is not None:
+            first_page_movies, total_pages = get_movies_func(time_window_months=time_window_months, page=1, sort_by='popularity.desc')
+        else:
+            first_page_movies, total_pages = get_movies_func(page=1, sort_by='popularity.desc')
+        
+        self.stdout.write(f'Found {total_pages} total pages for {movie_type} movies')
+        
+        # Process all pages instead of a limited number
+        # Use the smaller of max_pages or total_pages
+        pages_to_process = min(max_pages, total_pages) if max_pages > 0 else total_pages
+        self.stdout.write(f'Will process {pages_to_process} pages for {movie_type} movies')
+        
         # Get the next page to process from the PageTracker
-        page = PageTracker.get_next_page(movie_type)
+        page = 1  # Always start from page 1 to ensure we get all films
         self.stdout.write(f'Starting with page {page} for {movie_type} movies')
         
         total_processed = 0
         pages_processed = 0
         processed_films = []
         
-        while pages_processed < max_pages:
+        while pages_processed < pages_to_process:
             # Get a batch of movies with popularity sorting
             if movie_type == 'upcoming' and time_window_months is not None:
                 movies, total_pages = get_movies_func(time_window_months=time_window_months, page=page, sort_by='popularity.desc')
@@ -353,7 +381,54 @@ class Command(BaseCommand):
                                 self.stdout.write(f'Skipping {movie_data.get("title")} - release date {release_date} is beyond cutoff {cutoff_date}')
                                 continue
                         
+                        # Get the IMDb ID or TMDB ID
                         imdb_id = movie_data.get('imdb_id')
+                        tmdb_id = movie_data.get('id')
+                        
+                        # Always fetch complete movie details to ensure we have certification information
+                        if tmdb_id:
+                            self.stdout.write(f'Fetching complete details for {movie_data.get("title")} (TMDB ID: {tmdb_id})')
+                            try:
+                                complete_details = get_movie_details(tmdb_id)
+                                if complete_details:
+                                    # Get IMDb ID from complete details
+                                    imdb_id = complete_details.get('imdb_id') or complete_details.get('external_ids', {}).get('imdb_id')
+                                    
+                                    # Update movie_data with complete details
+                                    formatted_data = format_tmdb_data_for_film(complete_details)
+                                    
+                                    # Log certification information
+                                    uk_certification = formatted_data.get('uk_certification')
+                                    if uk_certification:
+                                        self.stdout.write(f'Found UK certification for {movie_data.get("title")}: {uk_certification}')
+                                    else:
+                                        self.stdout.write(f'No UK certification found for {movie_data.get("title")}')
+                                        
+                                        # Debug the release_dates structure to help diagnose certification issues
+                                        release_dates = complete_details.get('release_dates')
+                                        if release_dates and 'results' in release_dates:
+                                            gb_data = None
+                                            for country_data in release_dates['results']:
+                                                if country_data['iso_3166_1'] == 'GB':
+                                                    gb_data = country_data
+                                                    break
+                                            
+                                            if gb_data:
+                                                self.stdout.write(f'GB release data found: {gb_data}')
+                                            else:
+                                                self.stdout.write(f'No GB release data found in {[c["iso_3166_1"] for c in release_dates["results"]]}')
+                                        else:
+                                            self.stdout.write(f'No release_dates data structure found or invalid format')
+                                    
+                                    movie_data.update(formatted_data)
+                            except Exception as e:
+                                self.stdout.write(self.style.WARNING(f'Error fetching complete details: {str(e)}'))
+                        
+                        # If still no IMDb ID, use TMDB ID with prefix
+                        if not imdb_id and tmdb_id:
+                            imdb_id = f"tmdb-{tmdb_id}"
+                            self.stdout.write(f'Using TMDB ID format: {imdb_id} for {movie_data.get("title")}')
+                        
                         if not imdb_id:
                             self.stdout.write(self.style.WARNING(f'Skipping movie with no IMDb ID: {movie_data.get("title")}'))
                             continue
@@ -413,7 +488,8 @@ class Command(BaseCommand):
                         processed_films.append(film)
                         
                         action = 'Created' if created else 'Updated'
-                        self.stdout.write(f'{action} {film.title} ({film.imdb_id}) - {"In Cinema" if film.is_in_cinema else "Upcoming" if film.is_upcoming else "Not in Cinema"}')
+                        cert_info = f" with certification {film.uk_certification}" if film.uk_certification else " (no certification)"
+                        self.stdout.write(f'{action} {film.title} ({film.imdb_id}){cert_info} - {"In Cinema" if film.is_in_cinema else "Upcoming" if film.is_upcoming else "Not in Cinema"}')
                     except Exception as e:
                         self.stdout.write(self.style.ERROR(f'Error processing movie: {str(e)}'))
                 
@@ -430,7 +506,7 @@ class Command(BaseCommand):
             pages_processed += 1
             
             # Add delay between pages to avoid resource exhaustion
-            if pages_processed < max_pages and page <= total_pages:
+            if pages_processed < pages_to_process and page <= total_pages:
                 self.stdout.write(f'Waiting {batch_delay} seconds before next page...')
                 time.sleep(batch_delay)
         

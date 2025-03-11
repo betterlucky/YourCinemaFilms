@@ -62,46 +62,29 @@ def cinema(request):
     today = timezone.now().date()
     
     # Get current films - those marked as in cinema and with release date today or earlier
-    now_playing_films_query = Film.objects.filter(
+    now_playing_films = Film.objects.filter(
         is_in_cinema=True, 
         uk_release_date__lte=today
     ).extra(
         select={'combined_score': '(revenue / 10000000) * 0.5 + popularity * 0.3 + (vote_count / 100) * 0.2'}
-    ).order_by('-combined_score')
+    ).order_by('-combined_score')[:20]
     
     # Get upcoming films - those marked with is_upcoming=True
-    upcoming_films_query = Film.objects.filter(
+    upcoming_films = Film.objects.filter(
         is_upcoming=True
     ).extra(
         select={'combined_score': '(revenue / 10000000) * 0.5 + popularity * 0.3 + (vote_count / 100) * 0.2'}
-    ).order_by('uk_release_date')
-    
-    # Get pagination parameters
-    now_playing_page_num = request.GET.get('now_playing_page', 1)
-    upcoming_page_num = request.GET.get('upcoming_page', 1)
-    
-    # Apply pagination to show 8 films per page (2 rows of 4)
-    now_playing_paginator = Paginator(now_playing_films_query, 8)
-    upcoming_paginator = Paginator(upcoming_films_query, 8)
-    
-    # Get the appropriate page for each section
-    try:
-        now_playing_page = now_playing_paginator.page(now_playing_page_num)
-    except PageNotAnInteger:
-        now_playing_page = now_playing_paginator.page(1)
-    except EmptyPage:
-        now_playing_page = now_playing_paginator.page(now_playing_paginator.num_pages)
-    
-    try:
-        upcoming_page = upcoming_paginator.page(upcoming_page_num)
-    except PageNotAnInteger:
-        upcoming_page = upcoming_paginator.page(1)
-    except EmptyPage:
-        upcoming_page = upcoming_paginator.page(upcoming_paginator.num_pages)
+    ).order_by('uk_release_date')[:20]
     
     # Get total counts
-    total_now_playing = now_playing_films_query.count()
-    total_upcoming = upcoming_films_query.count()
+    total_now_playing = Film.objects.filter(
+        is_in_cinema=True, 
+        uk_release_date__lte=today
+    ).count()
+    
+    total_upcoming = Film.objects.filter(
+        is_upcoming=True
+    ).count()
     
     # Get user's cinema votes if authenticated
     user_cinema_votes = []
@@ -115,25 +98,13 @@ def cinema(request):
     upcoming_films_months = getattr(settings, 'UPCOMING_FILMS_MONTHS', 6)
     
     context = {
-        'now_playing_films': now_playing_page,
-        'upcoming_films': upcoming_page,
+        'now_playing_films': now_playing_films,
+        'upcoming_films': upcoming_films,
         'total_now_playing': total_now_playing,
         'total_upcoming': total_upcoming,
         'upcoming_films_months': upcoming_films_months,
         'user_cinema_votes': user_cinema_votes,
         'user_voted_films': user_voted_films,
-        'now_playing_page': int(now_playing_page_num),
-        'upcoming_page': int(upcoming_page_num),
-        'now_playing_has_previous': now_playing_page.has_previous(),
-        'now_playing_has_next': now_playing_page.has_next(),
-        'now_playing_previous_page': now_playing_page.previous_page_number() if now_playing_page.has_previous() else None,
-        'now_playing_next_page': now_playing_page.next_page_number() if now_playing_page.has_next() else None,
-        'now_playing_num_pages': now_playing_paginator.num_pages,
-        'upcoming_has_previous': upcoming_page.has_previous(),
-        'upcoming_has_next': upcoming_page.has_next(),
-        'upcoming_previous_page': upcoming_page.previous_page_number() if upcoming_page.has_previous() else None,
-        'upcoming_next_page': upcoming_page.next_page_number() if upcoming_page.has_next() else None,
-        'upcoming_num_pages': upcoming_paginator.num_pages,
     }
     
     return render(request, 'films_app/cinema.html', context)
@@ -142,31 +113,11 @@ def cinema(request):
 def classics(request):
     """Classic films page view."""
     try:
-        # Get pagination parameters
-        page_num = request.GET.get('page', 1)
-        
-        # Get top films based on votes (get all for pagination)
-        all_top_films = get_top_films_data(limit=None)
-        
-        # Apply pagination to show 8 films per page (2 rows of 4)
-        paginator = Paginator(all_top_films, 8)
-        
-        try:
-            top_films = paginator.page(page_num)
-        except PageNotAnInteger:
-            top_films = paginator.page(1)
-        except EmptyPage:
-            top_films = paginator.page(paginator.num_pages)
+        # Get top films based on votes
+        top_films = get_top_films_data(limit=10)
         
         context = {
             'top_films': top_films,
-            'total_films': paginator.count,
-            'page': int(page_num),
-            'num_pages': paginator.num_pages,
-            'has_previous': top_films.has_previous(),
-            'has_next': top_films.has_next(),
-            'previous_page': top_films.previous_page_number() if top_films.has_previous() else None,
-            'next_page': top_films.next_page_number() if top_films.has_next() else None,
         }
         
         # If user is authenticated, get their votes
@@ -187,55 +138,6 @@ def classics(request):
         messages.error(request, "An error occurred while loading the classics page. Please try again later.")
         return render(request, 'films_app/error.html', {'error_message': str(e)})
 
-def filter_classics_films(request):
-    """Filter classic films for HTMX pagination."""
-    try:
-        # Get pagination parameters
-        page_num = request.GET.get('page', 1)
-        
-        # Get top films based on votes (get all for pagination)
-        all_top_films = get_top_films_data(limit=None)
-        
-        # Apply pagination to show 8 films per page (2 rows of 4)
-        paginator = Paginator(all_top_films, 8)
-        
-        try:
-            top_films = paginator.page(page_num)
-        except PageNotAnInteger:
-            top_films = paginator.page(1)
-        except EmptyPage:
-            top_films = paginator.page(paginator.num_pages)
-        
-        context = {
-            'top_films': top_films,
-            'total_films': paginator.count,
-            'page': int(page_num),
-            'num_pages': paginator.num_pages,
-            'has_previous': top_films.has_previous(),
-            'has_next': top_films.has_next(),
-            'previous_page': top_films.previous_page_number() if top_films.has_previous() else None,
-            'next_page': top_films.next_page_number() if top_films.has_next() else None,
-        }
-        
-        # If user is authenticated, get their votes
-        if request.user.is_authenticated:
-            user_votes, votes_remaining = get_user_votes_and_remaining(request.user)
-            user_voted_films = [vote.film.imdb_id for vote in user_votes]
-            can_vote = votes_remaining > 0
-            context.update({
-                'user_votes': user_votes,
-                'votes_remaining': votes_remaining,
-                'user_voted_films': user_voted_films,
-                'can_vote': can_vote,
-            })
-        
-        # Check if this is an HTMX request
-        is_htmx = request.headers.get('HX-Request') == 'true'
-        
-        return render(request, 'films_app/partials/classics_films.html', context)
-    except Exception as e:
-        logging.error(f"Error in filter_classics_films view: {e}")
-        return HttpResponse(f"<div class='alert alert-danger'>An error occurred: {str(e)}</div>")
 
 @login_required
 def profile(request):
@@ -398,14 +300,45 @@ def search_films(request):
                 # Format results to match the expected structure in templates
                 results = []
                 for movie in tmdb_data['results']:
-                    # Use TMDB ID with prefix as fallback - we'll avoid the extra API call here
-                    imdb_id = f"tmdb-{movie.get('id')}"
+                    # Get the TMDB ID
+                    tmdb_id = movie.get('id')
+                    # Use TMDB ID with prefix as the ID format
+                    imdb_id = f"tmdb-{tmdb_id}"
                     
-                    # Check if this film exists in our database and get its in_cinema status
+                    # Check if this film exists in our database using either ID format
                     is_in_cinema = False
+                    is_upcoming = False
+                    uk_certification = None
+                    
+                    # First try to find by TMDB ID format
                     existing_film = Film.objects.filter(imdb_id=imdb_id).first()
+                    
+                    # If not found, try to get more details to find by IMDb ID
+                    movie_details = None
+                    if not existing_film and tmdb_id:
+                        # Try to get the actual IMDb ID if available
+                        try:
+                            movie_details = get_movie_details(tmdb_id)
+                            if movie_details and movie_details.get('external_ids', {}).get('imdb_id'):
+                                actual_imdb_id = movie_details['external_ids']['imdb_id']
+                                existing_film = Film.objects.filter(imdb_id=actual_imdb_id).first()
+                                
+                                # If still not found, we'll use the actual IMDb ID for new films
+                                if not existing_film and actual_imdb_id:
+                                    imdb_id = actual_imdb_id
+                        except Exception as e:
+                            logging.warning(f"Error getting movie details for TMDB ID {tmdb_id}: {str(e)}")
+                    
+                    # If we found the film, get its status and certification
                     if existing_film:
                         is_in_cinema = existing_film.is_in_cinema
+                        is_upcoming = existing_film.is_upcoming
+                        uk_certification = existing_film.uk_certification
+                    # If we have movie details but no existing film, try to get certification
+                    elif movie_details:
+                        # Extract UK certification from movie details
+                        release_dates = movie_details.get('release_dates', {})
+                        uk_certification = get_uk_certification(release_dates)
                     
                     # Format each movie to match the structure expected by the template
                     formatted_movie = {
@@ -413,8 +346,10 @@ def search_films(request):
                         'Title': movie.get('title', ''),
                         'Year': movie.get('release_date', '')[:4] if movie.get('release_date') else '',
                         'Poster': f"https://image.tmdb.org/t/p/w500{movie.get('poster_path')}" if movie.get('poster_path') else '',
-                        'tmdb_id': movie.get('id'),
+                        'tmdb_id': tmdb_id,
                         'is_in_cinema': is_in_cinema,
+                        'is_upcoming': is_upcoming,
+                        'uk_certification': uk_certification
                     }
                     results.append(formatted_movie)
                 
@@ -441,85 +376,46 @@ def search_films(request):
 def film_detail(request, imdb_id):
     """Film detail view."""
     try:
-        # First try to get the film from the database
-        try:
-            film = Film.objects.get(imdb_id=imdb_id)
-        except Film.DoesNotExist:
-            # If the film doesn't exist in our database but has a TMDB ID, try to fetch it
-            if imdb_id.startswith('tmdb-'):
-                # Extract the TMDB ID
-                tmdb_id = imdb_id.replace('tmdb-', '')
-                
-                # Import the TMDB API functions
-                from .tmdb_api import get_movie_details, format_tmdb_data_for_film
-                
-                # Get the movie details from TMDB
-                tmdb_data = get_movie_details(tmdb_id)
-                
-                if tmdb_data:
-                    # Format the data for our Film model
-                    film_data = format_tmdb_data_for_film(tmdb_data)
-                    
-                    # Create a new Film object
-                    film = Film.objects.create(
-                        imdb_id=imdb_id,
-                        title=film_data.get('title', ''),
-                        year=film_data.get('year', ''),
-                        director=film_data.get('director', ''),
-                        plot=film_data.get('plot', ''),
-                        genres=film_data.get('genres', ''),
-                        runtime=film_data.get('runtime', 0),
-                        actors=film_data.get('actors', ''),
-                        uk_certification=film_data.get('uk_certification', ''),
-                        uk_release_date=film_data.get('uk_release_date'),
-                        poster_url=film_data.get('poster_url', ''),
-                        popularity=film_data.get('popularity', 0),
-                        is_in_cinema=film_data.get('is_in_cinema', False),
-                        is_upcoming=film_data.get('is_upcoming', False)
-                    )
-                else:
-                    messages.error(request, _('Film not found.'))
-                    return redirect('films_app:classics')
-            else:
-                messages.error(request, _('Film not found.'))
-                return redirect('films_app:classics')
-    
-        # Get similar films
-        similar_films = Film.objects.filter(
-            Q(director=film.director) 
-        ).exclude(imdb_id=film.imdb_id).order_by('-popularity')[:6]
-        
-        # Get all approved tags for this film
-        approved_tags = GenreTag.objects.filter(film=film, is_approved=True)
-        
-        # If user is authenticated, exclude their tags from approved tags
-        if request.user.is_authenticated:
-            approved_tags = approved_tags.exclude(user=request.user)
-            # Get user tags for this film
-            user_tags = GenreTag.objects.filter(film=film, user=request.user)
-        else:
-            user_tags = []
-        
-        # Check if the user is coming from the classics page
-        source = request.GET.get('source', '')
-        from_classics = source == 'classics'
-        
-        context = {
-            'film': film,
-            'user_tags': user_tags,
-            'approved_tags': approved_tags,
-            'genres': film.genre_list,
-            'all_genres': film.all_genres,
-            'is_authenticated': request.user.is_authenticated,
-            'from_classics': from_classics,
-            'similar_films': similar_films,
-        }
-        
-        return render(request, 'films_app/film_detail.html', context)
-    except Exception as e:
-        logging.error(f"Error in film_detail view: {str(e)}")
-        messages.error(request, _('An error occurred while loading the film details.'))
+        film = Film.objects.get(imdb_id=imdb_id)
+    except Film.DoesNotExist:
+        messages.error(request, _('Film not found.'))
         return redirect('films_app:classics')
+    
+    # We're no longer collecting voting information, so these variables have been removed:
+    # has_voted, has_cinema_voted, cinema_vote, can_vote, vote_count, commitment_metrics, etc.
+    
+    # Get similar films
+    similar_films = Film.objects.filter(
+        Q(director=film.director) 
+    ).exclude(imdb_id=film.imdb_id).order_by('-popularity')[:6]
+    
+    # Get all approved tags for this film
+    approved_tags = GenreTag.objects.filter(film=film, is_approved=True)
+    
+    # If user is authenticated, exclude their tags from approved tags
+    if request.user.is_authenticated:
+        approved_tags = approved_tags.exclude(user=request.user)
+        # Get user tags for this film
+        user_tags = GenreTag.objects.filter(film=film, user=request.user)
+    else:
+        user_tags = []
+    
+    # Check if the user is coming from the classics page
+    source = request.GET.get('source', '')
+    from_classics = source == 'classics'
+    
+    context = {
+        'film': film,
+        'user_tags': user_tags,
+        'approved_tags': approved_tags,
+        'genres': film.genre_list,
+        'all_genres': film.all_genres,
+        'is_authenticated': request.user.is_authenticated,
+        'from_classics': from_classics,
+        'similar_films': similar_films,
+    }
+    
+    return render(request, 'films_app/film_detail.html', context)
 
 
 @login_required
@@ -1875,10 +1771,7 @@ def get_user_votes_and_remaining(user):
 
 def get_top_films_data(limit=8):
     """Get top films by vote count."""
-    films = Film.objects.annotate(total_votes=Count('votes')).filter(total_votes__gt=0).order_by('-total_votes')
-    if limit is not None:
-        films = films[:limit]
-    return films
+    return Film.objects.annotate(total_votes=Count('votes')).filter(total_votes__gt=0).order_by('-total_votes')[:limit]
 
 def user_can_vote(user, film=None):
     """Check if a user can vote for a film."""
@@ -2253,14 +2146,6 @@ def filter_cinema_films(request):
         'upcoming_num_pages': upcoming_paginator.num_pages,
     }
     
-    # Check if this is an HTMX request
-    is_htmx = request.headers.get('HX-Request') == 'true'
-    
-    # If this is an HTMX request, we only need to return the partial template
-    if is_htmx:
-        return render(request, 'films_app/partials/cinema_films.html', context)
-    
-    # For regular requests, return the full template
     return render(request, 'films_app/partials/cinema_films.html', context)
 
 def get_top_genres(votes_queryset, limit=10):

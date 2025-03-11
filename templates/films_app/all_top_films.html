@@ -47,7 +47,7 @@
                                             {% if period != 'all' and film.period_vote_count %}
                                                 {{ film.period_vote_count }} vote{{ film.period_vote_count|pluralize }}
                                             {% else %}
-                                                {{ film.total_votes }} vote{{ film.total_votes|pluralize }}
+                                                {{ film.vote_count }} vote{{ film.vote_count|pluralize }}
                                             {% endif %}
                                         </div>
                                         <img src="{{ film.poster_url|default:'https://via.placeholder.com/300x450?text=No+Poster' }}" 

@@ -8,12 +8,18 @@
                 <div class="card-body">
                     <h5 class="card-title">{{ film.Title }}</h5>
                     <p class="card-text">{{ film.Year }}</p>
-                    {% if film.is_in_cinema %}
                     <div class="mb-2">
+                        {% if film.is_in_cinema %}
                         <span class="badge bg-success">In Cinemas Now</span>
+                        {% elif film.is_upcoming %}
+                        <span class="badge bg-info">Coming Soon</span>
+                        {% endif %}
+                        
+                        {% if film.uk_certification %}
+                        <span class="badge bg-secondary ms-1">{{ film.uk_certification }}</span>
+                        {% endif %}
                     </div>
-                    {% endif %}
-                    <a href="{% url 'films_app:film_detail' film.imdbID %}?source=classics" class="btn btn-primary" {% if film.is_in_cinema %}data-in-cinema="true" data-film-title="{{ film.Title }}"{% endif %}>View Details</a>
+                    <a href="{% url 'films_app:film_detail' film.imdbID %}?source=classics" class="btn btn-primary" {% if film.is_in_cinema %}data-in-cinema="true" data-film-title="{{ film.Title }}"{% endif %} {% if film.is_upcoming %}data-upcoming="true" data-film-title="{{ film.Title }}"{% endif %}>View Details</a>
                 </div>
             </div>
         </div>

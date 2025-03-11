@@ -8,7 +8,6 @@ urlpatterns = [
     # Root URL is now handled at the project level
     path('landing-page/', views.landing, name='landing'),
     path('classic-films/', views.classics, name='classics'),
-    path('filter-classics-films/', views.filter_classics_films, name='filter_classics_films'),
     path('cinema/', views.cinema, name='cinema'),
     path('filter-cinema-films/', views.filter_cinema_films, name='filter_cinema_films'),
     path('profile/', views.profile, name='profile'),
