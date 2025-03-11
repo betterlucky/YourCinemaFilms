@@ -297,7 +297,13 @@
                             <ul class="pagination justify-content-center">
                                 {% if now_playing_has_previous %}
                                     <li class="page-item">
-                                        <a class="page-link" href="?now_playing_page={{ now_playing_previous_page }}&upcoming_page={{ upcoming_page }}">
+                                        <a class="page-link" 
+                                           href="#" 
+                                           hx-get="{% url 'films_app:filter_cinema_films' %}?now_playing_page={{ now_playing_previous_page }}&upcoming_page={{ upcoming_page }}"
+                                           hx-target="#cinema-films-container"
+                                           hx-swap="innerHTML"
+                                           hx-push-url="true"
+                                           hx-indicator="#pagination-indicator-now-playing">
                                             Previous
                                         </a>
                                     </li>
@@ -318,7 +324,13 @@
                                         </li>
                                     {% else %}
                                         <li class="page-item">
-                                            <a class="page-link" href="?now_playing_page={{ p }}&upcoming_page={{ upcoming_page }}">
+                                            <a class="page-link" 
+                                               href="#" 
+                                               hx-get="{% url 'films_app:filter_cinema_films' %}?now_playing_page={{ p }}&upcoming_page={{ upcoming_page }}"
+                                               hx-target="#cinema-films-container"
+                                               hx-swap="innerHTML"
+                                               hx-push-url="true"
+                                               hx-indicator="#pagination-indicator-now-playing">
                                                 {{ p }}
                                             </a>
                                         </li>
@@ -327,7 +339,13 @@
                                 
                                 {% if now_playing_has_next %}
                                     <li class="page-item">
-                                        <a class="page-link" href="?now_playing_page={{ now_playing_next_page }}&upcoming_page={{ upcoming_page }}">
+                                        <a class="page-link" 
+                                           href="#" 
+                                           hx-get="{% url 'films_app:filter_cinema_films' %}?now_playing_page={{ now_playing_next_page }}&upcoming_page={{ upcoming_page }}"
+                                           hx-target="#cinema-films-container"
+                                           hx-swap="innerHTML"
+                                           hx-push-url="true"
+                                           hx-indicator="#pagination-indicator-now-playing">
                                             Next
                                         </a>
                                     </li>
@@ -338,6 +356,11 @@
                                 {% endif %}
                             </ul>
                         </nav>
+                        <div class="text-center mt-2">
+                            <span id="pagination-indicator-now-playing" class="htmx-indicator">
+                                <i class="fas fa-spinner fa-spin"></i> Loading...
+                            </span>
+                        </div>
                     </div>
                 </div>
             {% endif %}
@@ -421,7 +444,13 @@
                             <ul class="pagination justify-content-center">
                                 {% if upcoming_has_previous %}
                                     <li class="page-item">
-                                        <a class="page-link" href="?now_playing_page={{ now_playing_page }}&upcoming_page={{ upcoming_previous_page }}">
+                                        <a class="page-link" 
+                                           href="#" 
+                                           hx-get="{% url 'films_app:filter_cinema_films' %}?now_playing_page={{ now_playing_page }}&upcoming_page={{ upcoming_previous_page }}"
+                                           hx-target="#cinema-films-container"
+                                           hx-swap="innerHTML"
+                                           hx-push-url="true"
+                                           hx-indicator="#pagination-indicator-upcoming">
                                             Previous
                                         </a>
                                     </li>
@@ -442,7 +471,13 @@
                                         </li>
                                     {% else %}
                                         <li class="page-item">
-                                            <a class="page-link" href="?now_playing_page={{ now_playing_page }}&upcoming_page={{ p }}">
+                                            <a class="page-link" 
+                                               href="#" 
+                                               hx-get="{% url 'films_app:filter_cinema_films' %}?now_playing_page={{ now_playing_page }}&upcoming_page={{ p }}"
+                                               hx-target="#cinema-films-container"
+                                               hx-swap="innerHTML"
+                                               hx-push-url="true"
+                                               hx-indicator="#pagination-indicator-upcoming">
                                                 {{ p }}
                                             </a>
                                         </li>
@@ -451,7 +486,13 @@
                                 
                                 {% if upcoming_has_next %}
                                     <li class="page-item">
-                                        <a class="page-link" href="?now_playing_page={{ now_playing_page }}&upcoming_page={{ upcoming_next_page }}">
+                                        <a class="page-link" 
+                                           href="#" 
+                                           hx-get="{% url 'films_app:filter_cinema_films' %}?now_playing_page={{ now_playing_page }}&upcoming_page={{ upcoming_next_page }}"
+                                           hx-target="#cinema-films-container"
+                                           hx-swap="innerHTML"
+                                           hx-push-url="true"
+                                           hx-indicator="#pagination-indicator-upcoming">
                                             Next
                                         </a>
                                     </li>
@@ -462,6 +503,11 @@
                                 {% endif %}
                             </ul>
                         </nav>
+                        <div class="text-center mt-2">
+                            <span id="pagination-indicator-upcoming" class="htmx-indicator">
+                                <i class="fas fa-spinner fa-spin"></i> Loading...
+                            </span>
+                        </div>
                     </div>
                 </div>
             {% endif %}
@@ -517,20 +563,73 @@
                 document.getElementById('cinema-filter-input').value = '';
             });
         }
+        
+        // Add scroll-to-top button
+        const scrollToTopBtn = document.createElement('button');
+        scrollToTopBtn.innerHTML = '<i class="fas fa-arrow-up"></i>';
+        scrollToTopBtn.className = 'btn btn-primary btn-sm position-fixed';
+        scrollToTopBtn.id = 'scroll-to-top';
+        scrollToTopBtn.style.bottom = '20px';
+        scrollToTopBtn.style.right = '20px';
+        scrollToTopBtn.style.display = 'none';
+        scrollToTopBtn.style.zIndex = '1000';
+        scrollToTopBtn.style.width = '40px';
+        scrollToTopBtn.style.height = '40px';
+        scrollToTopBtn.style.borderRadius = '50%';
+        document.body.appendChild(scrollToTopBtn);
+        
+        // Show/hide scroll-to-top button based on scroll position
+        window.addEventListener('scroll', function() {
+            if (window.pageYOffset > 300) {
+                scrollToTopBtn.style.display = 'block';
+            } else {
+                scrollToTopBtn.style.display = 'none';
+            }
+        });
+        
+        // Scroll to top when button is clicked
+        scrollToTopBtn.addEventListener('click', function() {
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        });
+        
+        // Store scroll position before HTMX requests
+        document.body.addEventListener('htmx:beforeRequest', function(event) {
+            // Store the current scroll position in session storage
+            sessionStorage.setItem('scrollPosition', window.pageYOffset);
+        });
+        
+        // Restore scroll position after HTMX requests
+        document.body.addEventListener('htmx:afterSwap', function(event) {
+            // Check if we're coming from a pagination request
+            if (event.detail.requestConfig.parameters && 
+                (event.detail.requestConfig.parameters.now_playing_page || 
+                 event.detail.requestConfig.parameters.upcoming_page)) {
+                
+                // Get the stored scroll position
+                const scrollPosition = sessionStorage.getItem('scrollPosition');
+                if (scrollPosition) {
+                    // Restore the scroll position
+                    window.scrollTo(0, parseInt(scrollPosition));
+                }
+            }
+        });
     });
         
-        // Navigate to film details page
+    // Navigate to film details page
     function navigateToFilmDetails(event, imdbId) {
-            // Don't navigate if the click was on a button or a link
-            if (event.target.tagName === 'BUTTON' || 
-                event.target.tagName === 'A' || 
-                event.target.closest('button') || 
-                event.target.closest('a')) {
-                return;
-            }
-            
-            // Navigate to film details page
-            window.location.href = '{% url "films_app:film_detail" imdb_id="PLACEHOLDER" %}'.replace('PLACEHOLDER', imdbId);
+        // Don't navigate if the click was on a button or a link
+        if (event.target.tagName === 'BUTTON' || 
+            event.target.tagName === 'A' || 
+            event.target.closest('button') || 
+            event.target.closest('a')) {
+            return;
+        }
+        
+        // Navigate to film details page
+        window.location.href = '{% url "films_app:film_detail" imdb_id="PLACEHOLDER" %}'.replace('PLACEHOLDER', imdbId);
     }
 </script>
 {% endblock %} 
