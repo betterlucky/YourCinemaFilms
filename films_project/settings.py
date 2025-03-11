@@ -283,6 +283,7 @@ TMDB_SORT_BY = os.getenv('TMDB_SORT_BY', 'revenue.desc,vote_count.desc,popularit
 # Cinema settings
 UPCOMING_FILMS_MONTHS = int(os.getenv('UPCOMING_FILMS_MONTHS', '6'))  # Number of months to look ahead for upcoming films
 MAX_CINEMA_FILMS = int(os.getenv('MAX_CINEMA_FILMS', '20'))  # Maximum number of films to display in each section
+CACHE_UPDATE_INTERVAL_MINUTES = int(os.getenv('CACHE_UPDATE_INTERVAL_MINUTES', '15'))  # Minimum interval between cache updates in minutes
 
 # Contact settings
 CONTACT_EMAIL = os.getenv('CONTACT_EMAIL', 'classicsbackonscreen@gmail.com')

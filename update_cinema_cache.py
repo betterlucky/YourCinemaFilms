@@ -72,8 +72,12 @@ def main():
         # Get the most recently updated tracker
         latest_tracker = PageTracker.objects.order_by('-last_updated').first()
         
-        if latest_tracker and (datetime.now().replace(tzinfo=latest_tracker.last_updated.tzinfo) - latest_tracker.last_updated) < timedelta(minutes=15):
-            logger.info(f"Skipping update - last update was at {latest_tracker.last_updated}, less than 15 minutes ago")
+        # Get the cache update interval from settings
+        from django.conf import settings
+        cache_interval = getattr(settings, 'CACHE_UPDATE_INTERVAL_MINUTES', 15)
+        
+        if latest_tracker and (datetime.now().replace(tzinfo=latest_tracker.last_updated.tzinfo) - latest_tracker.last_updated) < timedelta(minutes=cache_interval):
+            logger.info(f"Skipping update - last update was at {latest_tracker.last_updated}, less than {cache_interval} minutes ago")
             return 0
     except Exception as e:
         logger.warning(f"Error checking last update time: {str(e)}")
