@@ -16,4 +16,7 @@
 
 /* Import page-specific styles */
 @import 'pages/dashboard.css';
-@import 'pages/classics.css'; 
+@import 'pages/classics.css';
+
+/* Import mobile-specific styles (should be last to override other styles) */
+@import 'mobile.css'; 

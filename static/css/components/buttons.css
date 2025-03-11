@@ -204,4 +204,44 @@
 .btn-group > .btn:not(:first-child) {
     border-top-left-radius: 0;
     border-bottom-left-radius: 0;
+}
+
+/* Mobile touch target improvements */
+@media (max-width: 768px) {
+    .btn {
+        padding: 0.5rem 0.75rem;
+        min-height: 44px;
+    }
+    
+    .btn-sm {
+        padding: 0.4rem 0.6rem;
+        min-height: 38px;
+    }
+    
+    /* Improve pagination touch targets */
+    .page-link {
+        padding: 0.5rem 0.75rem;
+        min-width: 44px;
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+}
+
+/* Small mobile devices */
+@media (max-width: 576px) {
+    /* Further optimize button spacing */
+    .btn + .btn {
+        margin-left: 0.25rem;
+    }
+    
+    /* Simplify pagination on very small screens */
+    .pagination .page-item:not(.active):not(:first-child):not(:last-child) {
+        display: none;
+    }
+    
+    .pagination .page-item.active {
+        display: inline-block;
+    }
 } 

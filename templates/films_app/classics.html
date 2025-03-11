@@ -290,7 +290,7 @@
                                             </a>
                                             <div class="card-body card-body-actions pt-0">
                                                 <a href="{% url 'films_app:film_detail' vote.film.imdb_id %}" class="btn btn-sm btn-outline-primary">View Details</a>
-                                                {% include 'films_app/partials/new_remove_vote_button.html' with vote=vote %}
+                                                {% include 'films_app/partials/remove_vote_button.html' with vote=vote %}
                                             </div>
                                         </div>
                                     </div>

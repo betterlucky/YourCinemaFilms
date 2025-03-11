@@ -1,11 +1,19 @@
-<button class="btn btn-sm btn-outline-danger"
-        hx-post="{% url 'films_app:remove_vote' vote.film.imdb_id %}"
-        hx-target="closest .col-md-3"
-        hx-swap="outerHTML"
-        hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
-        hx-indicator="#remove-vote-indicator-{{ vote.id }}">
-    <i class="fas fa-times me-1"></i>Remove vote
-    <span id="remove-vote-indicator-{{ vote.id }}" class="htmx-indicator">
-        <i class="fas fa-spinner fa-spin"></i>
-    </span>
-</button> 
+{% load i18n %}
+
+<div id="vote-button-container-{{ vote.film.imdb_id }}">
+    <button class="btn btn-sm btn-outline-danger"
+            hx-post="{% url 'films_app:remove_vote' imdb_id=vote.film.imdb_id %}"
+            hx-target="#vote-button-container-{{ vote.film.imdb_id }}"
+            hx-swap="outerHTML"
+            hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+            hx-indicator="#remove-vote-indicator-{{ vote.film.imdb_id }}"
+            hx-trigger="click"
+            hx-push-url="false"
+            onclick="event.stopPropagation();">
+        <i class="fas fa-times"></i>
+        <span class="vote-btn-text">Remove</span>
+        <span id="remove-vote-indicator-{{ vote.film.imdb_id }}" class="htmx-indicator">
+            <i class="fas fa-spinner fa-spin"></i>
+        </span>
+    </button>
+</div> 

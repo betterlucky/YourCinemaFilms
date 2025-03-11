@@ -32,7 +32,6 @@ from rest_framework.decorators import permission_classes
 from rest_framework.permissions import AllowAny
 from django.utils.translation import gettext as _
 import glob
-from .utils import get_top_films_data
 
 # Try to import PIL, but don't fail if it's not available
 try:
@@ -47,7 +46,7 @@ from .utils import (
     contains_profanity, validate_and_format_genre_tag, require_http_method,
     count_film_votes, get_date_range_from_period, filter_votes_by_period,
     get_cached_search_results, cache_search_results, fetch_and_update_film_from_tmdb,
-    get_cache_directory, get_user_votes_and_remaining, user_can_vote
+    get_cache_directory, get_user_votes_and_remaining, user_can_vote, get_top_films_data
 )
 from .tmdb_api import search_movies, sort_and_limit_films, get_movie_details, format_tmdb_data_for_film, get_movie_by_imdb_id, get_uk_certification
 # Import forms if they exist in your project
@@ -163,8 +162,23 @@ def filter_classics_films(request):
     # Order by vote count (descending)
     classic_films = classic_films.order_by('-total_votes')
     
-    # Apply pagination to show 8 films per page (2 rows of 4)
-    paginator = Paginator(classic_films, 8)
+    # Get pagination settings
+    # If user is authenticated and has a custom pagination setting, use that
+    films_per_page = 8  # Default value
+    if request.user.is_authenticated:
+        try:
+            user_profile = UserProfile.objects.get(user=request.user)
+            if user_profile.films_per_page:
+                films_per_page = user_profile.films_per_page
+        except UserProfile.DoesNotExist:
+            # Use the default from settings
+            films_per_page = getattr(settings, 'FILMS_PER_PAGE', 8)
+    else:
+        # Use the default from settings
+        films_per_page = getattr(settings, 'FILMS_PER_PAGE', 8)
+    
+    # Apply pagination
+    paginator = Paginator(classic_films, films_per_page)
     
     try:
         page = paginator.page(page_num)
@@ -200,6 +214,7 @@ def filter_classics_films(request):
         'user_voted_films': user_voted_films,
         'user_votes': user_votes,
         'can_vote': can_vote,
+        'films_per_page': films_per_page,  # Add this to the context
     }
     
     return render(request, 'films_app/partials/classics_films.html', context)
@@ -262,6 +277,18 @@ def edit_profile(request):
         # Basic info
         profile.bio = request.POST.get('bio', '')
         profile.letterboxd_username = request.POST.get('letterboxd_username', '')
+        
+        # Display preferences
+        try:
+            films_per_page = int(request.POST.get('films_per_page', '8'))
+            # Ensure it's one of the valid choices
+            valid_choices = [choice[0] for choice in UserProfile.PAGINATION_CHOICES]
+            if films_per_page in valid_choices:
+                profile.films_per_page = films_per_page
+            else:
+                profile.films_per_page = 8  # Default to 8 if invalid
+        except (ValueError, TypeError):
+            profile.films_per_page = 8  # Default to 8 if there's an error
         
         # Email settings
         profile.contact_email = request.POST.get('contact_email', '')
@@ -536,7 +563,7 @@ def vote(request, imdb_id):
                     'vote': vote,
                     'film': film,  # Add film to context to ensure it's available
                 }
-                response = render(request, 'films_app/partials/new_remove_vote_button.html', context)
+                response = render(request, 'films_app/partials/remove_vote_button.html', context)
                 # Also trigger an update to the vote count
                 response.headers['HX-Trigger'] = json.dumps({
                     'filmVoteCountChanged': {
@@ -1866,7 +1893,7 @@ def get_vote_button(request, imdb_id):
                 'vote': vote,
                 'film': film,
             }
-            return render(request, 'films_app/partials/new_remove_vote_button.html', context)
+            return render(request, 'films_app/partials/remove_vote_button.html', context)
         except Vote.DoesNotExist:
             # Check if the user can vote
             _, votes_remaining = get_user_votes_and_remaining(request.user)
@@ -1996,8 +2023,8 @@ def filter_cinema_films(request):
     today = timezone.now().date()
     
     # Get pagination parameters
-    now_playing_page_num = request.GET.get('now_playing_page', 1)
-    upcoming_page_num = request.GET.get('upcoming_page', 1)
+    now_playing_page = request.GET.get('now_playing_page', 1)
+    upcoming_page = request.GET.get('upcoming_page', 1)
     section = request.GET.get('section', 'both')  # 'now_playing', 'upcoming', or 'both'
     
     # Base filters for now playing and upcoming
@@ -2020,30 +2047,45 @@ def filter_cinema_films(request):
     now_playing_films = Film.objects.filter(now_playing_filter).order_by('-popularity')
     upcoming_films = Film.objects.filter(upcoming_filter).order_by('uk_release_date')
     
-    # Apply pagination to show 8 films per page (2 rows of 4)
-    now_playing_paginator = Paginator(now_playing_films, 8)
-    upcoming_paginator = Paginator(upcoming_films, 8)
+    # Get pagination settings
+    # If user is authenticated and has a custom pagination setting, use that
+    films_per_page = 8  # Default value
+    if request.user.is_authenticated:
+        try:
+            user_profile = UserProfile.objects.get(user=request.user)
+            if user_profile.films_per_page:
+                films_per_page = user_profile.films_per_page
+        except UserProfile.DoesNotExist:
+            # Use the default from settings
+            films_per_page = getattr(settings, 'FILMS_PER_PAGE', 8)
+    else:
+        # Use the default from settings
+        films_per_page = getattr(settings, 'FILMS_PER_PAGE', 8)
+    
+    # Apply pagination
+    now_playing_paginator = Paginator(now_playing_films, films_per_page)
+    upcoming_paginator = Paginator(upcoming_films, films_per_page)
     
     # Get the appropriate page for each section
     if section == 'now_playing' or section == 'both':
         try:
-            now_playing_page = now_playing_paginator.page(now_playing_page_num)
+            now_playing_page_obj = now_playing_paginator.page(now_playing_page)
         except PageNotAnInteger:
-            now_playing_page = now_playing_paginator.page(1)
+            now_playing_page_obj = now_playing_paginator.page(1)
         except EmptyPage:
-            now_playing_page = now_playing_paginator.page(now_playing_paginator.num_pages)
+            now_playing_page_obj = now_playing_paginator.page(now_playing_paginator.num_pages)
     else:
-        now_playing_page = []
+        now_playing_page_obj = []
     
     if section == 'upcoming' or section == 'both':
         try:
-            upcoming_page = upcoming_paginator.page(upcoming_page_num)
+            upcoming_page_obj = upcoming_paginator.page(upcoming_page)
         except PageNotAnInteger:
-            upcoming_page = upcoming_paginator.page(1)
+            upcoming_page_obj = upcoming_paginator.page(1)
         except EmptyPage:
-            upcoming_page = upcoming_paginator.page(upcoming_paginator.num_pages)
+            upcoming_page_obj = upcoming_paginator.page(upcoming_paginator.num_pages)
     else:
-        upcoming_page = []
+        upcoming_page_obj = []
     
     # Get total counts
     total_now_playing = now_playing_paginator.count
@@ -2061,27 +2103,28 @@ def filter_cinema_films(request):
     upcoming_films_months = getattr(settings, 'UPCOMING_FILMS_MONTHS', 6)
     
     context = {
-        'now_playing_films': now_playing_page,
-        'upcoming_films': upcoming_page,
+        'now_playing_films': now_playing_page_obj,
+        'upcoming_films': upcoming_page_obj,
         'total_now_playing': total_now_playing,
         'total_upcoming': total_upcoming,
         'upcoming_films_months': upcoming_films_months,
         'user_cinema_votes': user_cinema_votes,
         'user_voted_films': user_voted_films,
         'query': query,
-        'now_playing_page': int(now_playing_page_num),
-        'upcoming_page': int(upcoming_page_num),
         'section': section,
-        'now_playing_has_previous': now_playing_page.has_previous() if hasattr(now_playing_page, 'has_previous') else False,
-        'now_playing_has_next': now_playing_page.has_next() if hasattr(now_playing_page, 'has_next') else False,
-        'now_playing_previous_page': now_playing_page.previous_page_number() if hasattr(now_playing_page, 'has_previous') and now_playing_page.has_previous() else None,
-        'now_playing_next_page': now_playing_page.next_page_number() if hasattr(now_playing_page, 'has_next') and now_playing_page.has_next() else None,
-        'now_playing_num_pages': max(now_playing_paginator.num_pages, 1),  # Ensure at least 1 page
-        'upcoming_has_previous': upcoming_page.has_previous() if hasattr(upcoming_page, 'has_previous') else False,
-        'upcoming_has_next': upcoming_page.has_next() if hasattr(upcoming_page, 'has_next') else False,
-        'upcoming_previous_page': upcoming_page.previous_page_number() if hasattr(upcoming_page, 'has_previous') and upcoming_page.has_previous() else None,
-        'upcoming_next_page': upcoming_page.next_page_number() if hasattr(upcoming_page, 'has_next') and upcoming_page.has_next() else None,
-        'upcoming_num_pages': max(upcoming_paginator.num_pages, 1),  # Ensure at least 1 page
+        'now_playing_page': int(now_playing_page) if str(now_playing_page).isdigit() else 1,
+        'upcoming_page': int(upcoming_page) if str(upcoming_page).isdigit() else 1,
+        'now_playing_has_previous': now_playing_page_obj.has_previous() if hasattr(now_playing_page_obj, 'has_previous') else False,
+        'now_playing_has_next': now_playing_page_obj.has_next() if hasattr(now_playing_page_obj, 'has_next') else False,
+        'now_playing_previous_page': now_playing_page_obj.previous_page_number() if hasattr(now_playing_page_obj, 'has_previous') and now_playing_page_obj.has_previous() else None,
+        'now_playing_next_page': now_playing_page_obj.next_page_number() if hasattr(now_playing_page_obj, 'has_next') and now_playing_page_obj.has_next() else None,
+        'now_playing_num_pages': now_playing_paginator.num_pages,
+        'upcoming_has_previous': upcoming_page_obj.has_previous() if hasattr(upcoming_page_obj, 'has_previous') else False,
+        'upcoming_has_next': upcoming_page_obj.has_next() if hasattr(upcoming_page_obj, 'has_next') else False,
+        'upcoming_previous_page': upcoming_page_obj.previous_page_number() if hasattr(upcoming_page_obj, 'has_previous') and upcoming_page_obj.has_previous() else None,
+        'upcoming_next_page': upcoming_page_obj.next_page_number() if hasattr(upcoming_page_obj, 'has_next') and upcoming_page_obj.has_next() else None,
+        'upcoming_num_pages': upcoming_paginator.num_pages,
+        'films_per_page': films_per_page,  # Add this to the context
     }
     
     return render(request, 'films_app/partials/cinema_films.html', context)
