@@ -315,8 +315,8 @@
         </div>
     </div>
     
-    <div class="row" id="top-films-container">
-        {% include 'films_app/partials/top_films.html' with top_films=top_films user_voted_films=user_voted_films user_votes=user_votes can_vote=votes_remaining %}
+    <div id="classics-films-container" hx-get="{% url 'films_app:filter_classics_films' %}" hx-trigger="refresh from:body">
+        {% include 'films_app/partials/classics_films.html' with top_films=top_films total_films=total_films page=page num_pages=num_pages has_previous=has_previous has_next=has_next previous_page=previous_page next_page=next_page user_voted_films=user_voted_films user_votes=user_votes can_vote=can_vote %}
     </div>
 </div>
 {% endblock %}
@@ -347,117 +347,75 @@
         // Main search input handling
         mainSearchInput.addEventListener('input', function() {
             const query = this.value.trim();
-            
-            if (query.length < 3) {
-                mainSearchResults.innerHTML = '';
-            }
-            
-            // Stop pulsing when user starts typing
-            searchContainer.classList.remove('pulse-animation');
         });
         
-        // Stop pulsing when input is focused
-        mainSearchInput.addEventListener('focus', function() {
-            searchContainer.classList.remove('pulse-animation');
-        });
-        
-        // Handle form submission
+        // Prevent form submission (use HTMX instead)
         mainSearchForm.addEventListener('submit', function(e) {
             e.preventDefault();
-            const query = mainSearchInput.value.trim();
-            
-            if (query.length < 3) {
-                return;
-            }
-            
             // Trigger HTMX request manually
-            htmx.trigger(mainSearchInput, 'search');
-            
-            // If user is not logged in, redirect to login page
-            if (!document.body.classList.contains('user-authenticated')) {
-                window.location.href = document.getElementById('login-url').dataset.url;
+            if (mainSearchInput.value.trim()) {
+                htmx.trigger(mainSearchInput, 'search');
             }
         });
         
         // Close search results when clicking outside
         document.addEventListener('click', function(e) {
-            if (!mainSearchForm.contains(e.target) && !mainSearchResults.contains(e.target)) {
+            if (!mainSearchForm.contains(e.target)) {
                 mainSearchResults.innerHTML = '';
             }
         });
         
-        // Add animation to highlight the search bar when the page loads
-        setTimeout(function() {
-            mainSearchInput.classList.add('search-highlight');
-            setTimeout(function() {
-                mainSearchInput.classList.remove('search-highlight');
-            }, 1000);
-        }, 500);
-
-        // Listen for the updateVoteStatus event from HTMX
-        document.body.addEventListener('updateVoteStatus', function() {
-            // Fetch the updated vote status
-            fetch('{% url "films_app:get_user_vote_status" %}')
-                .then(response => response.text())
-                .then(html => {
-                    document.getElementById('user-vote-status').innerHTML = html;
-                });
-        });
+        // Add scroll-to-top button
+        const scrollToTopBtn = document.createElement('button');
+        scrollToTopBtn.innerHTML = '<i class="fas fa-arrow-up"></i>';
+        scrollToTopBtn.className = 'btn btn-primary btn-sm position-fixed';
+        scrollToTopBtn.id = 'scroll-to-top';
+        scrollToTopBtn.style.bottom = '20px';
+        scrollToTopBtn.style.right = '20px';
+        scrollToTopBtn.style.display = 'none';
+        scrollToTopBtn.style.zIndex = '1000';
+        scrollToTopBtn.style.width = '40px';
+        scrollToTopBtn.style.height = '40px';
+        scrollToTopBtn.style.borderRadius = '50%';
+        document.body.appendChild(scrollToTopBtn);
         
-        // Add event delegation for cinema film prompts
-        document.addEventListener('click', function(e) {
-            // Check if the clicked element is a search result link or its child
-            const searchResultLink = e.target.closest('.search-result-link');
-            
-            // Check for modal search result buttons
-            const modalButton = e.target.closest('.btn[data-in-cinema="true"]');
-            
-            // We're now handling the prompt on the film detail page
-            // No need to prevent default navigation or show a modal
-        });
-        
-        // Function to show cinema release modal - no longer needed
-        function showCinemaReleaseModal(filmTitle, filmUrl) {
-            // This function is no longer needed as we're showing the prompt on the film detail page
-        }
-    });
-    
-    // HTMX events
-    document.addEventListener('htmx:beforeSend', function(event) {
-        console.log('HTMX request being sent:', event.detail);
-        if (event.detail.target.id === 'main-search-input') {
-            console.log('Search request for:', event.detail.requestConfig.parameters.query);
-        }
-    });
-    
-    document.addEventListener('htmx:afterSwap', function(event) {
-        console.log('HTMX response received:', event.detail);
-        if (event.detail.target.id === 'main-search-results') {
-            console.log('Search results content:', event.detail.target.innerHTML);
-            // If there's no content, hide the results container
-            if (event.detail.target.innerHTML.trim() === '') {
-                event.detail.target.style.display = 'none';
+        // Show/hide scroll-to-top button based on scroll position
+        window.addEventListener('scroll', function() {
+            if (window.pageYOffset > 300) {
+                scrollToTopBtn.style.display = 'block';
             } else {
-                event.detail.target.style.display = 'block';
-                
-                // No need to add click event listeners to search result links anymore
-                // since we've removed the authentication requirement from the film_detail view
+                scrollToTopBtn.style.display = 'none';
             }
-        }
-    });
-    
-    // Add event listener for htmx:beforeRequest to show loading indicator
-    document.addEventListener('htmx:beforeRequest', function(event) {
-        if (event.detail.target.id === 'main-search-input') {
-            document.getElementById('main-search-loading').style.display = 'block';
-        }
-    });
-    
-    // Add event listener for htmx:afterRequest to hide loading indicator
-    document.addEventListener('htmx:afterRequest', function(event) {
-        if (event.detail.target.id === 'main-search-input') {
-            document.getElementById('main-search-loading').style.display = 'none';
-        }
+        });
+        
+        // Scroll to top when button is clicked
+        scrollToTopBtn.addEventListener('click', function() {
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        });
+        
+        // Store scroll position before HTMX requests
+        document.body.addEventListener('htmx:beforeRequest', function(event) {
+            // Store the current scroll position in session storage
+            sessionStorage.setItem('scrollPosition', window.pageYOffset);
+        });
+        
+        // Restore scroll position after HTMX requests
+        document.body.addEventListener('htmx:afterSwap', function(event) {
+            // Check if we're coming from a pagination request
+            if (event.detail.requestConfig.parameters && 
+                event.detail.requestConfig.parameters.page) {
+                
+                // Get the stored scroll position
+                const scrollPosition = sessionStorage.getItem('scrollPosition');
+                if (scrollPosition) {
+                    // Restore the scroll position
+                    window.scrollTo(0, parseInt(scrollPosition));
+                }
+            }
+        });
     });
 </script>
 {% endblock %} 

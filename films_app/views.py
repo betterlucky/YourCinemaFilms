@@ -142,11 +142,31 @@ def cinema(request):
 def classics(request):
     """Classic films page view."""
     try:
-        # Get top films based on votes
-        top_films = get_top_films_data(limit=10)
+        # Get pagination parameters
+        page_num = request.GET.get('page', 1)
+        
+        # Get top films based on votes (get all for pagination)
+        all_top_films = get_top_films_data(limit=None)
+        
+        # Apply pagination to show 8 films per page (2 rows of 4)
+        paginator = Paginator(all_top_films, 8)
+        
+        try:
+            top_films = paginator.page(page_num)
+        except PageNotAnInteger:
+            top_films = paginator.page(1)
+        except EmptyPage:
+            top_films = paginator.page(paginator.num_pages)
         
         context = {
             'top_films': top_films,
+            'total_films': paginator.count,
+            'page': int(page_num),
+            'num_pages': paginator.num_pages,
+            'has_previous': top_films.has_previous(),
+            'has_next': top_films.has_next(),
+            'previous_page': top_films.previous_page_number() if top_films.has_previous() else None,
+            'next_page': top_films.next_page_number() if top_films.has_next() else None,
         }
         
         # If user is authenticated, get their votes
@@ -167,6 +187,55 @@ def classics(request):
         messages.error(request, "An error occurred while loading the classics page. Please try again later.")
         return render(request, 'films_app/error.html', {'error_message': str(e)})
 
+def filter_classics_films(request):
+    """Filter classic films for HTMX pagination."""
+    try:
+        # Get pagination parameters
+        page_num = request.GET.get('page', 1)
+        
+        # Get top films based on votes (get all for pagination)
+        all_top_films = get_top_films_data(limit=None)
+        
+        # Apply pagination to show 8 films per page (2 rows of 4)
+        paginator = Paginator(all_top_films, 8)
+        
+        try:
+            top_films = paginator.page(page_num)
+        except PageNotAnInteger:
+            top_films = paginator.page(1)
+        except EmptyPage:
+            top_films = paginator.page(paginator.num_pages)
+        
+        context = {
+            'top_films': top_films,
+            'total_films': paginator.count,
+            'page': int(page_num),
+            'num_pages': paginator.num_pages,
+            'has_previous': top_films.has_previous(),
+            'has_next': top_films.has_next(),
+            'previous_page': top_films.previous_page_number() if top_films.has_previous() else None,
+            'next_page': top_films.next_page_number() if top_films.has_next() else None,
+        }
+        
+        # If user is authenticated, get their votes
+        if request.user.is_authenticated:
+            user_votes, votes_remaining = get_user_votes_and_remaining(request.user)
+            user_voted_films = [vote.film.imdb_id for vote in user_votes]
+            can_vote = votes_remaining > 0
+            context.update({
+                'user_votes': user_votes,
+                'votes_remaining': votes_remaining,
+                'user_voted_films': user_voted_films,
+                'can_vote': can_vote,
+            })
+        
+        # Check if this is an HTMX request
+        is_htmx = request.headers.get('HX-Request') == 'true'
+        
+        return render(request, 'films_app/partials/classics_films.html', context)
+    except Exception as e:
+        logging.error(f"Error in filter_classics_films view: {e}")
+        return HttpResponse(f"<div class='alert alert-danger'>An error occurred: {str(e)}</div>")
 
 @login_required
 def profile(request):
@@ -1806,7 +1875,10 @@ def get_user_votes_and_remaining(user):
 
 def get_top_films_data(limit=8):
     """Get top films by vote count."""
-    return Film.objects.annotate(total_votes=Count('votes')).filter(total_votes__gt=0).order_by('-total_votes')[:limit]
+    films = Film.objects.annotate(total_votes=Count('votes')).filter(total_votes__gt=0).order_by('-total_votes')
+    if limit is not None:
+        films = films[:limit]
+    return films
 
 def user_can_vote(user, film=None):
     """Check if a user can vote for a film."""
