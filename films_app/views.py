@@ -2025,8 +2025,8 @@ def filter_cinema_films(request):
     today = timezone.now().date()
     
     # Get pagination parameters
-    now_playing_page = request.GET.get('now_playing_page', 1)
-    upcoming_page = request.GET.get('upcoming_page', 1)
+    now_playing_page_num = request.GET.get('now_playing_page', 1)
+    upcoming_page_num = request.GET.get('upcoming_page', 1)
     section = request.GET.get('section', 'both')  # 'now_playing', 'upcoming', or 'both'
     
     # Base filters for now playing and upcoming
@@ -2049,14 +2049,14 @@ def filter_cinema_films(request):
     now_playing_films = Film.objects.filter(now_playing_filter).order_by('-popularity')
     upcoming_films = Film.objects.filter(upcoming_filter).order_by('uk_release_date')
     
-    # Apply pagination to show a reasonable number of results (10 per page)
-    now_playing_paginator = Paginator(now_playing_films, 10)
-    upcoming_paginator = Paginator(upcoming_films, 10)
+    # Apply pagination to show 8 films per page (2 rows of 4)
+    now_playing_paginator = Paginator(now_playing_films, 8)
+    upcoming_paginator = Paginator(upcoming_films, 8)
     
     # Get the appropriate page for each section
     if section == 'now_playing' or section == 'both':
         try:
-            now_playing_page = now_playing_paginator.page(page)
+            now_playing_page = now_playing_paginator.page(now_playing_page_num)
         except PageNotAnInteger:
             now_playing_page = now_playing_paginator.page(1)
         except EmptyPage:
@@ -2066,7 +2066,7 @@ def filter_cinema_films(request):
     
     if section == 'upcoming' or section == 'both':
         try:
-            upcoming_page = upcoming_paginator.page(page)
+            upcoming_page = upcoming_paginator.page(upcoming_page_num)
         except PageNotAnInteger:
             upcoming_page = upcoming_paginator.page(1)
         except EmptyPage:
@@ -2098,10 +2098,19 @@ def filter_cinema_films(request):
         'user_cinema_votes': user_cinema_votes,
         'user_voted_films': user_voted_films,
         'query': query,
-        'page': page,
+        'now_playing_page': int(now_playing_page_num),
+        'upcoming_page': int(upcoming_page_num),
         'section': section,
-        'has_more_now_playing': now_playing_page.has_next() if hasattr(now_playing_page, 'has_next') else False,
-        'has_more_upcoming': upcoming_page.has_next() if hasattr(upcoming_page, 'has_next') else False,
+        'now_playing_has_previous': now_playing_page.has_previous() if hasattr(now_playing_page, 'has_previous') else False,
+        'now_playing_has_next': now_playing_page.has_next() if hasattr(now_playing_page, 'has_next') else False,
+        'now_playing_previous_page': now_playing_page.previous_page_number() if hasattr(now_playing_page, 'has_previous') and now_playing_page.has_previous() else None,
+        'now_playing_next_page': now_playing_page.next_page_number() if hasattr(now_playing_page, 'has_next') and now_playing_page.has_next() else None,
+        'now_playing_num_pages': now_playing_paginator.num_pages,
+        'upcoming_has_previous': upcoming_page.has_previous() if hasattr(upcoming_page, 'has_previous') else False,
+        'upcoming_has_next': upcoming_page.has_next() if hasattr(upcoming_page, 'has_next') else False,
+        'upcoming_previous_page': upcoming_page.previous_page_number() if hasattr(upcoming_page, 'has_previous') and upcoming_page.has_previous() else None,
+        'upcoming_next_page': upcoming_page.next_page_number() if hasattr(upcoming_page, 'has_next') and upcoming_page.has_next() else None,
+        'upcoming_num_pages': upcoming_paginator.num_pages,
     }
     
     return render(request, 'films_app/partials/cinema_films.html', context)

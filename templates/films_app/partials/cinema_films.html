@@ -18,7 +18,7 @@
                     Showing {{ now_playing_films|length }} films out of {{ total_now_playing }} currently in UK cinemas matching "{{ query }}".
                     <span class="badge bg-primary">Filtered by: {{ query }}</span>
                 {% else %}
-                    Showing {{ now_playing_films|length }} films out of {{ total_now_playing }} currently in UK cinemas.
+                    Showing page {{ now_playing_page }} of {{ now_playing_num_pages }} ({{ now_playing_films|length }} films out of {{ total_now_playing }} currently in UK cinemas).
                 {% endif %}
             </p>
         </div>
@@ -75,29 +75,75 @@
         {% endfor %}
     </div>
     
-    <!-- Pagination for Now Playing Films -->
-    <div class="row mb-5">
-        <div class="col-12">
-            <nav aria-label="Now playing films pagination">
-                <ul class="pagination justify-content-center">
-                    {% if has_more_now_playing %}
-                        <li class="page-item">
-                            <a class="page-link" 
-                               href="#" 
-                               hx-get="{% url 'films_app:filter_cinema_films' %}?query={{ query }}&page={{ page|add:'1' }}&section=now_playing"
-                               hx-target="#cinema-films-container"
-                               hx-indicator="#pagination-indicator">
-                                Load More Films
-                                <span id="pagination-indicator" class="htmx-indicator">
-                                    <i class="fas fa-spinner fa-spin"></i>
-                                </span>
-                            </a>
-                        </li>
-                    {% endif %}
-                </ul>
-            </nav>
+    <!-- Now Playing Pagination -->
+    {% if now_playing_num_pages > 1 %}
+        <div class="row mb-5">
+            <div class="col-12">
+                <nav aria-label="Now playing films pagination">
+                    <ul class="pagination justify-content-center">
+                        {% if now_playing_has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" 
+                                   href="#" 
+                                   hx-get="{% url 'films_app:filter_cinema_films' %}?query={{ query }}&now_playing_page={{ now_playing_previous_page }}&upcoming_page={{ upcoming_page }}&section=both"
+                                   hx-target="#cinema-films-container"
+                                   hx-indicator="#pagination-indicator">
+                                    Previous
+                                </a>
+                            </li>
+                        {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">Previous</span>
+                            </li>
+                        {% endif %}
+                        
+                        {% for p in now_playing_num_pages|get_page_range:now_playing_page %}
+                            {% if p == now_playing_page %}
+                                <li class="page-item active">
+                                    <span class="page-link">{{ p }}</span>
+                                </li>
+                            {% elif p == '...' %}
+                                <li class="page-item disabled">
+                                    <span class="page-link">{{ p }}</span>
+                                </li>
+                            {% else %}
+                                <li class="page-item">
+                                    <a class="page-link" 
+                                       href="#" 
+                                       hx-get="{% url 'films_app:filter_cinema_films' %}?query={{ query }}&now_playing_page={{ p }}&upcoming_page={{ upcoming_page }}&section=both"
+                                       hx-target="#cinema-films-container"
+                                       hx-indicator="#pagination-indicator">
+                                        {{ p }}
+                                    </a>
+                                </li>
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% if now_playing_has_next %}
+                            <li class="page-item">
+                                <a class="page-link" 
+                                   href="#" 
+                                   hx-get="{% url 'films_app:filter_cinema_films' %}?query={{ query }}&now_playing_page={{ now_playing_next_page }}&upcoming_page={{ upcoming_page }}&section=both"
+                                   hx-target="#cinema-films-container"
+                                   hx-indicator="#pagination-indicator">
+                                    Next
+                                </a>
+                            </li>
+                        {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">Next</span>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                <div class="text-center mt-2">
+                    <span id="pagination-indicator" class="htmx-indicator">
+                        <i class="fas fa-spinner fa-spin"></i> Loading...
+                    </span>
+                </div>
+            </div>
         </div>
-    </div>
+    {% endif %}
 {% else %}
     <div class="row mb-5">
         <div class="col-12">
@@ -118,7 +164,7 @@
                     Showing {{ upcoming_films|length }} films out of {{ total_upcoming }} coming to UK cinemas in the next {{ upcoming_films_months }} months matching "{{ query }}".
                     <span class="badge bg-primary">Filtered by: {{ query }}</span>
                 {% else %}
-                    Showing {{ upcoming_films|length }} films out of {{ total_upcoming }} coming to UK cinemas in the next {{ upcoming_films_months }} months.
+                    Showing page {{ upcoming_page }} of {{ upcoming_num_pages }} ({{ upcoming_films|length }} films out of {{ total_upcoming }} coming to UK cinemas in the next {{ upcoming_films_months }} months).
                 {% endif %}
             </p>
         </div>
@@ -175,29 +221,75 @@
         {% endfor %}
     </div>
     
-    <!-- Pagination for Upcoming Films -->
-    <div class="row mb-5">
-        <div class="col-12">
-            <nav aria-label="Upcoming films pagination">
-                <ul class="pagination justify-content-center">
-                    {% if has_more_upcoming %}
-                        <li class="page-item">
-                            <a class="page-link" 
-                               href="#" 
-                               hx-get="{% url 'films_app:filter_cinema_films' %}?query={{ query }}&page={{ page|add:'1' }}&section=upcoming"
-                               hx-target="#cinema-films-container"
-                               hx-indicator="#pagination-indicator-upcoming">
-                                Load More Films
-                                <span id="pagination-indicator-upcoming" class="htmx-indicator">
-                                    <i class="fas fa-spinner fa-spin"></i>
-                                </span>
-                            </a>
-                        </li>
-                    {% endif %}
-                </ul>
-            </nav>
+    <!-- Upcoming Pagination -->
+    {% if upcoming_num_pages > 1 %}
+        <div class="row mb-5">
+            <div class="col-12">
+                <nav aria-label="Upcoming films pagination">
+                    <ul class="pagination justify-content-center">
+                        {% if upcoming_has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" 
+                                   href="#" 
+                                   hx-get="{% url 'films_app:filter_cinema_films' %}?query={{ query }}&now_playing_page={{ now_playing_page }}&upcoming_page={{ upcoming_previous_page }}&section=both"
+                                   hx-target="#cinema-films-container"
+                                   hx-indicator="#pagination-indicator-upcoming">
+                                    Previous
+                                </a>
+                            </li>
+                        {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">Previous</span>
+                            </li>
+                        {% endif %}
+                        
+                        {% for p in upcoming_num_pages|get_page_range:upcoming_page %}
+                            {% if p == upcoming_page %}
+                                <li class="page-item active">
+                                    <span class="page-link">{{ p }}</span>
+                                </li>
+                            {% elif p == '...' %}
+                                <li class="page-item disabled">
+                                    <span class="page-link">{{ p }}</span>
+                                </li>
+                            {% else %}
+                                <li class="page-item">
+                                    <a class="page-link" 
+                                       href="#" 
+                                       hx-get="{% url 'films_app:filter_cinema_films' %}?query={{ query }}&now_playing_page={{ now_playing_page }}&upcoming_page={{ p }}&section=both"
+                                       hx-target="#cinema-films-container"
+                                       hx-indicator="#pagination-indicator-upcoming">
+                                        {{ p }}
+                                    </a>
+                                </li>
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% if upcoming_has_next %}
+                            <li class="page-item">
+                                <a class="page-link" 
+                                   href="#" 
+                                   hx-get="{% url 'films_app:filter_cinema_films' %}?query={{ query }}&now_playing_page={{ now_playing_page }}&upcoming_page={{ upcoming_next_page }}&section=both"
+                                   hx-target="#cinema-films-container"
+                                   hx-indicator="#pagination-indicator-upcoming">
+                                    Next
+                                </a>
+                            </li>
+                        {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">Next</span>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                <div class="text-center mt-2">
+                    <span id="pagination-indicator-upcoming" class="htmx-indicator">
+                        <i class="fas fa-spinner fa-spin"></i> Loading...
+                    </span>
+                </div>
+            </div>
         </div>
-    </div>
+    {% endif %}
 {% else %}
     <div class="row">
         <div class="col-12">
