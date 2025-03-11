@@ -186,13 +186,13 @@ def charts_data(request):
     
     # Annotate with vote count and get top 10
     top_films = films_query.annotate(
-        vote_count=Count('votes')
-    ).order_by('-vote_count')[:10]
+        total_votes=Count('votes')
+    ).order_by('-total_votes')[:10]
     
     # Prepare data for charts
     data = {
         'labels': [film.title for film in top_films],
-        'data': [film.vote_count for film in top_films],
+        'data': [film.total_votes for film in top_films],
     }
     
     # If no films found, return empty arrays instead of null
@@ -352,8 +352,8 @@ def film_recommendations(request):
         
         # Combine and remove duplicates
         genre_films = (official_genre_films | user_tag_films).distinct().annotate(
-            vote_count=Count('votes')
-        ).order_by('-vote_count')[:5]
+            total_votes=Count('votes')
+        ).order_by('-total_votes')[:5]
         
         for film in genre_films:
             if film not in recommended_films:

@@ -29,8 +29,13 @@ django.setup()
 
 # Now we can import Django-specific modules
 from django.core.management import call_command
+from django.core.cache import cache
 from films_app.models import PageTracker, Film
 from films_app.utils import get_cache_directory
+
+# Lock key for preventing duplicate runs
+LOCK_KEY = 'cinema_cache_update_lock'
+LOCK_TIMEOUT = 3600  # 1 hour in seconds
 
 def cleanup_old_cache_files():
     """Clean up all JSON cache files daily to ensure fresh data."""
@@ -67,58 +72,71 @@ def main():
     start_time = datetime.now()
     logger.info(f"Starting cinema cache update at {start_time}")
     
-    # Check if an update was performed recently
-    try:
-        # Get the most recently updated tracker
-        latest_tracker = PageTracker.objects.order_by('-last_updated').first()
-        
-        # Get the cache update interval from settings
-        from django.conf import settings
-        cache_interval = getattr(settings, 'CACHE_UPDATE_INTERVAL_MINUTES', 15)
-        
-        if latest_tracker and (datetime.now().replace(tzinfo=latest_tracker.last_updated.tzinfo) - latest_tracker.last_updated) < timedelta(minutes=cache_interval):
-            logger.info(f"Skipping update - last update was at {latest_tracker.last_updated}, less than {cache_interval} minutes ago")
-            return 0
-    except Exception as e:
-        logger.warning(f"Error checking last update time: {str(e)}")
-    
-    # First, run the update_release_status command to flag films that need checking
-    try:
-        logger.info("Running update_release_status command to flag films for status checks")
-        call_command('update_release_status')
-    except Exception as e:
-        logger.warning(f"Error running update_release_status: {str(e)}")
-    
-    # Get the count of films flagged for status checks
-    flagged_count = Film.objects.filter(needs_status_check=True).count()
-    logger.info(f"Found {flagged_count} films flagged for status checks")
-    
-    try:
-        # Clean up cache files before updating
-        logger.info("Cleaning up cache files before update")
-        cleanup_old_cache_files()
-        
-        # Run the management command with improved parameters
-        logger.info("Starting cinema cache update with --all-pages option")
-        
-        # Process all films with optimized parameters
-        call_command(
-            'update_movie_cache',
-            force=True,
-            all_pages=True,  # Process all available pages
-            batch_size=5,    # Balanced batch size for performance
-            batch_delay=2,   # Reasonable delay between batches
-            prioritize_flags=True,
-            time_window=6    # 6 months for upcoming films
-        )
-        
-        end_time = datetime.now()
-        duration = end_time - start_time
-        logger.info(f"Cinema cache update completed successfully in {duration}")
+    # Check if another update process is already running
+    if cache.get(LOCK_KEY):
+        logger.warning("Another update process is already running. Exiting.")
         return 0
-    except Exception as e:
-        logger.error(f"Error updating cinema cache: {str(e)}")
-        return 1
+    
+    # Set a lock to prevent duplicate runs
+    cache.set(LOCK_KEY, True, LOCK_TIMEOUT)
+    
+    try:
+        # Check if an update was performed recently
+        try:
+            # Get the most recently updated tracker
+            latest_tracker = PageTracker.objects.order_by('-last_updated').first()
+            
+            # Get the cache update interval from settings
+            from django.conf import settings
+            cache_interval = getattr(settings, 'CACHE_UPDATE_INTERVAL_MINUTES', 1440)  # Default to 24 hours
+            
+            if latest_tracker and (datetime.now().replace(tzinfo=latest_tracker.last_updated.tzinfo) - latest_tracker.last_updated) < timedelta(minutes=cache_interval):
+                logger.info(f"Skipping update - last update was at {latest_tracker.last_updated}, less than {cache_interval} minutes ago")
+                return 0
+        except Exception as e:
+            logger.warning(f"Error checking last update time: {str(e)}")
+        
+        # First, run the update_release_status command to flag films that need checking
+        try:
+            logger.info("Running update_release_status command to flag films for status checks")
+            call_command('update_release_status')
+        except Exception as e:
+            logger.warning(f"Error running update_release_status: {str(e)}")
+        
+        # Get the count of films flagged for status checks
+        flagged_count = Film.objects.filter(needs_status_check=True).count()
+        logger.info(f"Found {flagged_count} films flagged for status checks")
+        
+        try:
+            # Clean up cache files before updating
+            logger.info("Cleaning up cache files before update")
+            cleanup_old_cache_files()
+            
+            # Run the management command with improved parameters
+            logger.info("Starting cinema cache update with --all-pages option")
+            
+            # Process all films with optimized parameters
+            call_command(
+                'update_movie_cache',
+                force=True,
+                all_pages=True,  # Process all available pages
+                batch_size=5,    # Balanced batch size for performance
+                batch_delay=2,   # Reasonable delay between batches
+                prioritize_flags=True,
+                time_window=6    # 6 months for upcoming films
+            )
+            
+            end_time = datetime.now()
+            duration = end_time - start_time
+            logger.info(f"Cinema cache update completed successfully in {duration}")
+            return 0
+        except Exception as e:
+            logger.error(f"Error updating cinema cache: {str(e)}")
+            return 1
+    finally:
+        # Release the lock when done
+        cache.delete(LOCK_KEY)
+        logger.info("Released update lock")
 
 if __name__ == "__main__":
     sys.exit(main()) 

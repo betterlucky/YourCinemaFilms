@@ -10,6 +10,7 @@ urlpatterns = [
     path('classic-films/', views.classics, name='classics'),
     path('cinema/', views.cinema, name='cinema'),
     path('filter-cinema-films/', views.filter_cinema_films, name='filter_cinema_films'),
+    path('filter-classics-films/', views.filter_classics_films, name='filter_classics_films'),
     path('profile/', views.profile, name='profile'),
     path('profile/edit/', views.edit_profile, name='edit_profile'),
     path('profile/image/', views.proxy_profile_image, name='profile_image'),
@@ -51,4 +52,9 @@ urlpatterns = [
     
     # Commitment filter URL
     path('commitment_filter/', views.commitment_filter, name='commitment_filter'),
+
+    # API endpoints
+    path('api/get-user-vote-status/', views.get_user_vote_status, name='get_user_vote_status'),
+    path('api/check-vote/<str:imdb_id>/', views.check_vote_exists, name='check_vote_exists'),
+    path('get-vote-button/<str:imdb_id>/', views.get_vote_button, name='get_vote_button'),
 ] 

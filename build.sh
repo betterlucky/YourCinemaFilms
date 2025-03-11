@@ -81,12 +81,7 @@ python update_site_domain.py
 echo "Setting up Google OAuth..."
 python setup_google_oauth.py
 
-# Make scripts executable
-echo "Making scripts executable..."
-chmod +x update_cinema_cache.py update_release_status.py
-
-# Update cinema cache
-echo "Updating cinema cache..."
-python manage.py update_movie_cache --all-pages
+# Note: We've removed the cinema cache update from the build process
+# to prevent duplicate TMDB API calls. The cron job will handle this.
 
 echo "Build process completed successfully!" 

@@ -56,11 +56,6 @@
                             <li><a class="dropdown-item" href="{% url 'films_app:genre_comparison' %}">Genre Comparison</a></li>
                         </ul>
                     </li>
-                    {% if user.is_authenticated %}
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'films_app:commitment_filter' %}">Commitment Filter</a>
-                    </li>
-                    {% endif %}
                 </ul>
                 <form id="search-form" class="d-flex me-3 position-relative">
                     <input id="search-input" 

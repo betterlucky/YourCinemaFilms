@@ -180,29 +180,35 @@ def get_cache_directory():
     os.makedirs(cache_dir, exist_ok=True)
     return cache_dir
 
-# In-memory cache for search results
+# In-memory cache for search results with timestamp
 _search_results_cache = {}
+# Cache expiration time in seconds (7 days)
+CACHE_EXPIRATION = 7 * 86400
 
 def get_cached_search_results(query):
     """Get cached search results if available."""
     # Check in-memory cache first (fastest)
-    if query in _search_results_cache:
-        return _search_results_cache[query]
+    cache_entry = _search_results_cache.get(query)
+    if cache_entry:
+        timestamp, results = cache_entry
+        # Check if in-memory cache is still valid
+        if time.time() - timestamp < CACHE_EXPIRATION:
+            return results
     
-    # Check disk cache
+    # Check disk cache only if in-memory cache is not available or expired
     cache_dir = get_cache_directory()
     cache_file = os.path.join(cache_dir, f"search_{query.replace(' ', '_')}.json")
     
     if os.path.exists(cache_file):
         # Check if cache is fresh (less than 7 days old)
-        if (os.path.getmtime(cache_file) > (time.time() - 7 * 86400)):
+        if (os.path.getmtime(cache_file) > (time.time() - CACHE_EXPIRATION)):
             try:
                 with open(cache_file, 'r') as f:
                     results = json.load(f)
-                    # Update in-memory cache
-                    _search_results_cache[query] = results
+                    # Update in-memory cache with timestamp
+                    _search_results_cache[query] = (time.time(), results)
                     return results
-            except Exception as e:
+            except Exception:
                 # If there's an error reading the cache, return None
                 return None
     
@@ -210,17 +216,26 @@ def get_cached_search_results(query):
 
 def cache_search_results(query, results):
     """Cache search results to a JSON file and in-memory."""
-    # Update in-memory cache
-    _search_results_cache[query] = results
+    # Update in-memory cache with current timestamp
+    _search_results_cache[query] = (time.time(), results)
     
-    # Update disk cache
+    # Update disk cache in a separate thread to avoid blocking
+    try:
+        import threading
+        threading.Thread(target=_write_cache_to_disk, args=(query, results)).start()
+    except ImportError:
+        # If threading is not available, write directly
+        _write_cache_to_disk(query, results)
+
+def _write_cache_to_disk(query, results):
+    """Write cache to disk in a separate function that can be run in a thread."""
     cache_dir = get_cache_directory()
     cache_file = os.path.join(cache_dir, f"search_{query.replace(' ', '_')}.json")
     
     try:
         with open(cache_file, 'w') as f:
             json.dump(results, f)
-    except Exception as e:
+    except Exception:
         # Log the error but continue
         pass
 
@@ -331,4 +346,74 @@ def filter_votes_by_period(period):
     if start_date:
         votes_query = votes_query.filter(created_at__gte=start_date)
     
-    return votes_query 
+    return votes_query
+
+def get_top_films_data(limit=10):
+    """
+    Get top films based on vote count.
+    
+    Args:
+        limit (int): Maximum number of films to return
+        
+    Returns:
+        QuerySet: Films ordered by vote count
+    """
+    from django.db.models import Count
+    from .models import Film
+    
+    # Get films with votes, annotate with vote count, and order by vote count
+    top_films = Film.objects.annotate(
+        total_votes=Count('votes')
+    ).filter(total_votes__gt=0).order_by('-total_votes')
+    
+    # Limit the results if specified
+    if limit and limit > 0:
+        top_films = top_films[:limit]
+    
+    return top_films
+
+def get_user_votes_and_remaining(user):
+    """
+    Get a user's votes and the number of votes remaining.
+    
+    Args:
+        user: The user to get votes for
+        
+    Returns:
+        tuple: (user_votes, votes_remaining) where user_votes is a queryset of Vote objects
+               and votes_remaining is an integer
+    """
+    from .models import Vote
+    
+    # Get the user's votes
+    user_votes = Vote.objects.filter(user=user).select_related('film')
+    
+    # Calculate votes remaining (maximum 10 votes per user)
+    votes_remaining = 10 - user_votes.count()
+    
+    return user_votes, votes_remaining
+
+def user_can_vote(user, film):
+    """
+    Check if a user can vote for a film.
+    
+    Args:
+        user: The user who wants to vote
+        film: The film to vote for
+        
+    Returns:
+        tuple: (can_vote, reason) where can_vote is a boolean and reason is a string
+               explaining why the user can't vote (if applicable)
+    """
+    from .models import Vote
+    
+    # Check if user has already voted for this film
+    if Vote.objects.filter(user=user, film=film).exists():
+        return False, "already_voted"
+    
+    # Check if user has reached the maximum number of votes (10)
+    if Vote.objects.filter(user=user).count() >= 10:
+        return False, "max_votes_reached"
+    
+    # User can vote
+    return True, None 
