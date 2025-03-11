@@ -22,6 +22,8 @@ class Film(models.Model):
     uk_release_date = models.DateField(blank=True, null=True, help_text="UK release date for this film")
     uk_certification = models.CharField(max_length=10, blank=True, null=True, help_text="UK certification (e.g., PG, 12A, 15)")
     popularity = models.FloatField(default=0, help_text="Popularity score from TMDB API")
+    vote_count = models.IntegerField(default=0, help_text="Number of votes from TMDB API")
+    vote_average = models.FloatField(default=0, help_text="Average vote score from TMDB API (0-10)")
     
     # Status tracking fields
     needs_status_check = models.BooleanField(default=False, help_text="Flag indicating this film needs a priority status check")

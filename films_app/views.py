@@ -62,17 +62,23 @@ def cinema(request):
     today = timezone.now().date()
     
     # Get current and upcoming films
+    # Use a weighted combination of popularity and vote count for sorting
+    # This gives preference to films that are both popular and have significant votes
     now_playing_films = Film.objects.filter(
         is_in_cinema=True, 
         uk_release_date__lte=today
-    ).order_by('-popularity')[:20]
+    ).extra(
+        select={'combined_score': 'popularity * 0.7 + (vote_count / 100) * 0.3'}
+    ).order_by('-combined_score')[:20]
     
     # For upcoming films, we need to include both films marked as in_cinema=True with future dates
     # and films specifically marked as upcoming (is_in_cinema=False with future dates)
     upcoming_films = Film.objects.filter(
         uk_release_date__gt=today,
         uk_release_date__lte=today + timezone.timedelta(days=90)
-    ).order_by('-popularity')[:20]
+    ).extra(
+        select={'combined_score': 'popularity * 0.7 + (vote_count / 100) * 0.3'}
+    ).order_by('-combined_score')[:20]
     
     # Get total counts
     total_now_playing = Film.objects.filter(

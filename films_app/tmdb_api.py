@@ -4,6 +4,7 @@ import logging
 import os
 import json
 import time
+from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 
@@ -215,71 +216,89 @@ def get_uk_certification(release_dates):
 
 def format_tmdb_data_for_film(tmdb_data):
     """
-    Format TMDB movie data to match our Film model structure.
-    Efficiently extracts only the fields we need from the TMDB data.
+    Format TMDB data into a dictionary suitable for creating/updating a Film model.
     
     Args:
-        tmdb_data (dict): The movie data from TMDB
+        tmdb_data (dict): The movie details from TMDB
         
     Returns:
-        dict: Formatted data for our Film model
+        dict: Formatted data for Film model
     """
-    # Extract only the fields we need
     formatted_data = {
-        'imdb_id': tmdb_data.get('external_ids', {}).get('imdb_id', ''),
+        'imdb_id': tmdb_data.get('imdb_id', ''),
         'title': tmdb_data.get('title', ''),
         'plot': tmdb_data.get('overview', ''),
         'popularity': tmdb_data.get('popularity', 0.0),
-        'runtime': f"{tmdb_data.get('runtime', 0)} min" if tmdb_data.get('runtime') else "",
-        'poster_url': f"https://image.tmdb.org/t/p/w500{tmdb_data['poster_path']}" if tmdb_data.get('poster_path') else None,
+        'vote_count': tmdb_data.get('vote_count', 0),
+        'vote_average': tmdb_data.get('vote_average', 0.0),
     }
     
     # Extract year from release date
-    if tmdb_data.get('release_date'):
-        formatted_data['year'] = tmdb_data['release_date'].split('-')[0]
-        # Use the main release date as UK release date if no specific UK date is found
-        formatted_data['uk_release_date'] = tmdb_data['release_date']
+    release_date = tmdb_data.get('release_date', '')
+    if release_date and len(release_date) >= 4:
+        formatted_data['year'] = release_date[:4]
     else:
-        formatted_data['year'] = ""
-        formatted_data['uk_release_date'] = None
+        formatted_data['year'] = ''
     
-    # Extract director from credits - only if credits data exists
-    if 'credits' in tmdb_data and 'crew' in tmdb_data['credits']:
-        directors = [crew['name'] for crew in tmdb_data['credits']['crew'] if crew['job'] == 'Director']
-        formatted_data['director'] = ', '.join(directors)
+    # Format poster URL
+    poster_path = tmdb_data.get('poster_path')
+    if poster_path:
+        formatted_data['poster_url'] = f"https://image.tmdb.org/t/p/w500{poster_path}"
     else:
-        formatted_data['director'] = ""
+        formatted_data['poster_url'] = None
     
-    # Extract actors from credits - only if credits data exists
-    if 'credits' in tmdb_data and 'cast' in tmdb_data['credits']:
-        cast = [cast['name'] for cast in tmdb_data['credits']['cast'][:10]]  # Limit to top 10 cast members
-        formatted_data['actors'] = ', '.join(cast)
+    # Extract runtime
+    runtime = tmdb_data.get('runtime')
+    if runtime:
+        formatted_data['runtime'] = f"{runtime} min"
     else:
-        formatted_data['actors'] = ""
+        formatted_data['runtime'] = None
     
-    # Extract genres - only if genres data exists
-    if 'genres' in tmdb_data:
-        genre_names = [genre['name'] for genre in tmdb_data['genres']]
+    # Extract genres
+    genres = tmdb_data.get('genres', [])
+    if genres:
+        genre_names = [genre['name'] for genre in genres]
         formatted_data['genres'] = ', '.join(genre_names)
     else:
-        formatted_data['genres'] = ""
+        formatted_data['genres'] = None
     
-    # Extract UK certification - only if release_dates data exists
-    if 'release_dates' in tmdb_data:
-        formatted_data['uk_certification'] = get_uk_certification(tmdb_data['release_dates'])
+    # Extract director and actors from credits
+    credits = tmdb_data.get('credits', {})
+    
+    # Get director
+    directors = []
+    if 'crew' in credits:
+        directors = [crew['name'] for crew in credits['crew'] if crew['job'] == 'Director']
+    
+    if directors:
+        formatted_data['director'] = ', '.join(directors)
     else:
-        formatted_data['uk_certification'] = None
+        formatted_data['director'] = None
     
-    # Try to find UK-specific release date - only if release_dates data exists
-    if 'release_dates' in tmdb_data and 'results' in tmdb_data['release_dates']:
-        for country_data in tmdb_data['release_dates']['results']:
-            if country_data['iso_3166_1'] == 'GB':
-                # Get the most recent release date
-                for release in country_data['release_dates']:
-                    if release.get('release_date'):
+    # Get actors (top 5)
+    actors = []
+    if 'cast' in credits:
+        actors = [cast['name'] for cast in credits['cast'][:5]]
+    
+    if actors:
+        formatted_data['actors'] = ', '.join(actors)
+    else:
+        formatted_data['actors'] = None
+    
+    # Extract UK certification
+    release_dates = tmdb_data.get('release_dates', {}).get('results', [])
+    uk_certification = get_uk_certification(release_dates)
+    if uk_certification:
+        formatted_data['uk_certification'] = uk_certification
+    
+    # Extract UK release date
+    for release in release_dates:
+        if release.get('iso_3166_1') == 'GB':
+            for release_type in release.get('release_dates', []):
+                if release_type.get('type') in [2, 3]:  # Theatrical release types
+                    if release_type.get('release_date'):
                         # Convert to YYYY-MM-DD format
-                        from datetime import datetime
-                        date_obj = datetime.fromisoformat(release['release_date'].replace('Z', '+00:00'))
+                        date_obj = datetime.fromisoformat(release_type['release_date'].replace('Z', '+00:00'))
                         formatted_data['uk_release_date'] = date_obj.strftime('%Y-%m-%d')
                         break
     
@@ -301,13 +320,23 @@ def get_now_playing_movies(page=1, sort_by='popularity.desc'):
     import logging
     logger = logging.getLogger(__name__)
     
-    url = get_api_url("movie/now_playing")
+    # Use discover endpoint for more sorting flexibility
+    url = get_api_url("discover/movie")
+    
+    # Get current date for release date filtering
+    today = datetime.now().strftime("%Y-%m-%d")
+    three_months_ago = (datetime.now() - timedelta(days=90)).strftime("%Y-%m-%d")
+    
     params = {
         'api_key': settings.TMDB_API_KEY,
         'language': 'en-GB',  # British English
         'region': 'GB',       # United Kingdom
         'page': page,
-        'sort_by': sort_by    # Sort by popularity by default
+        'sort_by': sort_by,   # Sort by specified parameter
+        'with_release_type': '2|3',  # Theatrical release
+        'release_date.lte': today,
+        'release_date.gte': three_months_ago,  # Only films released in the last 3 months
+        'vote_count.gte': 10  # Ensure some minimum votes for quality results
     }
     
     movies = []
@@ -338,6 +367,8 @@ def get_now_playing_movies(page=1, sort_by='popularity.desc'):
                 'release_date': movie.get('release_date', ''),
                 'poster_path': movie.get('poster_path'),
                 'popularity': movie.get('popularity', 0.0),
+                'vote_count': movie.get('vote_count', 0),
+                'vote_average': movie.get('vote_average', 0.0),
                 'id': movie.get('id')
             }
             
@@ -347,8 +378,10 @@ def get_now_playing_movies(page=1, sort_by='popularity.desc'):
             if movie_details:
                 formatted_data = format_tmdb_data_for_film(movie_details)
                 formatted_data['is_in_cinema'] = True
-                # Add popularity from the original results
+                # Add popularity and vote metrics from the original results
                 formatted_data['popularity'] = movie.get('popularity', 0.0)
+                formatted_data['vote_count'] = movie.get('vote_count', 0)
+                formatted_data['vote_average'] = movie.get('vote_average', 0.0)
                 movies.append(formatted_data)
         
         logger.info(f"Processed {len(movies)} now playing movies from page {page}")
@@ -379,29 +412,32 @@ def get_upcoming_movies(time_window_months=None, page=1, sort_by='popularity.des
     
     # Use the setting if time_window_months is not provided
     if time_window_months is None:
-        time_window_months = settings.UPCOMING_FILMS_MONTHS
+        time_window_months = getattr(settings, 'UPCOMING_FILMS_MONTHS', 6)
     
-    url = get_api_url("movie/upcoming")
+    # Use discover endpoint for more sorting flexibility
+    url = get_api_url("discover/movie")
     
-    # Calculate date range (today to X months from now)
-    today = datetime.now().strftime('%Y-%m-%d')
-    future_date = (datetime.now() + timedelta(days=30*time_window_months)).strftime('%Y-%m-%d')
+    # Calculate date range for upcoming movies
+    today = datetime.now().strftime("%Y-%m-%d")
+    end_date = (datetime.now() + timedelta(days=30 * time_window_months)).strftime("%Y-%m-%d")
     
     params = {
         'api_key': settings.TMDB_API_KEY,
         'language': 'en-GB',  # British English
         'region': 'GB',       # United Kingdom
         'page': page,
+        'sort_by': sort_by,
+        'with_release_type': '2|3',  # Theatrical release
         'release_date.gte': today,
-        'release_date.lte': future_date,
-        'sort_by': sort_by    # Sort by popularity by default
+        'release_date.lte': end_date,
+        'vote_count.gte': 0   # Include films with no votes yet (they're upcoming)
     }
     
     movies = []
     total_pages = 1
     
     try:
-        logger.info(f"Fetching upcoming movies page {page} (window: {time_window_months} months, sort: {sort_by})")
+        logger.info(f"Fetching upcoming movies for next {time_window_months} months (page {page}, sort: {sort_by})")
         response = requests.get(url, params=params)
         data = response.json()
         
@@ -414,7 +450,7 @@ def get_upcoming_movies(time_window_months=None, page=1, sort_by='popularity.des
             return [], total_pages
         
         results = data.get('results', [])
-        logger.info(f"Processing {len(results)} movies from page {page} of {total_pages}")
+        logger.info(f"Processing {len(results)} upcoming movies from page {page} of {total_pages}")
         
         # Process each movie to get full details
         for movie in results:
@@ -425,21 +461,24 @@ def get_upcoming_movies(time_window_months=None, page=1, sort_by='popularity.des
                 'release_date': movie.get('release_date', ''),
                 'poster_path': movie.get('poster_path'),
                 'popularity': movie.get('popularity', 0.0),
+                'vote_count': movie.get('vote_count', 0),
+                'vote_average': movie.get('vote_average', 0.0),
                 'id': movie.get('id')
             }
             
             # Only make an additional API call if we need more detailed information
-            # that's not available in the basic results
             movie_details = get_movie_details(movie['id'])
             if movie_details:
                 formatted_data = format_tmdb_data_for_film(movie_details)
-                # Mark upcoming films as is_in_cinema=True so they appear in the cinema view
-                formatted_data['is_in_cinema'] = True
-                # Add popularity from the original results
+                formatted_data['is_in_cinema'] = True  # Mark as in cinema so it appears in the cinema view
+                # Add popularity and vote metrics from the original results
                 formatted_data['popularity'] = movie.get('popularity', 0.0)
+                formatted_data['vote_count'] = movie.get('vote_count', 0)
+                formatted_data['vote_average'] = movie.get('vote_average', 0.0)
                 movies.append(formatted_data)
         
         logger.info(f"Processed {len(movies)} upcoming movies from page {page}")
+        
     except Exception as e:
         logger.error(f"Error fetching upcoming movies (page {page}): {e}")
     
