@@ -278,7 +278,7 @@ ACCOUNT_EMAIL_SUBJECT_PREFIX = 'YourCinemaFilms - '
 
 # TMDB API settings
 TMDB_API_KEY = os.getenv('TMDB_API_KEY', '')
-TMDB_SORT_BY = os.getenv('TMDB_SORT_BY', 'vote_count.desc,popularity.desc')  # Updated sort order for TMDB API requests
+TMDB_SORT_BY = os.getenv('TMDB_SORT_BY', 'revenue.desc,vote_count.desc,popularity.desc')  # Updated sort order for TMDB API requests
 
 # Cinema settings
 UPCOMING_FILMS_MONTHS = int(os.getenv('UPCOMING_FILMS_MONTHS', '6'))  # Number of months to look ahead for upcoming films

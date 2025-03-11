@@ -24,6 +24,7 @@ class Film(models.Model):
     popularity = models.FloatField(default=0, help_text="Popularity score from TMDB API")
     vote_count = models.IntegerField(default=0, help_text="Number of votes from TMDB API")
     vote_average = models.FloatField(default=0, help_text="Average vote score from TMDB API (0-10)")
+    revenue = models.BigIntegerField(default=0, help_text="Total box office revenue in USD from TMDB API")
     
     # Status tracking fields
     needs_status_check = models.BooleanField(default=False, help_text="Flag indicating this film needs a priority status check")
