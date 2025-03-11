@@ -12,7 +12,7 @@
                     <h4 class="mb-0">{% trans "Sign In Via" %} {{ provider.name }}</h4>
                 </div>
                 <div class="card-body">
-                    <p>{% blocktrans with provider_name=provider.name site_name=site.name %}You are about to sign in using a third-party account from {{ provider_name }}.{% endblocktrans %}</p>
+                    <p>{% blocktrans with provider_name=provider.name %}You are about to sign in using a third-party account from {{ provider_name }}.{% endblocktrans %}</p>
 
                     <form method="post">
                         {% csrf_token %}

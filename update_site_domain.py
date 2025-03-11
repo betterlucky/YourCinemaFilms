@@ -15,9 +15,6 @@ from django.contrib.sites.models import Site
 
 def update_site_domain():
     """Update the site domain to match the Render domain."""
-    # Get the current site
-    site = Site.objects.get_current()
-    
     # Get the domain from environment variable or use default
     domain = os.environ.get('RENDER_EXTERNAL_URL', 'yourcinemafilms.onrender.com')
     
@@ -31,15 +28,24 @@ def update_site_domain():
     if domain.endswith('/'):
         domain = domain[:-1]
     
-    print(f"Current site domain: {site.domain}")
-    print(f"Updating site domain to: {domain}")
+    # Try to get the current site, create one if it doesn't exist
+    try:
+        site = Site.objects.get(id=1)
+        print(f"Current site domain: {site.domain}")
+    except Site.DoesNotExist:
+        site = Site(id=1, domain=domain, name='YourCinemaFilms')
+        print(f"Creating new site with domain: {domain}")
     
     # Update the site domain and name
     site.domain = domain
-    site.name = domain
+    site.name = 'YourCinemaFilms'
     site.save()
     
     print(f"Site domain updated successfully to: {site.domain}")
+    
+    # Verify site exists in database
+    sites_count = Site.objects.count()
+    print(f"Total sites in database: {sites_count}")
     
     return True
 
