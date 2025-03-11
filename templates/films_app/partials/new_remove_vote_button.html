@@ -1,8 +1,8 @@
 {% load i18n %}
 
 <button class="btn btn-sm btn-outline-danger"
-        hx-post="{% url 'films_app:remove_cinema_vote' imdb_id=vote.film.imdb_id %}"
-        hx-target="#cinema-film-vote-count-{{ vote.film.imdb_id }}"
+        hx-post="{% url 'films_app:remove_vote' imdb_id=vote.film.imdb_id %}"
+        hx-target="#film-vote-count-{{ vote.film.imdb_id }}"
         hx-swap="outerHTML"
         hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
         hx-indicator="#remove-vote-indicator-{{ vote.film.imdb_id }}"

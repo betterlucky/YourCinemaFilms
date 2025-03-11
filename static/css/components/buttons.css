@@ -204,18 +204,4 @@
 .btn-group > .btn:not(:first-child) {
     border-top-left-radius: 0;
     border-bottom-left-radius: 0;
-}
-
-/* Custom button for remove vote action */
-.btn-remove-vote {
-    color: var(--danger);
-    background-color: transparent;
-    border-color: var(--danger);
-    font-weight: 500;
-}
-
-.btn-remove-vote:hover {
-    color: var(--white);
-    background-color: var(--danger);
-    border-color: var(--danger);
 } 

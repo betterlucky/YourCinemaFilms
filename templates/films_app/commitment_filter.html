@@ -1,0 +1,142 @@
+{% extends 'base.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "Filter by Commitment" %} | YourCinemaFilms{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row">
+        <div class="col-md-3">
+            <div class="card shadow mb-4">
+                <div class="card-header">
+                    <h3 class="h5 mb-0">{% trans "Filter Options" %}</h3>
+                </div>
+                <div class="card-body">
+                    <form method="get" action="{% url 'films_app:commitment_filter' %}">
+                        <div class="mb-3">
+                            <label class="form-label">{% trans "Minimum Commitment Score" %}</label>
+                            <div class="d-flex align-items-center">
+                                <input type="range" class="form-range flex-grow-1 me-2" id="min_score" name="min_score" 
+                                       min="1" max="3" step="0.1" value="{{ min_score|default:1 }}"
+                                       oninput="document.getElementById('min_score_value').textContent = this.value">
+                                <span id="min_score_value" class="badge bg-primary">{{ min_score|default:1 }}</span>
+                            </div>
+                            <small class="text-muted">{% trans "Higher values indicate stronger audience commitment" %}</small>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">{% trans "Minimum Votes" %}</label>
+                            <div class="d-flex align-items-center">
+                                <input type="range" class="form-range flex-grow-1 me-2" id="min_votes" name="min_votes" 
+                                       min="1" max="50" step="1" value="{{ min_votes|default:1 }}"
+                                       oninput="document.getElementById('min_votes_value').textContent = this.value">
+                                <span id="min_votes_value" class="badge bg-primary">{{ min_votes|default:1 }}</span>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">{% trans "Format Preferences" %}</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="format_standard" name="format_standard" {% if format_standard %}checked{% endif %}>
+                                <label class="form-check-label" for="format_standard">{% trans "Standard" %}</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="format_imax" name="format_imax" {% if format_imax %}checked{% endif %}>
+                                <label class="form-check-label" for="format_imax">{% trans "IMAX" %}</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="format_3d" name="format_3d" {% if format_3d %}checked{% endif %}>
+                                <label class="form-check-label" for="format_3d">{% trans "3D" %}</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="format_premium" name="format_premium" {% if format_premium %}checked{% endif %}>
+                                <label class="form-check-label" for="format_premium">{% trans "Premium" %}</label>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">{% trans "Social Preferences" %}</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="social_solo" name="social_solo" {% if social_solo %}checked{% endif %}>
+                                <label class="form-check-label" for="social_solo">{% trans "Solo" %}</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="social_partner" name="social_partner" {% if social_partner %}checked{% endif %}>
+                                <label class="form-check-label" for="social_partner">{% trans "With partner" %}</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="social_friends" name="social_friends" {% if social_friends %}checked{% endif %}>
+                                <label class="form-check-label" for="social_friends">{% trans "With friends" %}</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="social_family" name="social_family" {% if social_family %}checked{% endif %}>
+                                <label class="form-check-label" for="social_family">{% trans "With family" %}</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="social_open" name="social_open" {% if social_open %}checked{% endif %}>
+                                <label class="form-check-label" for="social_open">{% trans "Open to company" %}</label>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary w-100">{% trans "Apply Filters" %}</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-9">
+            <div class="card shadow">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h2 class="h4 mb-0">{% trans "Films by Commitment Level" %}</h2>
+                    <span class="badge bg-primary">{{ films|length }} {% trans "results" %}</span>
+                </div>
+                <div class="card-body">
+                    {% if films %}
+                        <div class="row">
+                            {% for film in films %}
+                                <div class="col-md-4 mb-4">
+                                    <div class="card h-100">
+                                        <a href="{% url 'films_app:film_detail' film.imdb_id %}">
+                                            <img src="{{ film.poster_url|default:'https://via.placeholder.com/300x450?text=No+Poster' }}" 
+                                                 class="card-img-top" alt="{{ film.title }}">
+                                        </a>
+                                        <div class="card-body">
+                                            <h5 class="card-title">{{ film.title }}</h5>
+                                            <p class="card-text text-muted">{{ film.year }}</p>
+                                            
+                                            <div class="mb-2">
+                                                <div class="d-flex justify-content-between align-items-center">
+                                                    <span>{% trans "Commitment Score" %}</span>
+                                                    <span class="badge bg-success">{{ film.commitment_metrics.commitment_score|floatformat:1 }}</span>
+                                                </div>
+                                                <div class="progress mt-1" style="height: 5px;">
+                                                    <div class="progress-bar bg-success" role="progressbar" 
+                                                         style="width: {{ film.commitment_metrics.commitment_score|div:3|mul:100 }}%;" 
+                                                         aria-valuenow="{{ film.commitment_metrics.commitment_score }}" 
+                                                         aria-valuemin="0" 
+                                                         aria-valuemax="3"></div>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="d-flex justify-content-between align-items-center mt-3">
+                                                <span class="badge bg-primary">{{ film.votes.count }} {% trans "votes" %}</span>
+                                                <a href="{% url 'films_app:film_detail' film.imdb_id %}" class="btn btn-sm btn-outline-primary">
+                                                    {% trans "View Details" %}
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>{% trans "No films match your filter criteria." %}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

@@ -81,6 +81,10 @@ python update_site_domain.py
 echo "Setting up Google OAuth..."
 python setup_google_oauth.py
 
+# Make scripts executable
+echo "Making scripts executable..."
+chmod +x update_cinema_cache.py update_release_status.py
+
 # Update cinema cache
 echo "Updating cinema cache..."
 python update_cinema_cache.py

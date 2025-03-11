@@ -23,6 +23,9 @@ class Film(models.Model):
     uk_certification = models.CharField(max_length=10, blank=True, null=True, help_text="UK certification (e.g., PG, 12A, 15)")
     popularity = models.FloatField(default=0, help_text="Popularity score from TMDB API")
     
+    # Status tracking fields
+    needs_status_check = models.BooleanField(default=False, help_text="Flag indicating this film needs a priority status check")
+    
     def __str__(self):
         return f"{self.title} ({self.year})"
     
@@ -56,6 +59,165 @@ class Film(models.Model):
         if self.uk_release_date and self.uk_release_date > date.today():
             return True
         return False
+        
+    @property
+    def votes_count(self):
+        """Return the total number of votes for this film."""
+        return self.votes.count()
+    
+    @property
+    def cinema_vote_count(self):
+        """Return the total number of cinema votes for this film."""
+        return self.cinema_votes.count()
+    
+    @property
+    def commitment_metrics(self):
+        """Return metrics about vote commitment levels."""
+        votes = self.votes.all()
+        total = votes.count()
+        if total == 0:
+            return {
+                'definite': 0,
+                'interested': 0,
+                'convenient': 0,
+                'undecided': 0,
+                'definite_percent': 0,
+                'interested_percent': 0,
+                'convenient_percent': 0,
+                'undecided_percent': 0,
+                'commitment_score': 0,
+                'total': 0
+            }
+        
+        # Count votes by commitment level
+        definite = votes.filter(commitment_level='definite').count()
+        interested = votes.filter(commitment_level='interested').count()
+        convenient = votes.filter(commitment_level='convenient').count()
+        undecided = votes.filter(commitment_level='undecided').count()
+        
+        # Calculate percentages
+        definite_percent = (definite / total) * 100 if total > 0 else 0
+        interested_percent = (interested / total) * 100 if total > 0 else 0
+        convenient_percent = (convenient / total) * 100 if total > 0 else 0
+        undecided_percent = (undecided / total) * 100 if total > 0 else 0
+        
+        # Calculate overall commitment score (weighted average)
+        commitment_score = (definite * 3 + interested * 2 + convenient * 1 + undecided * 1) / total if total > 0 else 0
+        
+        return {
+            'definite': definite,
+            'interested': interested,
+            'convenient': convenient,
+            'undecided': undecided,
+            'definite_percent': definite_percent,
+            'interested_percent': interested_percent,
+            'convenient_percent': convenient_percent,
+            'undecided_percent': undecided_percent,
+            'commitment_score': commitment_score,
+            'total': total
+        }
+    
+    @property
+    def format_preferences(self):
+        """Return metrics about preferred viewing formats."""
+        votes = self.votes.all()
+        total = votes.count()
+        if total == 0:
+            return {
+                'standard': 0,
+                'imax': 0,
+                '3d': 0,
+                'premium': 0,
+                'any': 0,
+                'standard_percent': 0,
+                'imax_percent': 0,
+                '3d_percent': 0,
+                'premium_percent': 0,
+                'any_percent': 0,
+                'total': 0
+            }
+        
+        # Count votes by format preference
+        standard = votes.filter(preferred_format='standard').count()
+        imax = votes.filter(preferred_format='imax').count()
+        three_d = votes.filter(preferred_format='3d').count()
+        premium = votes.filter(preferred_format='premium').count()
+        any_format = votes.filter(preferred_format='any').count()
+        
+        # Calculate percentages
+        standard_percent = (standard / total) * 100 if total > 0 else 0
+        imax_percent = (imax / total) * 100 if total > 0 else 0
+        three_d_percent = (three_d / total) * 100 if total > 0 else 0
+        premium_percent = (premium / total) * 100 if total > 0 else 0
+        any_percent = (any_format / total) * 100 if total > 0 else 0
+        
+        return {
+            'standard': standard,
+            'imax': imax,
+            '3d': three_d,
+            'premium': premium,
+            'any': any_format,
+            'standard_percent': standard_percent,
+            'imax_percent': imax_percent,
+            '3d_percent': three_d_percent,
+            'premium_percent': premium_percent,
+            'any_percent': any_percent,
+            'total': total
+        }
+    
+    @property
+    def social_preferences(self):
+        """Return metrics about social viewing preferences."""
+        votes = self.votes.all()
+        total = votes.count()
+        if total == 0:
+            return {
+                'solo': 0,
+                'partner': 0,
+                'friends': 0,
+                'family': 0,
+                'open': 0,
+                'undecided': 0,
+                'solo_percent': 0,
+                'partner_percent': 0,
+                'friends_percent': 0,
+                'family_percent': 0,
+                'open_percent': 0,
+                'undecided_percent': 0,
+                'total': 0
+            }
+        
+        # Count votes by social preference
+        solo = votes.filter(social_preference='solo').count()
+        partner = votes.filter(social_preference='partner').count()
+        friends = votes.filter(social_preference='friends').count()
+        family = votes.filter(social_preference='family').count()
+        open_to_company = votes.filter(social_preference='open').count()
+        undecided = votes.filter(social_preference='undecided').count()
+        
+        # Calculate percentages
+        solo_percent = (solo / total) * 100 if total > 0 else 0
+        partner_percent = (partner / total) * 100 if total > 0 else 0
+        friends_percent = (friends / total) * 100 if total > 0 else 0
+        family_percent = (family / total) * 100 if total > 0 else 0
+        open_percent = (open_to_company / total) * 100 if total > 0 else 0
+        undecided_percent = (undecided / total) * 100 if total > 0 else 0
+        
+        return {
+            'solo': solo,
+            'partner': partner,
+            'friends': friends,
+            'family': family,
+            'open': open_to_company,
+            'undecided': undecided,
+            'solo_percent': solo_percent,
+            'partner_percent': partner_percent,
+            'friends_percent': friends_percent,
+            'family_percent': family_percent,
+            'open_percent': open_percent,
+            'undecided_percent': undecided_percent,
+            'total': total
+        }
 
 
 class GenreTag(models.Model):
@@ -77,32 +239,118 @@ class GenreTag(models.Model):
 
 class Vote(models.Model):
     """Model representing a user's vote for a film."""
+    COMMITMENT_CHOICES = [
+        ('definite', 'Definitely attending'),
+        ('interested', 'Interested'),
+        ('convenient', 'Only if convenient'),
+        ('undecided', 'Undecided')
+    ]
+    
+    FORMAT_CHOICES = [
+        ('standard', 'Standard screening'),
+        ('imax', 'IMAX'),
+        ('3d', '3D'),
+        ('premium', 'Premium (recliner seats, etc.)'),
+        ('any', 'Any format'),
+    ]
+    
+    SOCIAL_CHOICES = [
+        ('solo', 'Going solo'),
+        ('partner', 'With partner'),
+        ('friends', 'With friends'),
+        ('family', 'With family'),
+        ('open', 'Open to company'),
+        ('undecided', 'Undecided')
+    ]
+    
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='votes')
     film = models.ForeignKey(Film, on_delete=models.CASCADE, related_name='votes')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
+    # New commitment fields
+    commitment_level = models.CharField(max_length=20, choices=COMMITMENT_CHOICES, default='interested', 
+                                       help_text="How committed are you to seeing this film in theaters?")
+    preferred_format = models.CharField(max_length=20, choices=FORMAT_CHOICES, default='any',
+                                       help_text="What format would you prefer to see this film in?")
+    social_preference = models.CharField(max_length=20, choices=SOCIAL_CHOICES, default='undecided',
+                                        help_text="Who would you like to see this film with?")
+    
     class Meta:
         unique_together = ('user', 'film')
         ordering = ['-updated_at']
     
     def __str__(self):
-        return f"{self.user.username} voted for {self.film.title}"
+        return f"{self.user.username} voted for {self.film.title} ({self.get_commitment_level_display()})"
+    
+    @property
+    def commitment_score(self):
+        """Return a numeric score for commitment level (1-3)."""
+        scores = {
+            'definite': 3,
+            'interested': 2,
+            'convenient': 1,
+            'undecided': 1
+        }
+        return scores.get(self.commitment_level, 1)
 
 
 class CinemaVote(models.Model):
     """Model representing a user's vote for a cinema film (current or upcoming)."""
+    COMMITMENT_CHOICES = [
+        ('definite', 'Definitely attending'),
+        ('interested', 'Interested'),
+        ('convenient', 'Only if convenient'),
+        ('undecided', 'Undecided')
+    ]
+    
+    FORMAT_CHOICES = [
+        ('standard', 'Standard screening'),
+        ('imax', 'IMAX'),
+        ('3d', '3D'),
+        ('premium', 'Premium (recliner seats, etc.)'),
+        ('any', 'Any format'),
+    ]
+    
+    SOCIAL_CHOICES = [
+        ('solo', 'Going solo'),
+        ('partner', 'With partner'),
+        ('friends', 'With friends'),
+        ('family', 'With family'),
+        ('open', 'Open to company'),
+        ('undecided', 'Undecided')
+    ]
+    
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='cinema_votes')
     film = models.ForeignKey(Film, on_delete=models.CASCADE, related_name='cinema_votes')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
+    # New commitment fields
+    commitment_level = models.CharField(max_length=20, choices=COMMITMENT_CHOICES, default='interested', 
+                                       help_text="How committed are you to seeing this film in theaters?")
+    preferred_format = models.CharField(max_length=20, choices=FORMAT_CHOICES, default='any',
+                                       help_text="What format would you prefer to see this film in?")
+    social_preference = models.CharField(max_length=20, choices=SOCIAL_CHOICES, default='undecided',
+                                        help_text="Who would you like to see this film with?")
+    
     class Meta:
         unique_together = ('user', 'film')
         ordering = ['-updated_at']
     
     def __str__(self):
-        return f"{self.user.username} voted for cinema film {self.film.title}"
+        return f"{self.user.username} voted for cinema film {self.film.title} ({self.get_commitment_level_display()})"
+    
+    @property
+    def commitment_score(self):
+        """Return a numeric score for commitment level (1-3)."""
+        scores = {
+            'definite': 3,
+            'interested': 2,
+            'convenient': 1,
+            'undecided': 1
+        }
+        return scores.get(self.commitment_level, 1)
 
 
 class UserProfile(models.Model):
@@ -184,7 +432,7 @@ class UserProfile(models.Model):
     # Fields with privacy settings
     PRIVACY_FIELDS = [
         'location', 'gender', 'age', 'votes', 'cinema_frequency', 
-        'favorite_cinema', 'viewing_companions', 'viewing_time', 
+        'viewing_companions', 'viewing_time', 
         'price_sensitivity', 'format_preference', 'travel_distance',
         'cinema_amenities', 'film_genres', 'dashboard_activity'
     ]
@@ -206,13 +454,12 @@ class UserProfile(models.Model):
     age_range = models.CharField(max_length=5, choices=AGE_RANGE_CHOICES, default='NS')
     
     # New cinema-specific demographic information
-    favorite_cinema = models.CharField(max_length=200, blank=True, null=True, help_text="Your preferred cinema or chain")
     cinema_frequency = models.CharField(max_length=10, choices=VIEWING_FREQUENCY_CHOICES, default='NS', help_text="How often do you go to the cinema?")
     viewing_companions = models.CharField(max_length=10, choices=VIEWING_COMPANION_CHOICES, default='NS', help_text="Who do you usually go to the cinema with?")
     viewing_time = models.CharField(max_length=20, choices=VIEWING_TIME_CHOICES, default='NS', help_text="When do you prefer to go to the cinema?")
     price_sensitivity = models.CharField(max_length=10, choices=PRICE_SENSITIVITY_CHOICES, default='NS', help_text="How important is ticket price in your decision to see a film?")
     format_preference = models.CharField(max_length=10, choices=FORMAT_PREFERENCE_CHOICES, default='NS', help_text="What format do you prefer to watch films in?")
-    travel_distance = models.PositiveIntegerField(blank=True, null=True, help_text="How far are you willing to travel to a cinema (in miles)?")
+    travel_distance = models.PositiveIntegerField(default=10, help_text="How far are you willing to travel to a cinema (in miles)?")
     cinema_amenities = models.TextField(blank=True, null=True, help_text="What cinema amenities are important to you? (e.g., food service, bar, reclining seats)")
     film_genres = models.TextField(blank=True, null=True, help_text="What film genres do you prefer to see in the cinema?")
     
@@ -223,7 +470,6 @@ class UserProfile(models.Model):
     votes_privacy = models.CharField(max_length=10, choices=PRIVACY_CHOICES, default='private')
     
     # New privacy settings
-    favorite_cinema_privacy = models.CharField(max_length=10, choices=PRIVACY_CHOICES, default='private')
     cinema_frequency_privacy = models.CharField(max_length=10, choices=PRIVACY_CHOICES, default='private')
     viewing_companions_privacy = models.CharField(max_length=10, choices=PRIVACY_CHOICES, default='private')
     viewing_time_privacy = models.CharField(max_length=10, choices=PRIVACY_CHOICES, default='private')
@@ -310,10 +556,6 @@ class UserProfile(models.Model):
         """Return the display value for votes privacy."""
         return dict(self.PRIVACY_CHOICES).get(self.votes_privacy, 'Private')
     
-    def get_favorite_cinema_privacy_display(self):
-        """Return the display value for favorite cinema privacy."""
-        return dict(self.PRIVACY_CHOICES).get(self.favorite_cinema_privacy, 'Private')
-    
     def get_cinema_frequency_privacy_display(self):
         """Return the display value for cinema frequency privacy."""
         return dict(self.PRIVACY_CHOICES).get(self.cinema_frequency_privacy, 'Private')
@@ -379,7 +621,6 @@ class UserProfile(models.Model):
         required_fields = [
             self.bio,
             self.location,
-            self.favorite_cinema,
             self.cinema_frequency != 'NS',
             self.viewing_companions != 'NS',
             self.viewing_time != 'NS',
@@ -400,7 +641,6 @@ class UserProfile(models.Model):
         required_fields = [
             self.bio,
             self.location,
-            self.favorite_cinema,
             self.cinema_frequency != 'NS',
             self.viewing_companions != 'NS',
             self.viewing_time != 'NS',
@@ -530,4 +770,70 @@ class PageTracker(models.Model):
         tracker, _ = cls.objects.get_or_create(movie_type=movie_type)
         tracker.last_page = current_page
         tracker.total_pages = total_pages
-        tracker.save() 
+        tracker.save()
+
+
+class Cinema(models.Model):
+    """Model representing a cinema site."""
+    name = models.CharField(max_length=255, help_text="Name of the cinema")
+    chain = models.CharField(max_length=255, blank=True, null=True, help_text="Cinema chain (e.g., Odeon, Vue, Cineworld)")
+    location = models.CharField(max_length=255, help_text="Location of the cinema (city/town)")
+    postcode = models.CharField(max_length=10, blank=True, null=True, help_text="Postcode of the cinema")
+    latitude = models.FloatField(blank=True, null=True, help_text="Latitude coordinate for mapping")
+    longitude = models.FloatField(blank=True, null=True, help_text="Longitude coordinate for mapping")
+    website = models.URLField(blank=True, null=True, help_text="Website URL for the cinema")
+    
+    # Amenities as boolean fields
+    has_imax = models.BooleanField(default=False, help_text="Whether this cinema has IMAX screens")
+    has_3d = models.BooleanField(default=False, help_text="Whether this cinema has 3D capability")
+    has_premium_seating = models.BooleanField(default=False, help_text="Whether this cinema has premium seating (recliners, etc.)")
+    has_food_service = models.BooleanField(default=False, help_text="Whether this cinema has in-screen food service")
+    has_bar = models.BooleanField(default=False, help_text="Whether this cinema has a bar")
+    has_disabled_access = models.BooleanField(default=True, help_text="Whether this cinema has disabled access")
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['name', 'location']
+        unique_together = ('name', 'location', 'postcode')
+    
+    def __str__(self):
+        if self.chain:
+            return f"{self.name} ({self.chain}) - {self.location}"
+        return f"{self.name} - {self.location}"
+    
+    @property
+    def amenities_list(self):
+        """Return a list of available amenities."""
+        amenities = []
+        if self.has_imax:
+            amenities.append("IMAX")
+        if self.has_3d:
+            amenities.append("3D")
+        if self.has_premium_seating:
+            amenities.append("Premium Seating")
+        if self.has_food_service:
+            amenities.append("Food Service")
+        if self.has_bar:
+            amenities.append("Bar")
+        if self.has_disabled_access:
+            amenities.append("Disabled Access")
+        return amenities
+
+
+class CinemaPreference(models.Model):
+    """Model representing a user's cinema site preference."""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='cinema_preferences')
+    cinema = models.ForeignKey(Cinema, on_delete=models.CASCADE, related_name='user_preferences')
+    is_favorite = models.BooleanField(default=False, help_text="Whether this is a favorite cinema")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        unique_together = ('user', 'cinema')
+        ordering = ['-is_favorite', '-updated_at']
+    
+    def __str__(self):
+        favorite_status = "favorite" if self.is_favorite else "preferred"
+        return f"{self.user.username}'s {favorite_status} cinema: {self.cinema.name}" 

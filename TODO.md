@@ -5,14 +5,14 @@ This document outlines potential enhancements for the YourCinemaFilms platform, 
 ## Core Functionality Enhancements
 
 ### 1. Cinema Preference Integration
-- [ ] Allow users to select their preferred cinema locations/chains
-- [ ] Add distance willing to travel for different types of films
-- [ ] Enable notifications when a voted film is scheduled at their preferred cinema
+- [x] Allow users to select their preferred cinema locations/chains
+- [x] Add distance willing to travel for different types of films
+- [ ] Enable notifications when a voted film is scheduled at their preferred cinema (PRIORITY INTEREST)
 
 ### 2. Screening Commitment Indicator
-- [ ] Add a "commitment level" to votes (e.g., "Definitely attending", "Interested", "Only if convenient")
-- [ ] Allow users to specify viewing preferences (IMAX, standard, 3D, etc.)
-- [ ] Implement a "bring friends" indicator to show social viewing interest
+- [x] Add a "commitment level" to votes (e.g., "Definitely attending", "Interested", "Only if convenient")
+- [x] Allow users to specify viewing preferences (IMAX, standard, 3D, etc.)
+- [x] Implement a "bring friends" indicator to show social viewing interest
 
 ### 3. Theatrical Release Tracking
 - [ ] Integrate with APIs to track upcoming theatrical releases
@@ -32,7 +32,7 @@ This document outlines potential enhancements for the YourCinemaFilms platform, 
 - [ ] Allow users to specify special requirements (accessibility needs, subtitle preferences)
 
 ### 6. Local Cinema Integration
-- [ ] Display nearby cinemas on user profiles
+- [x] Display nearby cinemas on user profiles
 - [ ] Show upcoming screenings of voted films at these locations
 - [ ] Enable one-click ticket purchase links when available
 
@@ -56,7 +56,7 @@ This document outlines potential enhancements for the YourCinemaFilms platform, 
 ## Data and Analytics
 
 ### 10. Attendance Prediction Metrics
-- [ ] Develop algorithms to predict actual attendance based on vote patterns
+- [x] Develop algorithms to predict actual attendance based on vote patterns
 - [ ] Show cinemas data on likely attendance for specific films
 - [ ] Provide users with personalized "cinema worthiness" scores for films
 
@@ -83,7 +83,7 @@ This document outlines potential enhancements for the YourCinemaFilms platform, 
 - [ ] Provide tools for pre/post film meetups at nearby venues
 
 ### 15. Cinema Amenity Preferences
-- [ ] Track preferences for cinema amenities (reclining seats, food service, etc.)
+- [x] Track preferences for cinema amenities (reclining seats, food service, etc.)
 - [ ] Match films with appropriate viewing experiences
 - [ ] Help users find the optimal cinema experience for each film
 
@@ -102,7 +102,7 @@ This document outlines potential enhancements for the YourCinemaFilms platform, 
 ## Implementation Priority
 
 Consider implementing these features in the following order:
-1. Core functionality enhancements (1-3)
+1. ✅ Core functionality enhancements (1-3) - Partially implemented (Cinema preferences and commitment indicators)
 2. User profile improvements (4-6)
 3. Practical features (13-15)
 4. Community and social features (7-9)
@@ -110,3 +110,18 @@ Consider implementing these features in the following order:
 6. Business integration (16-17)
 
 This prioritization focuses on enhancing the core user experience first, then building community features, and finally developing business partnerships. 
+
+## Recently Implemented Features
+
+### Cinema Preferences (March 2023)
+- Added Cinema model to store information about cinema sites
+- Created CinemaPreference model for users to select preferred cinemas
+- Updated UserProfile to include travel distance preferences
+- Removed the generic favorite_cinema field in favor of the more detailed model
+
+### Commitment Indicators (March 2023)
+- Enhanced Vote and CinemaVote models with commitment levels
+- Added viewing format preferences (IMAX, 3D, etc.)
+- Implemented social viewing preferences
+- Added metrics to calculate and display commitment scores
+- Maintained the original vote count for backward compatibility 

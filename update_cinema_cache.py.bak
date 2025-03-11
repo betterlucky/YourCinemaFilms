@@ -2,14 +2,12 @@
 """
 Script to update the cinema cache with current and upcoming UK releases.
 This script is designed to be run as a scheduled task on Render.com.
-Optimized to reduce API calls and improve efficiency without staged pulls.
+Optimized to reduce API calls and improve efficiency.
 """
 import os
 import sys
 import django
 import logging
-import glob
-import time
 from datetime import datetime, timedelta
 
 # Set up logging
@@ -30,40 +28,9 @@ django.setup()
 # Now we can import Django-specific modules
 from django.core.management import call_command
 from films_app.models import PageTracker, Film
-from films_app.utils import get_cache_directory
-
-def cleanup_old_cache_files():
-    """Clean up all JSON cache files daily to ensure fresh data."""
-    logger.info("Cleaning up cache files")
-    
-    # Get cache directory
-    cache_dir = get_cache_directory()
-    
-    # Find all JSON files in the cache directory
-    json_files = glob.glob(os.path.join(cache_dir, "*.json"))
-    
-    # Keep track of how many files were deleted
-    deleted_count = 0
-    
-    # Delete all JSON files except for cache_info.json and cinema_cache_info.json
-    for file_path in json_files:
-        file_name = os.path.basename(file_path)
-        
-        # Skip cache info files
-        if file_name in ['cache_info.json', 'cinema_cache_info.json']:
-            continue
-        
-        try:
-            os.remove(file_path)
-            deleted_count += 1
-            logger.info(f"Deleted cache file: {file_name}")
-        except Exception as e:
-            logger.warning(f"Error deleting cache file {file_name}: {str(e)}")
-    
-    logger.info(f"Cleaned up {deleted_count} cache files")
 
 def main():
-    """Run the update_movie_cache management command with optimized parameters."""
+    """Run the update_movie_cache management command with cinema-only flag."""
     start_time = datetime.now()
     logger.info(f"Starting cinema cache update at {start_time}")
     
@@ -90,22 +57,19 @@ def main():
     logger.info(f"Found {flagged_count} films flagged for status checks")
     
     try:
-        # Clean up cache files before updating
-        logger.info("Cleaning up cache files before update")
-        cleanup_old_cache_files()
-        
-        # Run the management command with a complete update instead of staged
+        # Run the management command with optimized parameters
         # Use force=True to reset is_in_cinema flag for all films
-        logger.info("Starting complete cinema cache update with optimized parameters")
+        # Use batch processing to avoid resource exhaustion
+        logger.info("Starting cinema cache update with optimized parameters")
         
-        # Process all films in a single run with optimized parameters
+        # Process films in smaller batches with longer delays to reduce resource usage
         call_command(
             'update_movie_cache', 
             type='cinema', 
             force=True, 
-            max_pages=5,  # Increased to get more films in a single run
-            batch_size=3,  # Small batch size to reduce memory usage
-            batch_delay=3,  # Reasonable delay between batches
+            max_pages=3,  # Increased from 2 to 3 since we're more efficient now
+            batch_size=3,  # Reduced from 5 to 3 to reduce memory usage
+            batch_delay=5,  # Increased from 3 to 5 seconds to reduce API rate
             prioritize_flags=True
         )
         

@@ -173,10 +173,20 @@ The application includes a scheduled task that runs daily at midnight UTC to upd
 
 1. The task is configured as a cron job in the `render.yaml` file
 2. It runs the `update_cinema_cache.py` script, which:
+   - Flags films that need status checks based on their release dates
    - Connects to the TMDB API
-   - Fetches current and upcoming UK cinema releases
+   - Fetches current and upcoming UK cinema releases in a single optimized run
    - Updates the database with the latest film information
    - Updates the JSON cache files
+
+#### Optimized Data Retrieval
+
+The system has been optimized to reduce API calls and improve efficiency:
+
+1. **Efficient Data Extraction**: Only extracts the specific data needed from TMDB responses
+2. **Reduced API Calls**: Extracts basic information from initial results before making additional API calls
+3. **Optimized Database Updates**: Only updates fields that have changed in the database
+4. **Smart Batch Processing**: Uses smaller batch sizes with appropriate delays to manage resources effectively
 
 #### Configuration
 

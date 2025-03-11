@@ -1,4 +1,7 @@
 from django import template
+from django.utils.safestring import mark_safe
+import re
+import json
 
 register = template.Library()
 
@@ -34,4 +37,23 @@ def has_user_voted(cinema_votes, user_id):
     Returns:
         bool: True if the user has voted for the film, False otherwise
     """
-    return cinema_votes.filter(user_id=user_id).exists() 
+    return cinema_votes.filter(user_id=user_id).exists()
+
+@register.filter
+def get_vote_by_imdb_id(votes, imdb_id):
+    """Get a vote by imdb_id from a list of votes."""
+    for vote in votes:
+        if vote.film.imdb_id == imdb_id:
+            return vote
+    return None
+
+@register.filter
+def pprint(value):
+    """Pretty print a Python object as JSON."""
+    try:
+        # Convert to a formatted JSON string
+        formatted_json = json.dumps(value, indent=2, sort_keys=True, default=str)
+        # Make it safe for HTML display
+        return mark_safe(formatted_json)
+    except Exception as e:
+        return f"Error formatting data: {str(e)}" 

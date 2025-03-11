@@ -1,18 +1,47 @@
+{% load static %}
+{% load films_tags %}
+
 {% if top_films %}
     {% for film in top_films %}
         <div class="col-md-3 mb-4">
-            <a href="{% url 'films_app:film_detail' film.imdb_id %}" class="card-link">
-                <div class="card film-card">
-                    <div class="vote-badge">{{ film.vote_count }} vote{{ film.vote_count|pluralize }}</div>
-                    <img src="{{ film.poster_url|default:'https://via.placeholder.com/300x450?text=No+Poster' }}" 
-                         class="card-img-top film-poster" alt="{{ film.title }}">
-                    <div class="card-body">
-                        <h5 class="card-title">{{ film.title }}</h5>
-                        <p class="card-text text-muted">{{ film.year }}</p>
-                        <span class="btn btn-sm btn-primary">View Details</span>
+            <div class="card film-card">
+                <div id="film-vote-count-{{ film.imdb_id }}" class="vote-badge">
+                    {{ film.vote_count }} vote{{ film.vote_count|pluralize }}
+                </div>
+                {% if film.uk_certification %}
+                    <div class="certification-badge">
+                        <img src="{% static 'img/BBFC_' %}{{ film.uk_certification|upper }}{% if film.uk_certification == '12a' %}A{% endif %}_(2019).svg" alt="{{ film.uk_certification }}" width="40" height="40">
+                    </div>
+                {% else %}
+                    <div class="certification-badge">
+                        <img src="{% static 'img/BBFC_TBC.svg' %}" alt="TBC" width="40" height="40">
+                    </div>
+                {% endif %}
+                <img src="{{ film.poster_url|default:'https://via.placeholder.com/300x450?text=No+Poster' }}" 
+                     class="card-img-top film-poster" alt="{{ film.title }}">
+                <div class="card-body card-body-content">
+                    <h5 class="card-title">{{ film.title }}</h5>
+                    <p class="card-text text-muted">{{ film.year }}</p>
+                </div>
+                <div class="card-body card-body-actions">
+                    <div class="d-flex align-items-center gap-2">
+                        <a href="{% url 'films_app:film_detail' film.imdb_id %}" class="btn btn-sm btn-outline-primary flex-grow-1">View Details</a>
+                        <div id="vote-button-container-{{ film.imdb_id }}" class="flex-shrink-0">
+                            {% if user.is_authenticated %}
+                                {% if film.imdb_id in user_voted_films %}
+                                    {% with vote=user_votes|get_vote_by_imdb_id:film.imdb_id %}
+                                        {% include 'films_app/partials/new_remove_vote_button.html' with vote=vote %}
+                                    {% endwith %}
+                                {% else %}
+                                    {% if can_vote %}
+                                        {% include 'films_app/partials/vote_button.html' with film=film %}
+                                    {% endif %}
+                                {% endif %}
+                            {% endif %}
+                        </div>
                     </div>
                 </div>
-            </a>
+            </div>
         </div>
     {% endfor %}
 {% else %}

@@ -8,7 +8,12 @@
                 <div class="card-body">
                     <h5 class="card-title">{{ film.Title }}</h5>
                     <p class="card-text">{{ film.Year }}</p>
-                    <a href="{% url 'films_app:film_detail' film.imdbID %}" class="btn btn-primary">View Details</a>
+                    {% if film.is_in_cinema %}
+                    <div class="mb-2">
+                        <span class="badge bg-success">In Cinemas Now</span>
+                    </div>
+                    {% endif %}
+                    <a href="{% url 'films_app:film_detail' film.imdbID %}?source=classics" class="btn btn-primary" {% if film.is_in_cinema %}data-in-cinema="true" data-film-title="{{ film.Title }}"{% endif %}>View Details</a>
                 </div>
             </div>
         </div>

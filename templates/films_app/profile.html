@@ -399,7 +399,7 @@
                                                 </div>
                                             </div>
                                             <button class="btn btn-sm btn-outline-danger ms-2" 
-                                                    hx-delete="{% url 'films_app:remove_vote' vote.id %}"
+                                                    hx-delete="{% url 'films_app:remove_vote' vote.film.imdb_id %}"
                                                     hx-target="#vote-item-{{ vote.id }}"
                                                     hx-swap="outerHTML"
                                                     hx-confirm="Are you sure you want to remove your vote for {{ vote.film.title }}?"

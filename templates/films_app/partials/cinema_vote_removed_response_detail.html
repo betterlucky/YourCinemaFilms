@@ -1,0 +1,12 @@
+{% load i18n %}
+
+<div id="vote-button-container-{{ film.imdb_id }}">
+    {% include 'films_app/partials/cinema_vote_button_detail.html' with film=film %}
+</div>
+
+<!-- Out-of-band update for the user's votes section if it exists -->
+{% if user_cinema_votes %}
+<div hx-swap-oob="true" id="user-cinema-votes-container">
+    {% include 'films_app/partials/user_cinema_votes.html' with user_cinema_votes=user_cinema_votes %}
+</div>
+{% endif %} 
