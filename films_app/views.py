@@ -2181,6 +2181,14 @@ def filter_cinema_films(request):
         'upcoming_num_pages': upcoming_paginator.num_pages,
     }
     
+    # Check if this is an HTMX request
+    is_htmx = request.headers.get('HX-Request') == 'true'
+    
+    # If this is an HTMX request, we only need to return the partial template
+    if is_htmx:
+        return render(request, 'films_app/partials/cinema_films.html', context)
+    
+    # For regular requests, return the full template
     return render(request, 'films_app/partials/cinema_films.html', context)
 
 def get_top_genres(votes_queryset, limit=10):
