@@ -72,8 +72,8 @@ def main():
         # Get the most recently updated tracker
         latest_tracker = PageTracker.objects.order_by('-last_updated').first()
         
-        if latest_tracker and (datetime.now().replace(tzinfo=latest_tracker.last_updated.tzinfo) - latest_tracker.last_updated) < timedelta(hours=1):
-            logger.info(f"Skipping update - last update was at {latest_tracker.last_updated}, less than 1 hour ago")
+        if latest_tracker and (datetime.now().replace(tzinfo=latest_tracker.last_updated.tzinfo) - latest_tracker.last_updated) < timedelta(minutes=15):
+            logger.info(f"Skipping update - last update was at {latest_tracker.last_updated}, less than 15 minutes ago")
             return 0
     except Exception as e:
         logger.warning(f"Error checking last update time: {str(e)}")
