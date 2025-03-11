@@ -56,4 +56,38 @@ def pprint(value):
         # Make it safe for HTML display
         return mark_safe(formatted_json)
     except Exception as e:
-        return f"Error formatting data: {str(e)}" 
+        return f"Error formatting data: {str(e)}"
+
+@register.filter
+def get_page_range(num_pages, current_page):
+    """
+    Generate a range of page numbers for pagination.
+    Shows current page, 2 pages before and after, and first/last pages.
+    """
+    current_page = int(current_page)
+    num_pages = int(num_pages)
+    
+    if num_pages <= 7:
+        # If there are 7 or fewer pages, show all
+        return range(1, num_pages + 1)
+    
+    # Always include first and last page
+    pages = [1, num_pages]
+    
+    # Add the current page and 2 pages before and after
+    for i in range(max(2, current_page - 2), min(current_page + 3, num_pages)):
+        pages.append(i)
+    
+    # Sort the pages
+    pages = sorted(list(set(pages)))
+    
+    # Add ellipses where needed
+    result = []
+    prev = 0
+    for page in pages:
+        if prev + 1 < page:
+            result.append('...')
+        result.append(page)
+        prev = page
+    
+    return result 

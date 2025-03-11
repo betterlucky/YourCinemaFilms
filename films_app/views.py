@@ -2025,7 +2025,8 @@ def filter_cinema_films(request):
     today = timezone.now().date()
     
     # Get pagination parameters
-    page = request.GET.get('page', 1)
+    now_playing_page = request.GET.get('now_playing_page', 1)
+    upcoming_page = request.GET.get('upcoming_page', 1)
     section = request.GET.get('section', 'both')  # 'now_playing', 'upcoming', or 'both'
     
     # Base filters for now playing and upcoming
@@ -2048,9 +2049,9 @@ def filter_cinema_films(request):
     now_playing_films = Film.objects.filter(now_playing_filter).order_by('-popularity')
     upcoming_films = Film.objects.filter(upcoming_filter).order_by('uk_release_date')
     
-    # Apply pagination to show a reasonable number of results
-    now_playing_paginator = Paginator(now_playing_films, 20)
-    upcoming_paginator = Paginator(upcoming_films, 20)
+    # Apply pagination to show a reasonable number of results (10 per page)
+    now_playing_paginator = Paginator(now_playing_films, 10)
+    upcoming_paginator = Paginator(upcoming_films, 10)
     
     # Get the appropriate page for each section
     if section == 'now_playing' or section == 'both':

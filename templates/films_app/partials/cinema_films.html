@@ -24,7 +24,7 @@
         </div>
     </div>
     
-    <div class="row mb-5" id="now-playing-container">
+    <div class="row mb-4" id="now-playing-container">
         {% for film in now_playing_films %}
             <div class="col-md-3 mb-4">
                 <div class="card film-card" 
@@ -75,22 +75,29 @@
         {% endfor %}
     </div>
     
-    {% if has_more_now_playing %}
-        <div class="row mb-5">
-            <div class="col-12 text-center">
-                <button class="btn btn-outline-primary"
-                        hx-get="{% url 'films_app:filter_cinema_films' %}?query={{ query }}&page={{ now_playing_films.next_page_number }}&section=now_playing"
-                        hx-target="#now-playing-container"
-                        hx-swap="beforeend"
-                        hx-indicator="#pagination-indicator">
-                    Load More Now Playing Films
-                    <span id="pagination-indicator" class="htmx-indicator">
-                        <i class="fas fa-spinner fa-spin"></i>
-                    </span>
-                </button>
-            </div>
+    <!-- Pagination for Now Playing Films -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <nav aria-label="Now playing films pagination">
+                <ul class="pagination justify-content-center">
+                    {% if has_more_now_playing %}
+                        <li class="page-item">
+                            <a class="page-link" 
+                               href="#" 
+                               hx-get="{% url 'films_app:filter_cinema_films' %}?query={{ query }}&page={{ page|add:'1' }}&section=now_playing"
+                               hx-target="#cinema-films-container"
+                               hx-indicator="#pagination-indicator">
+                                Load More Films
+                                <span id="pagination-indicator" class="htmx-indicator">
+                                    <i class="fas fa-spinner fa-spin"></i>
+                                </span>
+                            </a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
         </div>
-    {% endif %}
+    </div>
 {% else %}
     <div class="row mb-5">
         <div class="col-12">
@@ -117,7 +124,7 @@
         </div>
     </div>
     
-    <div class="row" id="upcoming-container">
+    <div class="row mb-4" id="upcoming-container">
         {% for film in upcoming_films %}
             <div class="col-md-3 mb-4">
                 <div class="card film-card" 
@@ -168,22 +175,29 @@
         {% endfor %}
     </div>
     
-    {% if has_more_upcoming %}
-        <div class="row mt-4">
-            <div class="col-12 text-center">
-                <button class="btn btn-outline-primary"
-                        hx-get="{% url 'films_app:filter_cinema_films' %}?query={{ query }}&page={{ upcoming_films.next_page_number }}&section=upcoming"
-                        hx-target="#upcoming-container"
-                        hx-swap="beforeend"
-                        hx-indicator="#pagination-indicator-upcoming">
-                    Load More Upcoming Films
-                    <span id="pagination-indicator-upcoming" class="htmx-indicator">
-                        <i class="fas fa-spinner fa-spin"></i>
-                    </span>
-                </button>
-            </div>
+    <!-- Pagination for Upcoming Films -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <nav aria-label="Upcoming films pagination">
+                <ul class="pagination justify-content-center">
+                    {% if has_more_upcoming %}
+                        <li class="page-item">
+                            <a class="page-link" 
+                               href="#" 
+                               hx-get="{% url 'films_app:filter_cinema_films' %}?query={{ query }}&page={{ page|add:'1' }}&section=upcoming"
+                               hx-target="#cinema-films-container"
+                               hx-indicator="#pagination-indicator-upcoming">
+                                Load More Films
+                                <span id="pagination-indicator-upcoming" class="htmx-indicator">
+                                    <i class="fas fa-spinner fa-spin"></i>
+                                </span>
+                            </a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
         </div>
-    {% endif %}
+    </div>
 {% else %}
     <div class="row">
         <div class="col-12">
