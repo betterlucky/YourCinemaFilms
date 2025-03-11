@@ -14,15 +14,17 @@
         <div class="col-12">
             <h2 class="border-bottom pb-2">Now Playing in UK Cinemas</h2>
             <p class="text-muted">
-                Showing the {{ now_playing_films|length }} most popular films out of {{ total_now_playing }} currently in UK cinemas.
                 {% if query %}
+                    Showing {{ now_playing_films|length }} films out of {{ total_now_playing }} currently in UK cinemas matching "{{ query }}".
                     <span class="badge bg-primary">Filtered by: {{ query }}</span>
+                {% else %}
+                    Showing {{ now_playing_films|length }} films out of {{ total_now_playing }} currently in UK cinemas.
                 {% endif %}
             </p>
         </div>
     </div>
     
-    <div class="row mb-5">
+    <div class="row mb-5" id="now-playing-container">
         {% for film in now_playing_films %}
             <div class="col-md-3 mb-4">
                 <div class="card film-card" 
@@ -72,11 +74,28 @@
             </div>
         {% endfor %}
     </div>
+    
+    {% if has_more_now_playing %}
+        <div class="row mb-5">
+            <div class="col-12 text-center">
+                <button class="btn btn-outline-primary"
+                        hx-get="{% url 'films_app:filter_cinema_films' %}?query={{ query }}&page={{ now_playing_films.next_page_number }}&section=now_playing"
+                        hx-target="#now-playing-container"
+                        hx-swap="beforeend"
+                        hx-indicator="#pagination-indicator">
+                    Load More Now Playing Films
+                    <span id="pagination-indicator" class="htmx-indicator">
+                        <i class="fas fa-spinner fa-spin"></i>
+                    </span>
+                </button>
+            </div>
+        </div>
+    {% endif %}
 {% else %}
     <div class="row mb-5">
         <div class="col-12">
             <div class="alert alert-info">
-                <i class="fas fa-info-circle me-2"></i> No films currently playing in UK cinemas. Please run the cache update.
+                <i class="fas fa-info-circle me-2"></i> No films currently playing in UK cinemas match your search. Try a different search term or run the cache update.
             </div>
         </div>
     </div>
@@ -88,15 +107,17 @@
         <div class="col-12">
             <h2 class="border-bottom pb-2">Coming Soon to UK Cinemas</h2>
             <p class="text-muted">
-                Showing the {{ upcoming_films|length }} most popular films out of {{ total_upcoming }} coming to UK cinemas in the next {{ upcoming_films_months }} months.
                 {% if query %}
+                    Showing {{ upcoming_films|length }} films out of {{ total_upcoming }} coming to UK cinemas in the next {{ upcoming_films_months }} months matching "{{ query }}".
                     <span class="badge bg-primary">Filtered by: {{ query }}</span>
+                {% else %}
+                    Showing {{ upcoming_films|length }} films out of {{ total_upcoming }} coming to UK cinemas in the next {{ upcoming_films_months }} months.
                 {% endif %}
             </p>
         </div>
     </div>
     
-    <div class="row">
+    <div class="row" id="upcoming-container">
         {% for film in upcoming_films %}
             <div class="col-md-3 mb-4">
                 <div class="card film-card" 
@@ -146,11 +167,28 @@
             </div>
         {% endfor %}
     </div>
+    
+    {% if has_more_upcoming %}
+        <div class="row mt-4">
+            <div class="col-12 text-center">
+                <button class="btn btn-outline-primary"
+                        hx-get="{% url 'films_app:filter_cinema_films' %}?query={{ query }}&page={{ upcoming_films.next_page_number }}&section=upcoming"
+                        hx-target="#upcoming-container"
+                        hx-swap="beforeend"
+                        hx-indicator="#pagination-indicator-upcoming">
+                    Load More Upcoming Films
+                    <span id="pagination-indicator-upcoming" class="htmx-indicator">
+                        <i class="fas fa-spinner fa-spin"></i>
+                    </span>
+                </button>
+            </div>
+        </div>
+    {% endif %}
 {% else %}
     <div class="row">
         <div class="col-12">
             <div class="alert alert-info">
-                <i class="fas fa-info-circle me-2"></i> No upcoming films scheduled for UK cinemas. Please run the cache update.
+                <i class="fas fa-info-circle me-2"></i> No upcoming films scheduled for UK cinemas match your search. Try a different search term or run the cache update.
             </div>
         </div>
     </div>
