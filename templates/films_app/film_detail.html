@@ -1,19 +1,68 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}{{ film.title }} - Films I Want To See{% endblock %}
 
+{% block extra_css %}
+<!-- BBFC certification styles are now in a shared CSS file -->
+<style>
+    .certification-badge {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        z-index: 10;
+        width: 40px;
+        height: 40px;
+    }
+    
+    .poster-container {
+        position: relative;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container py-5">
+    {% if from_classics and film.is_in_cinema %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="alert alert-info">
+                <div class="d-flex align-items-center">
+                    <div class="flex-shrink-0">
+                        <i class="fas fa-info-circle fa-2x me-3"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <h4 class="alert-heading">This is a New Cinema Release!</h4>
+                        <p class="mb-0">
+                            <strong>{{ film.title }}</strong> is currently showing in UK cinemas.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
     <div class="row">
         <div class="col-md-4 mb-4">
-            <img src="{{ film.poster_url|default:'https://via.placeholder.com/500x750?text=No+Poster' }}" 
-                 class="img-fluid rounded shadow" alt="{{ film.title }}">
+            <div class="poster-container">
+                {% if film.uk_certification %}
+                    <div class="certification-badge">
+                        <img src="{% static 'img/BBFC_' %}{{ film.uk_certification|upper }}{% if film.uk_certification == '12a' %}A{% endif %}_(2019).svg" alt="{{ film.uk_certification }}" width="40" height="40">
+                    </div>
+                {% else %}
+                    <div class="certification-badge">
+                        <img src="{% static 'img/BBFC_TBC.svg' %}" alt="TBC" width="40" height="40">
+                    </div>
+                {% endif %}
+                <img src="{{ film.poster_url|default:'https://via.placeholder.com/500x750?text=No+Poster' }}" 
+                     class="img-fluid rounded shadow" alt="{{ film.title }}">
+            </div>
         </div>
         <div class="col-md-8">
             <h1 class="mb-3">{{ film.title }} <span class="text-muted">({{ film.year }})</span></h1>
             
             <div class="mb-4">
-                <span id="film-vote-count" class="badge bg-primary me-2">{{ film.votes.count }} vote{{ film.votes.count|pluralize }}</span>
                 {% if film.director %}
                     <span class="text-muted">Directed by {{ film.director }}</span>
                 {% endif %}
@@ -46,6 +95,28 @@
                 </div>
             {% endif %}
             
+            {% if film.uk_release_date or film.uk_certification %}
+                <div class="mb-4">
+                    <h5>UK Release Information</h5>
+                    <div class="d-flex align-items-center">
+                        {% if film.uk_release_date %}
+                            <div class="me-3">
+                                <strong>Release Date:</strong> {{ film.uk_release_date|date:"j M Y" }}
+                            </div>
+                        {% endif %}
+                        <div>
+                            <strong>Age Rating:</strong> 
+                            {% if film.uk_certification %}
+                                {{ film.uk_certification }}
+                            {% else %}
+                                TBC
+                            {% endif %}
+                            (see badge on poster)
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+            
             {% if film.actors %}
                 <div class="mb-4">
                     <h5>Cast</h5>
@@ -60,142 +131,37 @@
                 </div>
             {% endif %}
             
-            {% if user.is_authenticated %}
-                <div class="mb-4">
-                    {% if has_voted %}
-                        <button class="btn btn-success disabled">
-                            <i class="fas fa-check-circle me-2"></i>You've voted for this film
-                        </button>
-                    {% else %}
-                        {% if can_vote %}
-                            <button class="btn btn-primary"
-                                    hx-post="{% url 'films_app:vote_for_film' film.imdb_id %}"
-                                    hx-swap="outerHTML"
-                                    hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
-                                    hx-indicator="#vote-indicator">
-                                <i class="fas fa-thumbs-up me-2"></i>Vote for this film
-                                <span id="vote-indicator" class="htmx-indicator">
-                                    <i class="fas fa-spinner fa-spin"></i>
-                                </span>
-                            </button>
-                        {% else %}
-                            <button class="btn btn-secondary disabled">
-                                <i class="fas fa-exclamation-circle me-2"></i>You've used all your votes
-                            </button>
-                            <small class="d-block mt-2">
-                                Remove some votes from your <a href="{% url 'films_app:profile' %}">profile</a> to vote for this film.
-                            </small>
-                        {% endif %}
-                    {% endif %}
-                </div>
-            {% else %}
-                <div class="alert alert-info">
-                    <a href="{% url 'account_login' %}">Log in</a> or <a href="{% url 'account_signup' %}">sign up</a> to vote for this film.
-                </div>
-            {% endif %}
-            
             <div class="mt-4">
                 <a href="https://www.imdb.com/title/{{ film.imdb_id }}/" target="_blank" class="btn btn-outline-secondary me-2">
                     <i class="fab fa-imdb me-1"></i>View on IMDb
                 </a>
                 <a href="{% url 'films_app:classics' %}" class="btn btn-outline-primary">
-                    <i class="fas fa-arrow-left me-1"></i>Back to Home
+                    <i class="fas fa-arrow-left me-1"></i>Back to Classics
                 </a>
-                <a href="{% url 'films_app:update_film_from_tmdb' film.imdb_id %}" class="btn btn-outline-info">
-                    <i class="fas fa-sync-alt me-1"></i>Update from TMDB
-                </a>
+                {% if user.is_staff %}
+                    <button class="btn btn-outline-danger"
+                            hx-get="{% url 'films_app:update_film_from_tmdb' film.imdb_id %}"
+                            hx-target="#update-results-container"
+                            hx-indicator="#update-indicator">
+                        <i class="fas fa-sync-alt me-1"></i>Admin: Update from TMDB
+                        <span id="update-indicator" class="htmx-indicator">
+                            <i class="fas fa-spinner fa-spin"></i>
+                        </span>
+                    </button>
+                {% endif %}
             </div>
         </div>
     </div>
     
-    <div class="row mt-5">
-        <div class="col-12">
-            <h3 class="border-bottom pb-2">Similar Films</h3>
-            <div id="similar-films-container">
-                <div class="text-center py-4">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Loading...</span>
-                    </div>
-                    <p class="mt-2">Finding similar films...</p>
-                </div>
-            </div>
-        </div>
-    </div>
+    <!-- Container for update results -->
+    <div id="update-results-container" class="mt-4"></div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-    $(document).ready(function() {
-        // Load similar films based on genres
-        const genres = {{ film.genre_list|safe }};
-        if (genres && genres.length > 0) {
-            const genreParam = genres[0]; // Use the first genre for simplicity
-            
-            $.ajax({
-                url: '/api/films/',
-                data: { 
-                    genre: genreParam,
-                    exclude: '{{ film.imdb_id }}'
-                },
-                success: function(response) {
-                    let html = '';
-                    
-                    if (response.length > 0) {
-                        html += '<div class="row">';
-                        
-                        // Limit to 4 similar films
-                        const similarFilms = response.slice(0, 4);
-                        
-                        similarFilms.forEach(function(film) {
-                            html += `
-                                <div class="col-md-3 mb-3">
-                                    <a href="/film/${film.imdb_id}/" class="card-link">
-                                        <div class="card film-card h-100">
-                                            <img src="${film.poster_url || 'https://via.placeholder.com/300x450?text=No+Poster'}" 
-                                                 class="card-img-top film-poster" alt="${film.title}">
-                                            <div class="card-body">
-                                                <h6 class="card-title">${film.title}</h6>
-                                                <p class="card-text text-muted small">${film.year}</p>
-                                                <p class="card-text">
-                                                    <small class="text-muted">
-                                                        <strong>Genres:</strong> ${film.genres}
-                                                    </small>
-                                                </p>
-                                                <span class="btn btn-sm btn-outline-primary">View Details</span>
-                                            </div>
-                                        </div>
-                                    </a>
-                                </div>
-                            `;
-                        });
-                        
-                        html += '</div>';
-                    } else {
-                        html = `
-                            <div class="alert alert-info">
-                                No similar films found.
-                            </div>
-                        `;
-                    }
-                    
-                    $('#similar-films-container').html(html);
-                },
-                error: function() {
-                    $('#similar-films-container').html(`
-                        <div class="alert alert-danger">
-                            Error loading similar films.
-                        </div>
-                    `);
-                }
-            });
-        } else {
-            $('#similar-films-container').html(`
-                <div class="alert alert-info">
-                    No genre information available to find similar films.
-                </div>
-            `);
-        }
+    document.addEventListener('DOMContentLoaded', function() {
+        // Voting-related event handlers have been removed
     });
 </script>
 {% endblock %} 

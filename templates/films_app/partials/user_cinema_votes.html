@@ -1,0 +1,49 @@
+{% load static %}
+
+{% for vote in user_cinema_votes %}
+    <div class="col-md-3 mb-4">
+        <div class="card film-card" 
+             onclick="navigateToFilmDetails(event, '{{ vote.film.imdb_id }}')"
+             data-imdb-id="{{ vote.film.imdb_id }}"
+             data-film-title="{{ vote.film.title }}">
+            {% if vote.film.uk_certification %}
+                <div class="certification-badge">
+                    <img src="{% static 'img/BBFC_' %}{{ vote.film.uk_certification|upper }}{% if vote.film.uk_certification == '12a' %}A{% endif %}_(2019).svg" alt="{{ vote.film.uk_certification }}" width="40" height="40">
+                </div>
+            {% else %}
+                <div class="certification-badge">
+                    <img src="{% static 'img/BBFC_TBC.svg' %}" alt="TBC" width="40" height="40">
+                </div>
+            {% endif %}
+            <a href="{% url 'films_app:film_detail' vote.film.imdb_id %}" class="card-content-link">
+                <img src="{{ vote.film.poster_url|default:'https://via.placeholder.com/300x450?text=No+Poster' }}" 
+                     class="card-img-top film-poster" alt="{{ vote.film.title }}">
+                <div class="card-body card-body-content">
+                    <h5 class="card-title">{{ vote.film.title }}</h5>
+                    <p class="card-text text-muted">{{ vote.film.year }}</p>
+                    {% if vote.film.uk_release_date %}
+                        <p class="uk-release-date">
+                            UK Release: {{ vote.film.uk_release_date|date:"j M Y" }}
+                        </p>
+                    {% endif %}
+                </div>
+            </a>
+            <div class="card-body card-body-actions">
+                <div class="d-flex align-items-center gap-2">
+                    <a href="{% url 'films_app:film_detail' vote.film.imdb_id %}" class="btn btn-sm btn-outline-primary flex-grow-1" onclick="event.stopPropagation();">View Details</a>
+                    <div id="vote-button-container-{{ vote.film.imdb_id }}" class="flex-shrink-0">
+                        {% include 'films_app/partials/cinema_remove_vote_button.html' with vote=vote %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% empty %}
+    <div class="col-12">
+        <div class="text-center py-5">
+            <i class="fas fa-film fa-3x text-muted mb-3"></i>
+            <h4>You haven't voted for any cinema films yet</h4>
+            <p>Browse the films below and vote for your favorites!</p>
+        </div>
+    </div>
+{% endfor %} 

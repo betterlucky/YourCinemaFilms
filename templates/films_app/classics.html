@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}Classic Films - Your Cinema Films{% endblock %}
 
@@ -116,6 +117,65 @@
             box-shadow: 0 0 0 0 rgba(13, 110, 253, 0);
         }
     }
+    
+    /* Film card styles */
+    .film-card {
+        position: relative;
+        height: 100%;
+    }
+    
+    .film-poster {
+        height: 300px;
+        object-fit: cover;
+    }
+    
+    .vote-badge {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background-color: rgba(13, 110, 253, 0.9);
+        color: white;
+        padding: 5px 10px;
+        border-radius: 20px;
+        font-weight: bold;
+        z-index: 10;
+    }
+    
+    .certification-badge {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        z-index: 10;
+        width: 40px;
+        height: 40px;
+    }
+    
+    .card-link {
+        color: inherit;
+        text-decoration: none;
+    }
+    
+    .card-content-link {
+        color: inherit;
+        text-decoration: none;
+        display: block;
+        padding-bottom: 60px;
+    }
+    
+    .card-body-content {
+        padding-bottom: 0;
+    }
+    
+    .card-body-actions {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        padding: 15px;
+        border-top: 1px solid rgba(0,0,0,0.1);
+        background-color: #fff;
+        z-index: 5;
+    }
 </style>
 {% endblock %}
 
@@ -211,6 +271,15 @@
                                 {% for vote in user_votes %}
                                     <div class="col-md-3 mb-4">
                                         <div class="card film-card">
+                                            {% if vote.film.uk_certification %}
+                                                <div class="certification-badge">
+                                                    <img src="{% static 'img/BBFC_' %}{{ vote.film.uk_certification|upper }}{% if vote.film.uk_certification == '12a' %}A{% endif %}_(2019).svg" alt="{{ vote.film.uk_certification }}" width="40" height="40">
+                                                </div>
+                                            {% else %}
+                                                <div class="certification-badge">
+                                                    <img src="{% static 'img/BBFC_TBC.svg' %}" alt="TBC" width="40" height="40">
+                                                </div>
+                                            {% endif %}
                                             <a href="{% url 'films_app:film_detail' vote.film.imdb_id %}" class="card-content-link">
                                                 <img src="{{ vote.film.poster_url|default:'https://via.placeholder.com/300x450?text=No+Poster' }}" 
                                                      class="card-img-top film-poster" alt="{{ vote.film.title }}">
@@ -221,7 +290,7 @@
                                             </a>
                                             <div class="card-body card-body-actions pt-0">
                                                 <a href="{% url 'films_app:film_detail' vote.film.imdb_id %}" class="btn btn-sm btn-outline-primary">View Details</a>
-                                                {% include 'films_app/partials/remove_vote_button.html' with vote=vote %}
+                                                {% include 'films_app/partials/new_remove_vote_button.html' with vote=vote %}
                                             </div>
                                         </div>
                                     </div>
@@ -247,7 +316,7 @@
     </div>
     
     <div class="row" id="top-films-container">
-        {% include 'films_app/partials/top_films.html' with top_films=top_films %}
+        {% include 'films_app/partials/top_films.html' with top_films=top_films user_voted_films=user_voted_films user_votes=user_votes can_vote=votes_remaining %}
     </div>
 </div>
 {% endblock %}
@@ -324,6 +393,33 @@
                 mainSearchInput.classList.remove('search-highlight');
             }, 1000);
         }, 500);
+
+        // Listen for the updateVoteStatus event from HTMX
+        document.body.addEventListener('updateVoteStatus', function() {
+            // Fetch the updated vote status
+            fetch('{% url "films_app:get_user_vote_status" %}')
+                .then(response => response.text())
+                .then(html => {
+                    document.getElementById('user-vote-status').innerHTML = html;
+                });
+        });
+        
+        // Add event delegation for cinema film prompts
+        document.addEventListener('click', function(e) {
+            // Check if the clicked element is a search result link or its child
+            const searchResultLink = e.target.closest('.search-result-link');
+            
+            // Check for modal search result buttons
+            const modalButton = e.target.closest('.btn[data-in-cinema="true"]');
+            
+            // We're now handling the prompt on the film detail page
+            // No need to prevent default navigation or show a modal
+        });
+        
+        // Function to show cinema release modal - no longer needed
+        function showCinemaReleaseModal(filmTitle, filmUrl) {
+            // This function is no longer needed as we're showing the prompt on the film detail page
+        }
     });
     
     // HTMX events

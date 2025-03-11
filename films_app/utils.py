@@ -143,6 +143,10 @@ def fetch_and_update_film_from_tmdb(imdb_id, force_update=False):
                 film.genres = formatted_data.get('genres', film.genres)
                 film.runtime = formatted_data.get('runtime', film.runtime)
                 film.actors = formatted_data.get('actors', film.actors)
+                # Add missing fields
+                film.uk_certification = formatted_data.get('uk_certification', film.uk_certification)
+                film.uk_release_date = formatted_data.get('uk_release_date', film.uk_release_date)
+                film.popularity = formatted_data.get('popularity', film.popularity)
                 film.save()
             else:
                 # Create new film
@@ -155,7 +159,10 @@ def fetch_and_update_film_from_tmdb(imdb_id, force_update=False):
                     plot=formatted_data.get('plot', ''),
                     genres=formatted_data.get('genres', ''),
                     runtime=formatted_data.get('runtime', ''),
-                    actors=formatted_data.get('actors', '')
+                    actors=formatted_data.get('actors', ''),
+                    uk_certification=formatted_data.get('uk_certification'),
+                    uk_release_date=formatted_data.get('uk_release_date'),
+                    popularity=formatted_data.get('popularity', 0)
                 )
                 film.save()
                 created = True
@@ -173,26 +180,49 @@ def get_cache_directory():
     os.makedirs(cache_dir, exist_ok=True)
     return cache_dir
 
+# In-memory cache for search results
+_search_results_cache = {}
+
 def get_cached_search_results(query):
     """Get cached search results if available."""
+    # Check in-memory cache first (fastest)
+    if query in _search_results_cache:
+        return _search_results_cache[query]
+    
+    # Check disk cache
     cache_dir = get_cache_directory()
     cache_file = os.path.join(cache_dir, f"search_{query.replace(' ', '_')}.json")
     
     if os.path.exists(cache_file):
-        # Check if cache is fresh (less than 1 day old)
-        if (os.path.getmtime(cache_file) > (time.time() - 86400)):
-            with open(cache_file, 'r') as f:
-                return json.load(f)
+        # Check if cache is fresh (less than 7 days old)
+        if (os.path.getmtime(cache_file) > (time.time() - 7 * 86400)):
+            try:
+                with open(cache_file, 'r') as f:
+                    results = json.load(f)
+                    # Update in-memory cache
+                    _search_results_cache[query] = results
+                    return results
+            except Exception as e:
+                # If there's an error reading the cache, return None
+                return None
     
     return None
 
 def cache_search_results(query, results):
-    """Cache search results to a JSON file."""
+    """Cache search results to a JSON file and in-memory."""
+    # Update in-memory cache
+    _search_results_cache[query] = results
+    
+    # Update disk cache
     cache_dir = get_cache_directory()
     cache_file = os.path.join(cache_dir, f"search_{query.replace(' ', '_')}.json")
     
-    with open(cache_file, 'w') as f:
-        json.dump(results, f)
+    try:
+        with open(cache_file, 'w') as f:
+            json.dump(results, f)
+    except Exception as e:
+        # Log the error but continue
+        pass
 
 def require_http_method(request, method='POST'):
     """

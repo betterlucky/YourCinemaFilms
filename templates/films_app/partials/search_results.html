@@ -1,12 +1,17 @@
 {% if results %}
     {% for film in results %}
-        <a href="{% url 'films_app:film_detail' film.imdbID %}" class="search-result-link" data-film-id="{{ film.imdbID }}">
+        <a href="{% url 'films_app:film_detail' film.imdbID %}?source=classics" class="search-result-link" data-film-id="{{ film.imdbID }}" {% if film.is_in_cinema %}data-in-cinema="true"{% endif %}>
             <div class="search-result-item">
                 <img src="{{ film.Poster|default:'https://via.placeholder.com/150x225?text=No+Poster' }}" 
                      class="search-result-poster" alt="{{ film.Title }}">
                 <div class="search-result-info">
                     <div class="search-result-title">{{ film.Title }}</div>
                     <div class="search-result-year">{{ film.Year }}</div>
+                    {% if film.is_in_cinema %}
+                    <div class="search-result-cinema-badge">
+                        <span class="badge bg-success">In Cinemas Now</span>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
         </a>

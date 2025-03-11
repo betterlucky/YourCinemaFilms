@@ -1,15 +1,14 @@
 {% load i18n %}
 
-<button class="btn btn-sm btn-outline-danger"
+<button class="btn btn-outline-danger"
         hx-post="{% url 'films_app:remove_cinema_vote' imdb_id=vote.film.imdb_id %}"
-        hx-target="#cinema-film-vote-count-{{ vote.film.imdb_id }}"
+        hx-target="#vote-button-container-{{ vote.film.imdb_id }}"
         hx-swap="outerHTML"
         hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
         hx-indicator="#remove-vote-indicator-{{ vote.film.imdb_id }}"
         hx-trigger="click"
         hx-push-url="false">
-    <i class="fas fa-times"></i>
-    <span class="vote-btn-text">Remove</span>
+    <i class="fas fa-times me-1"></i>{% trans "Remove cinema vote" %}
     <span id="remove-vote-indicator-{{ vote.film.imdb_id }}" class="htmx-indicator">
         <i class="fas fa-spinner fa-spin"></i>
     </span>

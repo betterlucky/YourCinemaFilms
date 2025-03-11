@@ -1,0 +1,314 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Cinema Preferences" %} | YourCinemaFilms{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card shadow mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h1 class="h3 mb-0">{% trans "My Cinema Preferences" %}</h1>
+                    <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addCinemaModal">
+                        <i class="fas fa-plus me-1"></i> {% trans "Add Cinema" %}
+                    </button>
+                </div>
+                <div class="card-body">
+                    {% if user_cinemas %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>{% trans "Cinema" %}</th>
+                                        <th>{% trans "Location" %}</th>
+                                        <th>{% trans "Amenities" %}</th>
+                                        <th>{% trans "Favorite" %}</th>
+                                        <th>{% trans "Actions" %}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for preference in user_cinemas %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ preference.cinema.name }}</strong>
+                                            {% if preference.cinema.chain %}
+                                                <div class="text-muted small">{{ preference.cinema.chain }}</div>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {{ preference.cinema.location }}
+                                            {% if preference.cinema.postcode %}
+                                                <div class="text-muted small">{{ preference.cinema.postcode }}</div>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="d-flex flex-wrap gap-1">
+                                                {% for amenity in preference.cinema.amenities_list %}
+                                                    <span class="badge bg-secondary">{{ amenity }}</span>
+                                                {% endfor %}
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <form method="post" action="{% url 'toggle_favorite_cinema' preference.cinema.id %}" class="d-inline">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-link p-0 border-0 bg-transparent">
+                                                    {% if preference.is_favorite %}
+                                                        <i class="fas fa-star text-warning" title="{% trans 'Remove from favorites' %}"></i>
+                                                    {% else %}
+                                                        <i class="far fa-star text-muted" title="{% trans 'Add to favorites' %}"></i>
+                                                    {% endif %}
+                                                </button>
+                                            </form>
+                                        </td>
+                                        <td>
+                                            <form method="post" action="{% url 'remove_cinema_preference' preference.cinema.id %}" class="d-inline">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('{% trans 'Are you sure you want to remove this cinema?' %}')">
+                                                    <i class="fas fa-trash-alt"></i>
+                                                </button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <div class="mb-3">
+                                <i class="fas fa-film fa-3x text-muted"></i>
+                            </div>
+                            <h5>{% trans "No cinema preferences yet" %}</h5>
+                            <p class="text-muted">{% trans "Add your preferred cinemas to get personalized recommendations." %}</p>
+                            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addCinemaModal">
+                                <i class="fas fa-plus me-1"></i> {% trans "Add Your First Cinema" %}
+                            </button>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="card shadow">
+                <div class="card-header">
+                    <h2 class="h4 mb-0">{% trans "Travel Distance Preference" %}</h2>
+                </div>
+                <div class="card-body">
+                    <form method="post" action="{% url 'update_travel_distance' %}">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="travel_distance" class="form-label">{% trans "How far are you willing to travel to a cinema (in miles)?" %}</label>
+                            <div class="d-flex align-items-center">
+                                <input type="range" class="form-range flex-grow-1 me-2" id="travel_distance" name="travel_distance" 
+                                       min="1" max="50" step="1" value="{{ user.profile.travel_distance }}"
+                                       oninput="document.getElementById('travel_distance_value').textContent = this.value">
+                                <span id="travel_distance_value" class="badge bg-primary">{{ user.profile.travel_distance }}</span>
+                                <span class="ms-1">{% trans "miles" %}</span>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">{% trans "Save" %}</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card shadow mb-4">
+                <div class="card-header">
+                    <h2 class="h4 mb-0">{% trans "Find Cinemas" %}</h2>
+                </div>
+                <div class="card-body">
+                    <form method="get" action="{% url 'cinema_preferences' %}">
+                        <div class="mb-3">
+                            <label for="search" class="form-label">{% trans "Search by name or location" %}</label>
+                            <input type="text" class="form-control" id="search" name="search" value="{{ search_query|default:'' }}" placeholder="{% trans 'e.g., Odeon, London' %}">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">{% trans "Filter by amenities" %}</label>
+                            <div class="d-flex flex-wrap gap-2">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="has_imax" name="has_imax" {% if has_imax %}checked{% endif %}>
+                                    <label class="form-check-label" for="has_imax">IMAX</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="has_3d" name="has_3d" {% if has_3d %}checked{% endif %}>
+                                    <label class="form-check-label" for="has_3d">3D</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="has_premium_seating" name="has_premium_seating" {% if has_premium_seating %}checked{% endif %}>
+                                    <label class="form-check-label" for="has_premium_seating">Premium Seating</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="has_food_service" name="has_food_service" {% if has_food_service %}checked{% endif %}>
+                                    <label class="form-check-label" for="has_food_service">Food Service</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="has_bar" name="has_bar" {% if has_bar %}checked{% endif %}>
+                                    <label class="form-check-label" for="has_bar">Bar</label>
+                                </div>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">{% trans "Search" %}</button>
+                    </form>
+                </div>
+            </div>
+            
+            {% if search_results %}
+            <div class="card shadow">
+                <div class="card-header">
+                    <h2 class="h4 mb-0">{% trans "Search Results" %}</h2>
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush">
+                        {% for cinema in search_results %}
+                        <div class="list-group-item">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h5 class="mb-1">{{ cinema.name }}</h5>
+                                    <p class="mb-1 text-muted">{{ cinema.location }}</p>
+                                    <div class="d-flex flex-wrap gap-1 mb-2">
+                                        {% for amenity in cinema.amenities_list %}
+                                            <span class="badge bg-secondary">{{ amenity }}</span>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                <form method="post" action="{% url 'add_cinema_preference' cinema.id %}">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-plus me-1"></i> {% trans "Add" %}
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% if search_results.has_other_pages %}
+                <div class="card-footer">
+                    <nav aria-label="Search results pages">
+                        <ul class="pagination justify-content-center mb-0">
+                            {% if search_results.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?search={{ search_query }}&page={{ search_results.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'search' and key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                                    <i class="fas fa-chevron-left"></i>
+                                </a>
+                            </li>
+                            {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link"><i class="fas fa-chevron-left"></i></span>
+                            </li>
+                            {% endif %}
+                            
+                            {% for i in search_results.paginator.page_range %}
+                                {% if search_results.number == i %}
+                                <li class="page-item active">
+                                    <span class="page-link">{{ i }}</span>
+                                </li>
+                                {% elif i > search_results.number|add:'-3' and i < search_results.number|add:'3' %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?search={{ search_query }}&page={{ i }}{% for key, value in request.GET.items %}{% if key != 'search' and key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ i }}</a>
+                                </li>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if search_results.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?search={{ search_query }}&page={{ search_results.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'search' and key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                                    <i class="fas fa-chevron-right"></i>
+                                </a>
+                            </li>
+                            {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link"><i class="fas fa-chevron-right"></i></span>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Add Cinema Modal -->
+<div class="modal fade" id="addCinemaModal" tabindex="-1" aria-labelledby="addCinemaModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addCinemaModalLabel">{% trans "Add New Cinema" %}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="{% url 'add_new_cinema' %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="cinema_name" class="form-label">{% trans "Cinema Name" %} *</label>
+                        <input type="text" class="form-control" id="cinema_name" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="cinema_chain" class="form-label">{% trans "Cinema Chain" %}</label>
+                        <input type="text" class="form-control" id="cinema_chain" name="chain" placeholder="{% trans 'e.g., Odeon, Vue, Cineworld' %}">
+                    </div>
+                    <div class="mb-3">
+                        <label for="cinema_location" class="form-label">{% trans "Location" %} *</label>
+                        <input type="text" class="form-control" id="cinema_location" name="location" required placeholder="{% trans 'City/Town' %}">
+                    </div>
+                    <div class="mb-3">
+                        <label for="cinema_postcode" class="form-label">{% trans "Postcode" %}</label>
+                        <input type="text" class="form-control" id="cinema_postcode" name="postcode">
+                    </div>
+                    <div class="mb-3">
+                        <label for="cinema_website" class="form-label">{% trans "Website" %}</label>
+                        <input type="url" class="form-control" id="cinema_website" name="website" placeholder="https://">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">{% trans "Amenities" %}</label>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" id="modal_has_imax" name="has_imax">
+                                    <label class="form-check-label" for="modal_has_imax">IMAX</label>
+                                </div>
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" id="modal_has_3d" name="has_3d">
+                                    <label class="form-check-label" for="modal_has_3d">3D</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="modal_has_premium_seating" name="has_premium_seating">
+                                    <label class="form-check-label" for="modal_has_premium_seating">Premium Seating</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" id="modal_has_food_service" name="has_food_service">
+                                    <label class="form-check-label" for="modal_has_food_service">Food Service</label>
+                                </div>
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" id="modal_has_bar" name="has_bar">
+                                    <label class="form-check-label" for="modal_has_bar">Bar</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="modal_has_disabled_access" name="has_disabled_access" checked>
+                                    <label class="form-check-label" for="modal_has_disabled_access">Disabled Access</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="is_favorite" name="is_favorite">
+                        <label class="form-check-label" for="is_favorite">
+                            {% trans "Add as favorite cinema" %}
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{% trans "Cancel" %}</button>
+                    <button type="submit" class="btn btn-primary">{% trans "Add Cinema" %}</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %} 

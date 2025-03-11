@@ -1,0 +1,15 @@
+{% load i18n %}
+
+<div id="cinema-film-vote-count-{{ film.imdb_id }}" class="vote-badge">
+    {{ film.cinema_votes.count }} vote{{ film.cinema_votes.count|pluralize }}
+</div>
+
+<!-- Out-of-band update for the user's votes section -->
+<div hx-swap-oob="true" id="user-cinema-votes-container">
+    {% include 'films_app/partials/user_cinema_votes.html' with user_cinema_votes=user_cinema_votes %}
+</div>
+
+<!-- Out-of-band update for the remove button to show vote button instead -->
+<div hx-swap-oob="true" id="vote-button-container-{{ film.imdb_id }}">
+    {% include 'films_app/partials/cinema_vote_button.html' with film=film %}
+</div> 

@@ -199,16 +199,6 @@
     }
 }
 
-/* HTMX-specific styles */
-[hx-target] {
-    position: relative;
-}
-
-/* Ensure HTMX-loaded content is visible */
-.htmx-settling .search-results-dropdown {
-    display: block !important;
-}
-
 /* Ensure the dropdown is visible when it has content */
 .search-results-dropdown:not(:empty) {
     display: block !important;

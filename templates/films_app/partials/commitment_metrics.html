@@ -1,0 +1,138 @@
+{% load i18n %}
+
+<div class="card shadow mb-4">
+    <div class="card-header">
+        <h3 class="h5 mb-0">{% trans "Audience Commitment" %}</h3>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <h6 class="mb-3">{% trans "Commitment Levels" %}</h6>
+                
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span>{% trans "Definitely attending" %}</span>
+                        <span>{{ metrics.definite_percent|floatformat:1 }}% ({{ metrics.definite }})</span>
+                    </div>
+                    <div class="progress" style="height: 10px;">
+                        <div class="progress-bar bg-success" role="progressbar" 
+                             style="width: {{ metrics.definite_percent }}%;" 
+                             aria-valuenow="{{ metrics.definite_percent }}" 
+                             aria-valuemin="0" 
+                             aria-valuemax="100"></div>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span>{% trans "Interested" %}</span>
+                        <span>{{ metrics.interested_percent|floatformat:1 }}% ({{ metrics.interested }})</span>
+                    </div>
+                    <div class="progress" style="height: 10px;">
+                        <div class="progress-bar bg-primary" role="progressbar" 
+                             style="width: {{ metrics.interested_percent }}%;" 
+                             aria-valuenow="{{ metrics.interested_percent }}" 
+                             aria-valuemin="0" 
+                             aria-valuemax="100"></div>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span>{% trans "Only if convenient" %}</span>
+                        <span>{{ metrics.convenient_percent|floatformat:1 }}% ({{ metrics.convenient }})</span>
+                    </div>
+                    <div class="progress" style="height: 10px;">
+                        <div class="progress-bar bg-info" role="progressbar" 
+                             style="width: {{ metrics.convenient_percent }}%;" 
+                             aria-valuenow="{{ metrics.convenient_percent }}" 
+                             aria-valuemin="0" 
+                             aria-valuemax="100"></div>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span>{% trans "Undecided" %}</span>
+                        <span>{{ metrics.undecided_percent|floatformat:1 }}% ({{ metrics.undecided }})</span>
+                    </div>
+                    <div class="progress" style="height: 10px;">
+                        <div class="progress-bar bg-secondary" role="progressbar" 
+                             style="width: {{ metrics.undecided_percent }}%;" 
+                             aria-valuenow="{{ metrics.undecided_percent }}" 
+                             aria-valuemin="0" 
+                             aria-valuemax="100"></div>
+                    </div>
+                </div>
+                
+                <div class="mt-4">
+                    <div class="d-flex align-items-center">
+                        <div class="me-3">
+                            <div class="display-4 fw-bold">{{ metrics.commitment_score|floatformat:1 }}</div>
+                            <div class="text-muted small">{% trans "out of 3.0" %}</div>
+                        </div>
+                        <div>
+                            <h6 class="mb-1">{% trans "Overall Commitment Score" %}</h6>
+                            <p class="text-muted mb-0 small">{% trans "Higher scores indicate stronger audience commitment" %}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <h6 class="mb-3">{% trans "Viewing Preferences" %}</h6>
+                
+                <div class="mb-4">
+                    <h6 class="text-muted mb-2">{% trans "Format" %}</h6>
+                    <div class="d-flex flex-wrap gap-2">
+                        {% if format_prefs.standard > 0 %}
+                            <span class="badge bg-secondary">{% trans "Standard" %} ({{ format_prefs.standard }})</span>
+                        {% endif %}
+                        {% if format_prefs.imax > 0 %}
+                            <span class="badge bg-secondary">{% trans "IMAX" %} ({{ format_prefs.imax }})</span>
+                        {% endif %}
+                        {% if format_prefs.3d > 0 %}
+                            <span class="badge bg-secondary">{% trans "3D" %} ({{ format_prefs.3d }})</span>
+                        {% endif %}
+                        {% if format_prefs.premium > 0 %}
+                            <span class="badge bg-secondary">{% trans "Premium" %} ({{ format_prefs.premium }})</span>
+                        {% endif %}
+                        {% if format_prefs.any > 0 %}
+                            <span class="badge bg-secondary">{% trans "Any format" %} ({{ format_prefs.any }})</span>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <h6 class="text-muted mb-2">{% trans "Social Viewing" %}</h6>
+                    <div class="d-flex flex-wrap gap-2">
+                        {% if social_prefs.solo > 0 %}
+                            <span class="badge bg-secondary">{% trans "Solo" %} ({{ social_prefs.solo }})</span>
+                        {% endif %}
+                        {% if social_prefs.partner > 0 %}
+                            <span class="badge bg-secondary">{% trans "With partner" %} ({{ social_prefs.partner }})</span>
+                        {% endif %}
+                        {% if social_prefs.friends > 0 %}
+                            <span class="badge bg-secondary">{% trans "With friends" %} ({{ social_prefs.friends }})</span>
+                        {% endif %}
+                        {% if social_prefs.family > 0 %}
+                            <span class="badge bg-secondary">{% trans "With family" %} ({{ social_prefs.family }})</span>
+                        {% endif %}
+                        {% if social_prefs.open > 0 %}
+                            <span class="badge bg-secondary">{% trans "Open to company" %} ({{ social_prefs.open }})</span>
+                        {% endif %}
+                        {% if social_prefs.undecided > 0 %}
+                            <span class="badge bg-secondary">{% trans "Undecided" %} ({{ social_prefs.undecided }})</span>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="mt-4">
+                    <p class="text-muted small">
+                        {% trans "Based on" %} {{ metrics.total }} {% trans "vote" %}{{ metrics.total|pluralize }}
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div> 
