@@ -8,6 +8,7 @@ from films_app.models import Film, PageTracker
 from films_app.utils import fetch_and_update_film_from_tmdb, get_cache_directory
 from films_app.tmdb_api import search_movies, get_now_playing_movies, get_upcoming_movies, get_movie_details
 from datetime import datetime, date, timedelta
+from django.core.cache import cache
 
 class Command(BaseCommand):
     help = 'Update the movie cache for cinema films'
@@ -56,43 +57,60 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         """Handle the command execution."""
-        force = options.get('force', False)
-        max_pages = options.get('max_pages', 10)
-        all_pages = options.get('all_pages', False)
+        # Lock key for preventing duplicate runs
+        LOCK_KEY = 'update_movie_cache_lock'
+        LOCK_TIMEOUT = 3600  # 1 hour in seconds
         
-        # If all_pages is True, set max_pages to 0 to process all pages
-        if all_pages:
-            max_pages = 0
-            self.stdout.write('All pages option selected - will process all available pages')
+        # Check if another update process is already running
+        if cache.get(LOCK_KEY):
+            self.stdout.write(self.style.WARNING("Another update process is already running. Exiting."))
+            return
         
-        # Calculate dynamic max_pages based on the current date
-        # More pages during peak movie seasons (summer and winter holidays)
-        current_month = datetime.now().month
-        if current_month in [5, 6, 7, 8, 11, 12] and max_pages > 0:  # Summer and winter months
-            max_pages = max(max_pages, 15)  # Increase pages during peak seasons
-            self.stdout.write(f'Peak movie season detected - increasing max pages to {max_pages}')
+        # Set a lock to prevent duplicate runs
+        cache.set(LOCK_KEY, True, LOCK_TIMEOUT)
         
-        # Check if we're near the beginning of the month when new releases often come out
-        current_day = datetime.now().day
-        if current_day <= 7 and max_pages > 0:  # First week of the month
-            max_pages = max(max_pages, 12)  # Increase pages for new releases
-            self.stdout.write(f'Beginning of month detected - increasing max pages to {max_pages}')
-        
-        # Check if it's a weekend when more people watch movies
-        if datetime.now().weekday() >= 4 and max_pages > 0:  # Friday, Saturday, Sunday
-            max_pages = max(max_pages, 10)  # Increase pages for weekends
-            self.stdout.write(f'Weekend detected - increasing max pages to {max_pages}')
-        
-        if max_pages == 0:
-            self.stdout.write('Using unlimited pages - will process all available pages')
-        else:
-            self.stdout.write(f'Using max_pages: {max_pages}')
-        
-        # Update the database cache
-        self.update_cinema_db_cache(force, max_pages, options)
-        
-        # Update the last update timestamp
-        self.update_last_update_timestamp()
+        try:
+            force = options.get('force', False)
+            max_pages = options.get('max_pages', 10)
+            all_pages = options.get('all_pages', False)
+            
+            # If all_pages is True, set max_pages to 0 to process all pages
+            if all_pages:
+                max_pages = 0
+                self.stdout.write('All pages option selected - will process all available pages')
+            
+            # Calculate dynamic max_pages based on the current date
+            # More pages during peak movie seasons (summer and winter holidays)
+            current_month = datetime.now().month
+            if current_month in [5, 6, 7, 8, 11, 12] and max_pages > 0:  # Summer and winter months
+                max_pages = max(max_pages, 15)  # Increase pages during peak seasons
+                self.stdout.write(f'Peak movie season detected - increasing max pages to {max_pages}')
+            
+            # Check if we're near the beginning of the month when new releases often come out
+            current_day = datetime.now().day
+            if current_day <= 7 and max_pages > 0:  # First week of the month
+                max_pages = max(max_pages, 12)  # Increase pages for new releases
+                self.stdout.write(f'Beginning of month detected - increasing max pages to {max_pages}')
+            
+            # Check if it's a weekend when more people watch movies
+            if datetime.now().weekday() >= 4 and max_pages > 0:  # Friday, Saturday, Sunday
+                max_pages = max(max_pages, 10)  # Increase pages for weekends
+                self.stdout.write(f'Weekend detected - increasing max pages to {max_pages}')
+            
+            if max_pages == 0:
+                self.stdout.write('Using unlimited pages - will process all available pages')
+            else:
+                self.stdout.write(f'Using max_pages: {max_pages}')
+            
+            # Update the database cache
+            self.update_cinema_db_cache(force, max_pages, options)
+            
+            # Update the last update timestamp
+            self.update_last_update_timestamp()
+        finally:
+            # Release the lock when done
+            cache.delete(LOCK_KEY)
+            self.stdout.write("Released update lock")
         
         return
 

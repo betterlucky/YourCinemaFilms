@@ -58,6 +58,11 @@ def search_movies(query, sort_by=None):
     Returns:
         dict: The search results from TMDB
     """
+    # Check in-memory cache first
+    cache_key = f"search_{query}_{sort_by}"
+    if cache_key in _movie_details_cache:
+        return _movie_details_cache[cache_key]
+    
     # If query is empty and sort_by is provided, use discover endpoint for popular movies
     if not query and sort_by:
         url = get_api_url("discover/movie")
@@ -80,8 +85,19 @@ def search_movies(query, sort_by=None):
     if sort_by:
         params['sort_by'] = sort_by
     
-    response = requests.get(url, params=params)
-    return response.json()
+    try:
+        response = requests.get(url, params=params, timeout=5)  # Add timeout
+        if response.status_code == 200:
+            result = response.json()
+            # Cache the result
+            _movie_details_cache[cache_key] = result
+            return result
+        else:
+            logger.error(f"TMDB API error: {response.status_code} - {response.text}")
+            return {"results": []}
+    except requests.exceptions.RequestException as e:
+        logger.error(f"TMDB API request failed: {str(e)}")
+        return {"results": []}
 
 def get_movie_details(tmdb_id, include_raw=False):
     """

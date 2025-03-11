@@ -309,20 +309,36 @@
         </div>
     {% endif %}
     
-    <div class="row mb-4">
-        <div class="col-12">
-            <h2 class="border-bottom pb-2">Top Classic Films</h2>
+    <div id="classics-films-container">
+        <!-- Load the paginated view on initial page load -->
+        <div hx-get="{% url 'films_app:filter_classics_films' %}" 
+             hx-trigger="load"
+             hx-target="#classics-films-container"
+             hx-indicator="#initial-loading-indicator">
+            <div class="text-center my-5">
+                <span id="initial-loading-indicator">
+                    <i class="fas fa-spinner fa-spin"></i> Loading classic films...
+                </span>
+            </div>
         </div>
-    </div>
-    
-    <div class="row" id="top-films-container">
-        {% include 'films_app/partials/top_films.html' with top_films=top_films user_voted_films=user_voted_films user_votes=user_votes can_vote=votes_remaining %}
     </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
+    // Function to navigate to film details
+    function navigateToFilmDetails(event, imdbId) {
+        // Don't navigate if the click was on a button or link
+        if (event.target.tagName === 'A' || event.target.tagName === 'BUTTON' || 
+            event.target.closest('a') || event.target.closest('button')) {
+            return;
+        }
+        
+        // Navigate to film details page
+        window.location.href = "{% url 'films_app:film_detail' 'placeholder' %}".replace('placeholder', imdbId);
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
         // Handle search focus links
         const searchFocusLinks = document.querySelectorAll('.search-focus');
@@ -379,6 +395,18 @@
             }
         });
         
+        // Handle classics filter form submission
+        const classicsFilterForm = document.getElementById('classics-filter-form');
+        const classicsFilterInput = document.getElementById('classics-filter-input');
+        
+        if (classicsFilterForm) {
+            classicsFilterForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                // Trigger HTMX request manually
+                htmx.trigger(classicsFilterInput, 'search');
+            });
+        }
+        
         // Close search results when clicking outside
         document.addEventListener('click', function(e) {
             if (!mainSearchForm.contains(e.target) && !mainSearchResults.contains(e.target)) {
@@ -402,6 +430,46 @@
                 .then(html => {
                     document.getElementById('user-vote-status').innerHTML = html;
                 });
+        });
+        
+        // Listen for the filmVoteCountChanged event from HTMX
+        document.body.addEventListener('filmVoteCountChanged', function(event) {
+            const detail = event.detail;
+            const voteCountElement = document.getElementById(`film-vote-count-${detail.imdb_id}`);
+            if (voteCountElement) {
+                const voteText = detail.vote_count === 1 ? 'vote' : 'votes';
+                voteCountElement.innerHTML = `${detail.vote_count} ${voteText}`;
+            }
+        });
+        
+        // Add event delegation for vote and remove vote buttons
+        document.addEventListener('click', function(e) {
+            // Check if the clicked element is a remove vote button
+            const removeVoteButton = e.target.closest('.btn-outline-danger[hx-post*="remove_vote"]');
+            if (removeVoteButton) {
+                // Get the film's IMDb ID from the button's hx-post attribute
+                const hxPostAttr = removeVoteButton.getAttribute('hx-post');
+                const imdbIdMatch = hxPostAttr.match(/remove_vote\/([a-zA-Z0-9]+)/);
+                
+                if (imdbIdMatch && imdbIdMatch[1]) {
+                    const imdbId = imdbIdMatch[1];
+                    
+                    // Add a small delay to ensure the vote is registered in the database
+                    setTimeout(function() {
+                        // Check if the vote exists in the database
+                        fetch(`/api/check-vote/${imdbId}/`)
+                            .then(response => response.json())
+                            .then(data => {
+                                if (!data.exists) {
+                                    console.log('Vote does not exist, refreshing page');
+                                    // If the vote doesn't exist, refresh the page
+                                    window.location.reload();
+                                }
+                            })
+                            .catch(error => console.error('Error checking vote:', error));
+                    }, 500);
+                }
+            }
         });
         
         // Add event delegation for cinema film prompts

@@ -1,16 +1,19 @@
 {% load i18n %}
 
-<button class="btn btn-sm btn-outline-primary"
-        hx-post="{% url 'films_app:vote' film.imdb_id %}"
-        hx-target="#film-vote-count-{{ film.imdb_id }}"
-        hx-swap="outerHTML"
-        hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
-        hx-indicator="#vote-indicator-{{ film.imdb_id }}"
-        hx-trigger="click"
-        hx-push-url="false">
-    <i class="fas fa-thumbs-up"></i>
-    <span class="vote-btn-text">Vote</span>
-    <span id="vote-indicator-{{ film.imdb_id }}" class="htmx-indicator">
-        <i class="fas fa-spinner fa-spin"></i>
-    </span>
-</button> 
+<div id="vote-button-container-{{ film.imdb_id }}">
+    <button class="btn btn-sm btn-outline-primary"
+            hx-post="{% url 'films_app:vote' film.imdb_id %}"
+            hx-target="#vote-button-container-{{ film.imdb_id }}"
+            hx-swap="outerHTML"
+            hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+            hx-indicator="#vote-indicator-{{ film.imdb_id }}"
+            hx-trigger="click"
+            hx-push-url="false"
+            onclick="event.stopPropagation();">
+        <i class="fas fa-thumbs-up"></i>
+        <span class="vote-btn-text">Vote</span>
+        <span id="vote-indicator-{{ film.imdb_id }}" class="htmx-indicator">
+            <i class="fas fa-spinner fa-spin"></i>
+        </span>
+    </button>
+</div> 

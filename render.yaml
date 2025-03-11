@@ -34,12 +34,12 @@ services:
       - key: TMDB_SORT_BY
         value: "revenue.desc,vote_count.desc,popularity.desc"
       - key: CACHE_UPDATE_INTERVAL_MINUTES
-        value: "15"
+        value: "1440"  # 24 hours in minutes - prevent duplicate runs
 
   - type: cron
     name: update-cinema-cache
     env: python
-    schedule: "0 0 * * *"  # Run at midnight UTC every day
+    schedule: "0 2 * * *"  # Run at 2 AM UTC every day (less busy time)
     buildCommand: pip install -r requirements.txt
     startCommand: python manage.py update_movie_cache --all-pages --force
     envVars:
@@ -56,7 +56,7 @@ services:
       - key: TMDB_SORT_BY
         value: "revenue.desc,vote_count.desc,popularity.desc"
       - key: CACHE_UPDATE_INTERVAL_MINUTES
-        value: "15"
+        value: "1440"  # 24 hours in minutes - prevent duplicate runs
 
 databases:
   - name: yourcinemafilms-db

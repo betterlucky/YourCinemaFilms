@@ -226,148 +226,18 @@
     </div>
     
     <!-- Films Container -->
-    <div id="cinema-films-container" hx-get="{% url 'films_app:filter_cinema_films' %}" hx-trigger="refresh from:body">
-        <!-- Now Playing Films -->
-        {% if now_playing_films %}
-            <div class="row mb-4">
-                <div class="col-12">
-                    <h2 class="border-bottom pb-2">Now Playing in UK Cinemas</h2>
-                    <p class="text-muted">
-                        Showing the {{ now_playing_films|length }} most popular films out of {{ total_now_playing }} currently in UK cinemas.
-                    </p>
-                </div>
+    <div id="cinema-films-container">
+        <!-- Load the paginated view on initial page load -->
+        <div hx-get="{% url 'films_app:filter_cinema_films' %}" 
+             hx-trigger="load"
+             hx-target="#cinema-films-container"
+             hx-indicator="#initial-loading-indicator">
+            <div class="text-center my-5">
+                <span id="initial-loading-indicator">
+                    <i class="fas fa-spinner fa-spin"></i> Loading cinema films...
+                </span>
             </div>
-            
-            <div class="row mb-5">
-                {% for film in now_playing_films %}
-                    <div class="col-md-3 mb-4">
-                        <div class="card film-card" 
-                             onclick="navigateToFilmDetails(event, '{{ film.imdb_id }}')"
-                             data-imdb-id="{{ film.imdb_id }}"
-                             data-film-title="{{ film.title }}">
-                            <div id="cinema-film-vote-count-{{ film.imdb_id }}" class="vote-badge">
-                                {{ film.cinema_votes.count }} vote{{ film.cinema_votes.count|pluralize }}
-                            </div>
-                            {% if film.uk_certification %}
-                                <div class="certification-badge">
-                                    <img src="{% static 'img/BBFC_' %}{{ film.uk_certification|upper }}{% if film.uk_certification == '12a' %}A{% endif %}_(2019).svg" alt="{{ film.uk_certification }}" width="40" height="40">
-                                </div>
-                            {% else %}
-                                <div class="certification-badge">
-                                    <img src="{% static 'img/BBFC_TBC.svg' %}" alt="TBC" width="40" height="40">
-                                </div>
-                            {% endif %}
-                            <img src="{{ film.poster_url|default:'https://via.placeholder.com/300x450?text=No+Poster' }}" 
-                                 class="card-img-top film-poster" alt="{{ film.title }}">
-                            <div class="card-body card-body-content">
-                                <h5 class="card-title">{{ film.title }}</h5>
-                                <p class="card-text text-muted">{{ film.year }}</p>
-                                {% if film.uk_release_date %}
-                                    <p class="uk-release-date">
-                                        UK Release: {{ film.uk_release_date|date:"j M Y" }}
-                                    </p>
-                                {% endif %}
-                            </div>
-                            <div class="card-body card-body-actions">
-                                <div class="d-flex align-items-center gap-2">
-                                    <a href="{% url 'films_app:film_detail' film.imdb_id %}" class="btn btn-sm btn-outline-primary flex-grow-1" onclick="event.stopPropagation();">View Details</a>
-                                    <div id="vote-button-container-{{ film.imdb_id }}" class="flex-shrink-0">
-                                        {% if user.is_authenticated %}
-                                            {% if film.imdb_id in user_voted_films %}
-                                                {% with vote=user_cinema_votes|get_vote_by_imdb_id:film.imdb_id %}
-                                                    {% include 'films_app/partials/cinema_remove_vote_button.html' with vote=vote %}
-                                                {% endwith %}
-                                            {% else %}
-                                                {% include 'films_app/partials/cinema_vote_button.html' with film=film %}
-                                            {% endif %}
-                                        {% endif %}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                {% endfor %}
-            </div>
-        {% else %}
-            <div class="row mb-5">
-                <div class="col-12">
-                    <div class="alert alert-info">
-                        <i class="fas fa-info-circle me-2"></i> No films currently playing in UK cinemas. Please run the cache update.
-                    </div>
-                </div>
-            </div>
-        {% endif %}
-        
-        <!-- Upcoming Films -->
-        {% if upcoming_films %}
-            <div class="row mb-4">
-                <div class="col-12">
-                    <h2 class="border-bottom pb-2">Coming Soon to UK Cinemas</h2>
-                    <p class="text-muted">
-                        Showing the {{ upcoming_films|length }} most popular films out of {{ total_upcoming }} coming to UK cinemas in the next {{ upcoming_films_months }} months.
-                    </p>
-                </div>
-            </div>
-            
-            <div class="row">
-                {% for film in upcoming_films %}
-                    <div class="col-md-3 mb-4">
-                        <div class="card film-card" 
-                             onclick="navigateToFilmDetails(event, '{{ film.imdb_id }}')"
-                             data-imdb-id="{{ film.imdb_id }}"
-                             data-film-title="{{ film.title }}">
-                            <div id="cinema-film-vote-count-{{ film.imdb_id }}" class="vote-badge">
-                                {{ film.cinema_votes.count }} vote{{ film.cinema_votes.count|pluralize }}
-                            </div>
-                            {% if film.uk_certification %}
-                                <div class="certification-badge">
-                                    <img src="{% static 'img/BBFC_' %}{{ film.uk_certification|upper }}{% if film.uk_certification == '12a' %}A{% endif %}_(2019).svg" alt="{{ film.uk_certification }}" width="40" height="40">
-                                </div>
-                            {% else %}
-                                <div class="certification-badge">
-                                    <img src="{% static 'img/BBFC_TBC.svg' %}" alt="TBC" width="40" height="40">
-                                </div>
-                            {% endif %}
-                            <img src="{{ film.poster_url|default:'https://via.placeholder.com/300x450?text=No+Poster' }}" 
-                                 class="card-img-top film-poster" alt="{{ film.title }}">
-                            <div class="card-body card-body-content">
-                                <h5 class="card-title">{{ film.title }}</h5>
-                                <p class="card-text text-muted">{{ film.year }}</p>
-                                {% if film.uk_release_date %}
-                                    <p class="uk-release-date">
-                                        UK Release: {{ film.uk_release_date|date:"j M Y" }}
-                                    </p>
-                                {% endif %}
-                            </div>
-                            <div class="card-body card-body-actions">
-                                <div class="d-flex align-items-center gap-2">
-                                    <a href="{% url 'films_app:film_detail' film.imdb_id %}" class="btn btn-sm btn-outline-primary flex-grow-1" onclick="event.stopPropagation();">View Details</a>
-                                    <div id="vote-button-container-{{ film.imdb_id }}" class="flex-shrink-0">
-                                        {% if user.is_authenticated %}
-                                            {% if film.imdb_id in user_voted_films %}
-                                                {% with vote=user_cinema_votes|get_vote_by_imdb_id:film.imdb_id %}
-                                                    {% include 'films_app/partials/cinema_remove_vote_button.html' with vote=vote %}
-                                                {% endwith %}
-                                            {% else %}
-                                                {% include 'films_app/partials/cinema_vote_button.html' with film=film %}
-                                            {% endif %}
-                                        {% endif %}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                {% endfor %}
-            </div>
-        {% else %}
-            <div class="row">
-                <div class="col-12">
-                    <div class="alert alert-info">
-                        <i class="fas fa-info-circle me-2"></i> No upcoming films scheduled for UK cinemas. Please run the cache update.
-                    </div>
-                </div>
-            </div>
-        {% endif %}
+        </div>
     </div>
     
     {% if user.is_staff %}
