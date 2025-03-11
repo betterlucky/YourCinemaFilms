@@ -32,7 +32,9 @@ services:
       - key: UPCOMING_FILMS_MONTHS
         value: "6"
       - key: TMDB_SORT_BY
-        value: "popularity.desc"
+        value: "revenue.desc,vote_count.desc,popularity.desc"
+      - key: CACHE_UPDATE_INTERVAL_MINUTES
+        value: "15"
 
   - type: cron
     name: update-cinema-cache
@@ -52,7 +54,9 @@ services:
       - key: UPCOMING_FILMS_MONTHS
         value: "6"
       - key: TMDB_SORT_BY
-        value: "popularity.desc"
+        value: "revenue.desc,vote_count.desc,popularity.desc"
+      - key: CACHE_UPDATE_INTERVAL_MINUTES
+        value: "15"
 
 databases:
   - name: yourcinemafilms-db
