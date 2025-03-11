@@ -90,4 +90,46 @@ def get_page_range(num_pages, current_page):
         result.append(page)
         prev = page
     
+    return result
+
+@register.filter
+def get_mobile_page_range(num_pages, current_page):
+    """
+    Generate a mobile-friendly range of page numbers for pagination.
+    Shows only current page, previous/next, and first/last pages.
+    """
+    current_page = int(current_page)
+    num_pages = int(num_pages)
+    
+    if num_pages <= 3:
+        # If there are 3 or fewer pages, show all
+        return range(1, num_pages + 1)
+    
+    # Always include first, current, and last page
+    pages = [1]
+    
+    # Add previous and next page if they exist
+    if current_page > 1:
+        pages.append(current_page - 1)
+    
+    pages.append(current_page)
+    
+    if current_page < num_pages:
+        pages.append(current_page + 1)
+    
+    if num_pages > 1:
+        pages.append(num_pages)
+    
+    # Sort the pages and remove duplicates
+    pages = sorted(list(set(pages)))
+    
+    # Add ellipses where needed
+    result = []
+    prev = 0
+    for page in pages:
+        if prev + 1 < page:
+            result.append('...')
+        result.append(page)
+        prev = page
+    
     return result 

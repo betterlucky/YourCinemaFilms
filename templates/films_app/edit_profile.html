@@ -58,6 +58,22 @@
                         
                         <hr class="my-4">
                         
+                        <h5 class="mb-3">{% trans "Display Preferences" %}</h5>
+                        
+                        <div class="mb-3">
+                            <label for="films_per_page" class="form-label">{% trans "Films Per Page" %}</label>
+                            <select name="films_per_page" id="films_per_page" class="form-select">
+                                {% for value, label in profile.PAGINATION_CHOICES %}
+                                    <option value="{{ value }}" {% if profile.films_per_page == value %}selected{% endif %}>
+                                        {{ label }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">{% trans "Number of films to display per page when browsing." %}</div>
+                        </div>
+                        
+                        <hr class="my-4">
+                        
                         <h5 class="mb-3">{% trans "Email Settings" %}</h5>
                         
                         <div class="mb-3">

@@ -30,7 +30,7 @@
                             {% if user.is_authenticated %}
                                 {% if film.imdb_id in user_voted_films %}
                                     {% with vote=user_votes|get_vote_by_imdb_id:film.imdb_id %}
-                                        {% include 'films_app/partials/new_remove_vote_button.html' with vote=vote %}
+                                        {% include 'films_app/partials/remove_vote_button.html' with vote=vote %}
                                     {% endwith %}
                                 {% else %}
                                     {% if can_vote %}

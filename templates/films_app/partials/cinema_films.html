@@ -26,7 +26,7 @@
     
     <div class="row mb-4" id="now-playing-container">
         {% for film in now_playing_films %}
-            <div class="col-md-3 mb-4">
+            <div class="col-6 col-md-3 mb-4">
                 <div class="card film-card" 
                      onclick="navigateToFilmDetails(event, '{{ film.imdb_id }}')"
                      data-imdb-id="{{ film.imdb_id }}"
@@ -44,7 +44,11 @@
                         </div>
                     {% endif %}
                     <img src="{{ film.poster_url|default:'https://via.placeholder.com/300x450?text=No+Poster' }}" 
-                         class="card-img-top film-poster" alt="{{ film.title }}">
+                         class="card-img-top film-poster" alt="{{ film.title }}"
+                         loading="lazy"
+                         srcset="{{ film.poster_url|default:'https://via.placeholder.com/300x450?text=No+Poster' }} 300w,
+                                 {{ film.poster_url|default:'https://via.placeholder.com/200x300?text=No+Poster' }} 200w"
+                         sizes="(max-width: 576px) 200px, 300px">
                     <div class="card-body card-body-content">
                         <h5 class="card-title">{{ film.title }}</h5>
                         <p class="card-text text-muted">{{ film.year }}</p>
@@ -78,7 +82,8 @@
     <!-- Now Playing Pagination -->
     <div class="row mb-5">
         <div class="col-12">
-            <nav aria-label="Now playing films pagination">
+            <!-- Desktop Pagination -->
+            <nav aria-label="Now playing films pagination" class="desktop-pagination d-none d-md-block">
                 <ul class="pagination justify-content-center">
                     {% if now_playing_has_previous %}
                         <li class="page-item">
@@ -138,6 +143,50 @@
                     {% endif %}
                 </ul>
             </nav>
+            
+            <!-- Mobile Pagination -->
+            <nav aria-label="Now playing films pagination" class="mobile-pagination d-md-none">
+                <ul class="pagination justify-content-center">
+                    {% if now_playing_has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" 
+                               href="#" 
+                               hx-get="{% url 'films_app:filter_cinema_films' %}?query={{ query }}&now_playing_page={{ now_playing_previous_page }}&upcoming_page={{ upcoming_page }}&section=both"
+                               hx-target="#cinema-films-container"
+                               hx-indicator="#pagination-indicator"
+                               hx-swap="innerHTML scroll:top">
+                                <i class="fas fa-chevron-left"></i>
+                            </a>
+                        </li>
+                    {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link"><i class="fas fa-chevron-left"></i></span>
+                        </li>
+                    {% endif %}
+                    
+                    <li class="page-item active">
+                        <span class="page-link">{{ now_playing_page }} / {{ now_playing_num_pages }}</span>
+                    </li>
+                    
+                    {% if now_playing_has_next %}
+                        <li class="page-item">
+                            <a class="page-link" 
+                               href="#" 
+                               hx-get="{% url 'films_app:filter_cinema_films' %}?query={{ query }}&now_playing_page={{ now_playing_next_page }}&upcoming_page={{ upcoming_page }}&section=both"
+                               hx-target="#cinema-films-container"
+                               hx-indicator="#pagination-indicator"
+                               hx-swap="innerHTML scroll:top">
+                                <i class="fas fa-chevron-right"></i>
+                            </a>
+                        </li>
+                    {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link"><i class="fas fa-chevron-right"></i></span>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            
             <div class="text-center mt-2">
                 <span id="pagination-indicator" class="htmx-indicator">
                     <i class="fas fa-spinner fa-spin"></i> Loading...
@@ -173,7 +222,7 @@
     
     <div class="row mb-4" id="upcoming-container">
         {% for film in upcoming_films %}
-            <div class="col-md-3 mb-4">
+            <div class="col-6 col-md-3 mb-4">
                 <div class="card film-card" 
                      onclick="navigateToFilmDetails(event, '{{ film.imdb_id }}')"
                      data-imdb-id="{{ film.imdb_id }}"
@@ -191,7 +240,11 @@
                         </div>
                     {% endif %}
                     <img src="{{ film.poster_url|default:'https://via.placeholder.com/300x450?text=No+Poster' }}" 
-                         class="card-img-top film-poster" alt="{{ film.title }}">
+                         class="card-img-top film-poster" alt="{{ film.title }}"
+                         loading="lazy"
+                         srcset="{{ film.poster_url|default:'https://via.placeholder.com/300x450?text=No+Poster' }} 300w,
+                                 {{ film.poster_url|default:'https://via.placeholder.com/200x300?text=No+Poster' }} 200w"
+                         sizes="(max-width: 576px) 200px, 300px">
                     <div class="card-body card-body-content">
                         <h5 class="card-title">{{ film.title }}</h5>
                         <p class="card-text text-muted">{{ film.year }}</p>
@@ -225,7 +278,8 @@
     <!-- Upcoming Pagination -->
     <div class="row mb-5">
         <div class="col-12">
-            <nav aria-label="Upcoming films pagination">
+            <!-- Desktop Pagination -->
+            <nav aria-label="Upcoming films pagination" class="desktop-pagination d-none d-md-block">
                 <ul class="pagination justify-content-center">
                     {% if upcoming_has_previous %}
                         <li class="page-item">
@@ -285,6 +339,50 @@
                     {% endif %}
                 </ul>
             </nav>
+            
+            <!-- Mobile Pagination -->
+            <nav aria-label="Upcoming films pagination" class="mobile-pagination d-md-none">
+                <ul class="pagination justify-content-center">
+                    {% if upcoming_has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" 
+                               href="#" 
+                               hx-get="{% url 'films_app:filter_cinema_films' %}?query={{ query }}&now_playing_page={{ now_playing_page }}&upcoming_page={{ upcoming_previous_page }}&section=both"
+                               hx-target="#cinema-films-container"
+                               hx-indicator="#pagination-indicator-upcoming"
+                               hx-swap="innerHTML scroll:#upcoming-container">
+                                <i class="fas fa-chevron-left"></i>
+                            </a>
+                        </li>
+                    {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link"><i class="fas fa-chevron-left"></i></span>
+                        </li>
+                    {% endif %}
+                    
+                    <li class="page-item active">
+                        <span class="page-link">{{ upcoming_page }} / {{ upcoming_num_pages }}</span>
+                    </li>
+                    
+                    {% if upcoming_has_next %}
+                        <li class="page-item">
+                            <a class="page-link" 
+                               href="#" 
+                               hx-get="{% url 'films_app:filter_cinema_films' %}?query={{ query }}&now_playing_page={{ now_playing_page }}&upcoming_page={{ upcoming_next_page }}&section=both"
+                               hx-target="#cinema-films-container"
+                               hx-indicator="#pagination-indicator-upcoming"
+                               hx-swap="innerHTML scroll:#upcoming-container">
+                                <i class="fas fa-chevron-right"></i>
+                            </a>
+                        </li>
+                    {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link"><i class="fas fa-chevron-right"></i></span>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            
             <div class="text-center mt-2">
                 <span id="pagination-indicator-upcoming" class="htmx-indicator">
                     <i class="fas fa-spinner fa-spin"></i> Loading...

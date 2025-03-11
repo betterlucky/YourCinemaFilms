@@ -441,10 +441,22 @@ class UserProfile(models.Model):
         'cinema_amenities', 'film_genres', 'dashboard_activity'
     ]
     
+    # Pagination options
+    PAGINATION_CHOICES = [
+        (4, '4 films per page'),
+        (8, '8 films per page'),
+        (12, '12 films per page'),
+        (16, '16 films per page'),
+        (20, '20 films per page'),
+    ]
+    
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
     bio = models.TextField(blank=True, null=True)
     profile_picture_url = models.URLField(blank=True, null=True)
     letterboxd_username = models.CharField(max_length=100, blank=True, null=True)
+    
+    # Display preferences
+    films_per_page = models.PositiveIntegerField(choices=PAGINATION_CHOICES, default=8, help_text="Number of films to display per page")
     
     # Social account identifiers and information
     google_account_id = models.CharField(max_length=100, blank=True, null=True)

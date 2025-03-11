@@ -57,7 +57,7 @@
     
     <div class="row mb-4" id="classics-container">
         {% for film in classic_films %}
-            <div class="col-md-3 mb-4">
+            <div class="col-6 col-md-3 mb-4">
                 <div class="card film-card" 
                      onclick="navigateToFilmDetails(event, '{{ film.imdb_id }}')"
                      data-imdb-id="{{ film.imdb_id }}"
@@ -75,7 +75,11 @@
                         </div>
                     {% endif %}
                     <img src="{{ film.poster_url|default:'https://via.placeholder.com/300x450?text=No+Poster' }}" 
-                         class="card-img-top film-poster" alt="{{ film.title }}">
+                         class="card-img-top film-poster" alt="{{ film.title }}"
+                         loading="lazy"
+                         srcset="{{ film.poster_url|default:'https://via.placeholder.com/300x450?text=No+Poster' }} 300w,
+                                 {{ film.poster_url|default:'https://via.placeholder.com/200x300?text=No+Poster' }} 200w"
+                         sizes="(max-width: 576px) 200px, 300px">
                     <div class="card-body card-body-content">
                         <h5 class="card-title">{{ film.title }}</h5>
                         <p class="card-text text-muted">{{ film.year }}</p>
@@ -87,7 +91,7 @@
                                 {% if user.is_authenticated %}
                                     {% if film.imdb_id in user_voted_films %}
                                         {% with vote=user_votes|get_vote_by_imdb_id:film.imdb_id %}
-                                            {% include 'films_app/partials/new_remove_vote_button.html' with vote=vote %}
+                                            {% include 'films_app/partials/remove_vote_button.html' with vote=vote %}
                                         {% endwith %}
                                     {% else %}
                                         {% if can_vote %}
@@ -106,7 +110,8 @@
     <!-- Pagination -->
     <div class="row mb-5">
         <div class="col-12">
-            <nav aria-label="Classic films pagination">
+            <!-- Desktop Pagination -->
+            <nav aria-label="Classic films pagination" class="desktop-pagination d-none d-md-block">
                 <ul class="pagination justify-content-center">
                     {% if has_previous %}
                         <li class="page-item">
@@ -166,6 +171,50 @@
                     {% endif %}
                 </ul>
             </nav>
+            
+            <!-- Mobile Pagination -->
+            <nav aria-label="Classic films pagination" class="mobile-pagination d-md-none">
+                <ul class="pagination justify-content-center">
+                    {% if has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" 
+                               href="#" 
+                               hx-get="{% url 'films_app:filter_classics_films' %}?query={{ query }}&page={{ previous_page }}"
+                               hx-target="#classics-films-container"
+                               hx-indicator="#pagination-indicator"
+                               hx-swap="innerHTML scroll:#classics-container">
+                                <i class="fas fa-chevron-left"></i>
+                            </a>
+                        </li>
+                    {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link"><i class="fas fa-chevron-left"></i></span>
+                        </li>
+                    {% endif %}
+                    
+                    <li class="page-item active">
+                        <span class="page-link">{{ page }} / {{ num_pages }}</span>
+                    </li>
+                    
+                    {% if has_next %}
+                        <li class="page-item">
+                            <a class="page-link" 
+                               href="#" 
+                               hx-get="{% url 'films_app:filter_classics_films' %}?query={{ query }}&page={{ next_page }}"
+                               hx-target="#classics-films-container"
+                               hx-indicator="#pagination-indicator"
+                               hx-swap="innerHTML scroll:#classics-container">
+                                <i class="fas fa-chevron-right"></i>
+                            </a>
+                        </li>
+                    {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link"><i class="fas fa-chevron-right"></i></span>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            
             <div class="text-center mt-2">
                 <span id="pagination-indicator" class="htmx-indicator">
                     <i class="fas fa-spinner fa-spin"></i> Loading...

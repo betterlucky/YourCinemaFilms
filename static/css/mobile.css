@@ -1,0 +1,116 @@
+/* Mobile-specific styles for YourCinemaFilms */
+
+/* General mobile optimizations */
+@media (max-width: 768px) {
+    /* Reduce padding and margins */
+    .container {
+        padding-left: 10px;
+        padding-right: 10px;
+    }
+    
+    .py-5 {
+        padding-top: 2rem !important;
+        padding-bottom: 2rem !important;
+    }
+    
+    .mb-5 {
+        margin-bottom: 2rem !important;
+    }
+    
+    /* Improve text readability */
+    body {
+        font-size: 16px;
+    }
+    
+    h1 {
+        font-size: 1.75rem;
+    }
+    
+    h2 {
+        font-size: 1.5rem;
+    }
+    
+    .lead {
+        font-size: 1rem;
+    }
+    
+    /* Film card optimizations */
+    .film-card {
+        min-height: 420px;
+    }
+    
+    .film-poster {
+        height: 200px;
+    }
+    
+    .card-title {
+        font-size: 1rem;
+        line-height: 1.3;
+    }
+    
+    .card-text {
+        font-size: 0.9rem;
+    }
+    
+    .uk-release-date {
+        font-size: 0.8rem;
+    }
+    
+    /* Pagination optimizations */
+    .pagination {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    
+    .pagination .page-link {
+        margin: 0.1rem;
+    }
+}
+
+/* Small mobile devices */
+@media (max-width: 576px) {
+    /* Further reduce spacing */
+    .container {
+        padding-left: 8px;
+        padding-right: 8px;
+    }
+    
+    .py-5 {
+        padding-top: 1.5rem !important;
+        padding-bottom: 1.5rem !important;
+    }
+    
+    /* Optimize film cards for very small screens */
+    .film-card {
+        min-height: 380px;
+    }
+    
+    .film-poster {
+        height: 180px;
+    }
+    
+    /* Hide desktop pagination and show mobile pagination */
+    .desktop-pagination {
+        display: none;
+    }
+    
+    .mobile-pagination {
+        display: block;
+    }
+    
+    /* Optimize vote badges */
+    .vote-badge {
+        font-size: 0.7rem;
+        padding: 3px 6px;
+    }
+    
+    .certification-badge {
+        width: 30px;
+        height: 30px;
+    }
+    
+    /* Optimize buttons */
+    .card-body-actions .btn {
+        font-size: 0.8rem;
+    }
+} 
