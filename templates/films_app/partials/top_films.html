@@ -6,7 +6,7 @@
         <div class="col-md-3 mb-4">
             <div class="card film-card">
                 <div id="film-vote-count-{{ film.imdb_id }}" class="vote-badge">
-                    {{ film.vote_count }} vote{{ film.vote_count|pluralize }}
+                    {{ film.total_votes }} vote{{ film.total_votes|pluralize }}
                 </div>
                 {% if film.uk_certification %}
                     <div class="certification-badge">

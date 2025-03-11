@@ -863,7 +863,7 @@ def all_top_films(request):
     page = request.GET.get('page', 1)
     
     # Get all films with votes
-    films_query = Film.objects.annotate(vote_count=Count('votes')).filter(vote_count__gt=0)
+    films_query = Film.objects.annotate(total_votes=Count('votes')).filter(total_votes__gt=0)
     
     # Apply time period filter if needed
     if start_date:
@@ -871,7 +871,7 @@ def all_top_films(request):
             period_vote_count=Count('votes', filter=Q(votes__created_at__gte=start_date))
         ).filter(period_vote_count__gt=0).order_by('-period_vote_count')
     else:
-        films_query = films_query.order_by('-vote_count')
+        films_query = films_query.order_by('-total_votes')
     
     # Paginate results
     paginator = Paginator(films_query, 20)  # Show 20 films per page
@@ -928,13 +928,13 @@ def all_users(request):
         users_query = users_query.filter(id__in=users_with_votes)
     
     # Annotate with vote count
-    users_query = users_query.annotate(vote_count=Count('votes'))
+    users_query = users_query.annotate(total_votes=Count('votes'))
     
     # Filter to only include users with votes
-    users_query = users_query.filter(vote_count__gt=0)
+    users_query = users_query.filter(total_votes__gt=0)
     
     # Order by vote count
-    users_query = users_query.order_by('-vote_count')
+    users_query = users_query.order_by('-total_votes')
     
     # Paginate results
     paginator = Paginator(users_query, 20)  # Show 20 users per page
@@ -953,7 +953,7 @@ def all_users(request):
     for i, user in enumerate(users):
         users_data.append({
             'user': user,
-            'vote_count': user.vote_count,
+            'total_votes': user.total_votes,
             'rank': start_rank + i
         })
     
@@ -1069,7 +1069,7 @@ def get_films_by_genre(genre, period=None):
         films = films.filter(votes__in=votes).distinct()
     
     # Annotate with vote count and order by votes
-    return films.annotate(vote_count=Count('votes')).order_by('-vote_count')
+    return films.annotate(total_votes=Count('votes')).order_by('-total_votes')
 
 def genre_analysis(request):
     """View for genre analysis."""
@@ -1738,7 +1738,7 @@ def get_user_votes_and_remaining(user):
 
 def get_top_films_data(limit=8):
     """Get top films by vote count."""
-    return Film.objects.annotate(vote_count=Count('votes')).filter(vote_count__gt=0).order_by('-vote_count')[:limit]
+    return Film.objects.annotate(total_votes=Count('votes')).filter(total_votes__gt=0).order_by('-total_votes')[:limit]
 
 def user_can_vote(user, film=None):
     """Check if a user can vote for a film."""
@@ -2165,7 +2165,7 @@ def commitment_filter(request):
         min_votes = 1
     
     # Get all films with votes
-    films_with_votes = Film.objects.annotate(vote_count=Count('votes')).filter(vote_count__gte=min_votes)
+    films_with_votes = Film.objects.annotate(total_votes=Count('votes')).filter(total_votes__gte=min_votes)
     
     # Filter by commitment score
     filtered_films = []
