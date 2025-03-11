@@ -33,7 +33,7 @@
             {% for film in films %}
                 <div class="col-md-3 mb-4">
                     <div class="card film-card">
-                        <div class="vote-badge">{{ film.vote_count }} vote{{ film.vote_count|pluralize }}</div>
+                        <div class="vote-badge">{{ film.total_votes }} vote{{ film.total_votes|pluralize }}</div>
                         <img src="{{ film.poster_url|default:'https://via.placeholder.com/300x450?text=No+Poster' }}" 
                              class="card-img-top film-poster" alt="{{ film.title }}">
                         <div class="card-body">
