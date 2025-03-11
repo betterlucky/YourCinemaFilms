@@ -438,7 +438,7 @@ class UserProfile(models.Model):
         'location', 'gender', 'age', 'votes', 'cinema_frequency', 
         'viewing_companions', 'viewing_time', 
         'price_sensitivity', 'format_preference', 'travel_distance',
-        'cinema_amenities', 'film_genres', 'dashboard_activity'
+        'cinema_amenities', 'film_genres', 'dashboard_activity', 'favorite_cinema'
     ]
     
     # Pagination options
@@ -478,6 +478,7 @@ class UserProfile(models.Model):
     travel_distance = models.PositiveIntegerField(default=10, help_text="How far are you willing to travel to a cinema (in miles)?")
     cinema_amenities = models.TextField(blank=True, null=True, help_text="What cinema amenities are important to you? (e.g., food service, bar, reclining seats)")
     film_genres = models.TextField(blank=True, null=True, help_text="What film genres do you prefer to see in the cinema?")
+    favorite_cinema = models.CharField(max_length=200, blank=True, null=True, help_text="Your preferred cinema or chain")
     
     # Existing privacy settings
     location_privacy = models.CharField(max_length=10, choices=PRIVACY_CHOICES, default='private')
@@ -486,6 +487,7 @@ class UserProfile(models.Model):
     votes_privacy = models.CharField(max_length=10, choices=PRIVACY_CHOICES, default='private')
     
     # New privacy settings
+    favorite_cinema_privacy = models.CharField(max_length=10, choices=PRIVACY_CHOICES, default='private')
     cinema_frequency_privacy = models.CharField(max_length=10, choices=PRIVACY_CHOICES, default='private')
     viewing_companions_privacy = models.CharField(max_length=10, choices=PRIVACY_CHOICES, default='private')
     viewing_time_privacy = models.CharField(max_length=10, choices=PRIVACY_CHOICES, default='private')
@@ -607,6 +609,10 @@ class UserProfile(models.Model):
     def get_dashboard_activity_privacy_display(self):
         """Return the display value for dashboard activity privacy."""
         return dict(self.PRIVACY_CHOICES).get(self.dashboard_activity_privacy, 'Public')
+    
+    def get_favorite_cinema_privacy_display(self):
+        """Return the display value for favorite cinema privacy."""
+        return dict(self.PRIVACY_CHOICES).get(self.favorite_cinema_privacy, 'Private')
     
     def is_visible_to(self, field_name, viewer=None):
         """Check if a field is visible to the viewer based on privacy settings."""
