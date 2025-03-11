@@ -62,29 +62,46 @@ def cinema(request):
     today = timezone.now().date()
     
     # Get current films - those marked as in cinema and with release date today or earlier
-    now_playing_films = Film.objects.filter(
+    now_playing_films_query = Film.objects.filter(
         is_in_cinema=True, 
         uk_release_date__lte=today
     ).extra(
         select={'combined_score': '(revenue / 10000000) * 0.5 + popularity * 0.3 + (vote_count / 100) * 0.2'}
-    ).order_by('-combined_score')[:20]
+    ).order_by('-combined_score')
     
     # Get upcoming films - those marked with is_upcoming=True
-    upcoming_films = Film.objects.filter(
+    upcoming_films_query = Film.objects.filter(
         is_upcoming=True
     ).extra(
         select={'combined_score': '(revenue / 10000000) * 0.5 + popularity * 0.3 + (vote_count / 100) * 0.2'}
-    ).order_by('uk_release_date')[:20]
+    ).order_by('uk_release_date')
+    
+    # Get pagination parameters
+    now_playing_page_num = request.GET.get('now_playing_page', 1)
+    upcoming_page_num = request.GET.get('upcoming_page', 1)
+    
+    # Apply pagination to show 8 films per page (2 rows of 4)
+    now_playing_paginator = Paginator(now_playing_films_query, 8)
+    upcoming_paginator = Paginator(upcoming_films_query, 8)
+    
+    # Get the appropriate page for each section
+    try:
+        now_playing_page = now_playing_paginator.page(now_playing_page_num)
+    except PageNotAnInteger:
+        now_playing_page = now_playing_paginator.page(1)
+    except EmptyPage:
+        now_playing_page = now_playing_paginator.page(now_playing_paginator.num_pages)
+    
+    try:
+        upcoming_page = upcoming_paginator.page(upcoming_page_num)
+    except PageNotAnInteger:
+        upcoming_page = upcoming_paginator.page(1)
+    except EmptyPage:
+        upcoming_page = upcoming_paginator.page(upcoming_paginator.num_pages)
     
     # Get total counts
-    total_now_playing = Film.objects.filter(
-        is_in_cinema=True, 
-        uk_release_date__lte=today
-    ).count()
-    
-    total_upcoming = Film.objects.filter(
-        is_upcoming=True
-    ).count()
+    total_now_playing = now_playing_films_query.count()
+    total_upcoming = upcoming_films_query.count()
     
     # Get user's cinema votes if authenticated
     user_cinema_votes = []
@@ -98,13 +115,25 @@ def cinema(request):
     upcoming_films_months = getattr(settings, 'UPCOMING_FILMS_MONTHS', 6)
     
     context = {
-        'now_playing_films': now_playing_films,
-        'upcoming_films': upcoming_films,
+        'now_playing_films': now_playing_page,
+        'upcoming_films': upcoming_page,
         'total_now_playing': total_now_playing,
         'total_upcoming': total_upcoming,
         'upcoming_films_months': upcoming_films_months,
         'user_cinema_votes': user_cinema_votes,
         'user_voted_films': user_voted_films,
+        'now_playing_page': int(now_playing_page_num),
+        'upcoming_page': int(upcoming_page_num),
+        'now_playing_has_previous': now_playing_page.has_previous(),
+        'now_playing_has_next': now_playing_page.has_next(),
+        'now_playing_previous_page': now_playing_page.previous_page_number() if now_playing_page.has_previous() else None,
+        'now_playing_next_page': now_playing_page.next_page_number() if now_playing_page.has_next() else None,
+        'now_playing_num_pages': now_playing_paginator.num_pages,
+        'upcoming_has_previous': upcoming_page.has_previous(),
+        'upcoming_has_next': upcoming_page.has_next(),
+        'upcoming_previous_page': upcoming_page.previous_page_number() if upcoming_page.has_previous() else None,
+        'upcoming_next_page': upcoming_page.next_page_number() if upcoming_page.has_next() else None,
+        'upcoming_num_pages': upcoming_paginator.num_pages,
     }
     
     return render(request, 'films_app/cinema.html', context)
