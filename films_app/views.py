@@ -1940,7 +1940,6 @@ def update_cinema_cache(request):
     from datetime import datetime, timedelta
     from films_app.models import PageTracker
     from films_app.utils import get_cache_directory
-    from django.conf import settings
     
     logger = logging.getLogger(__name__)
     
