@@ -231,6 +231,7 @@ def format_tmdb_data_for_film(tmdb_data):
         'popularity': tmdb_data.get('popularity', 0.0),
         'vote_count': tmdb_data.get('vote_count', 0),
         'vote_average': tmdb_data.get('vote_average', 0.0),
+        'revenue': tmdb_data.get('revenue', 0),
     }
     
     # Extract year from release date
