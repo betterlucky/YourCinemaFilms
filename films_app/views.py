@@ -343,46 +343,85 @@ def search_films(request):
 def film_detail(request, imdb_id):
     """Film detail view."""
     try:
-        film = Film.objects.get(imdb_id=imdb_id)
-    except Film.DoesNotExist:
-        messages.error(request, _('Film not found.'))
+        # First try to get the film from the database
+        try:
+            film = Film.objects.get(imdb_id=imdb_id)
+        except Film.DoesNotExist:
+            # If the film doesn't exist in our database but has a TMDB ID, try to fetch it
+            if imdb_id.startswith('tmdb-'):
+                # Extract the TMDB ID
+                tmdb_id = imdb_id.replace('tmdb-', '')
+                
+                # Import the TMDB API functions
+                from .tmdb_api import get_movie_details, format_tmdb_data_for_film
+                
+                # Get the movie details from TMDB
+                tmdb_data = get_movie_details(tmdb_id)
+                
+                if tmdb_data:
+                    # Format the data for our Film model
+                    film_data = format_tmdb_data_for_film(tmdb_data)
+                    
+                    # Create a new Film object
+                    film = Film.objects.create(
+                        imdb_id=imdb_id,
+                        title=film_data.get('title', ''),
+                        year=film_data.get('year', ''),
+                        director=film_data.get('director', ''),
+                        plot=film_data.get('plot', ''),
+                        genres=film_data.get('genres', ''),
+                        runtime=film_data.get('runtime', 0),
+                        actors=film_data.get('actors', ''),
+                        uk_certification=film_data.get('uk_certification', ''),
+                        uk_release_date=film_data.get('uk_release_date'),
+                        poster_url=film_data.get('poster_url', ''),
+                        popularity=film_data.get('popularity', 0),
+                        is_in_cinema=film_data.get('is_in_cinema', False),
+                        is_upcoming=film_data.get('is_upcoming', False)
+                    )
+                else:
+                    messages.error(request, _('Film not found.'))
+                    return redirect('films_app:classics')
+            else:
+                messages.error(request, _('Film not found.'))
+                return redirect('films_app:classics')
+    
+        # Get similar films
+        similar_films = Film.objects.filter(
+            Q(director=film.director) 
+        ).exclude(imdb_id=film.imdb_id).order_by('-popularity')[:6]
+        
+        # Get all approved tags for this film
+        approved_tags = GenreTag.objects.filter(film=film, is_approved=True)
+        
+        # If user is authenticated, exclude their tags from approved tags
+        if request.user.is_authenticated:
+            approved_tags = approved_tags.exclude(user=request.user)
+            # Get user tags for this film
+            user_tags = GenreTag.objects.filter(film=film, user=request.user)
+        else:
+            user_tags = []
+        
+        # Check if the user is coming from the classics page
+        source = request.GET.get('source', '')
+        from_classics = source == 'classics'
+        
+        context = {
+            'film': film,
+            'user_tags': user_tags,
+            'approved_tags': approved_tags,
+            'genres': film.genre_list,
+            'all_genres': film.all_genres,
+            'is_authenticated': request.user.is_authenticated,
+            'from_classics': from_classics,
+            'similar_films': similar_films,
+        }
+        
+        return render(request, 'films_app/film_detail.html', context)
+    except Exception as e:
+        logging.error(f"Error in film_detail view: {str(e)}")
+        messages.error(request, _('An error occurred while loading the film details.'))
         return redirect('films_app:classics')
-    
-    # We're no longer collecting voting information, so these variables have been removed:
-    # has_voted, has_cinema_voted, cinema_vote, can_vote, vote_count, commitment_metrics, etc.
-    
-    # Get similar films
-    similar_films = Film.objects.filter(
-        Q(director=film.director) 
-    ).exclude(imdb_id=film.imdb_id).order_by('-popularity')[:6]
-    
-    # Get all approved tags for this film
-    approved_tags = GenreTag.objects.filter(film=film, is_approved=True)
-    
-    # If user is authenticated, exclude their tags from approved tags
-    if request.user.is_authenticated:
-        approved_tags = approved_tags.exclude(user=request.user)
-        # Get user tags for this film
-        user_tags = GenreTag.objects.filter(film=film, user=request.user)
-    else:
-        user_tags = []
-    
-    # Check if the user is coming from the classics page
-    source = request.GET.get('source', '')
-    from_classics = source == 'classics'
-    
-    context = {
-        'film': film,
-        'user_tags': user_tags,
-        'approved_tags': approved_tags,
-        'genres': film.genre_list,
-        'all_genres': film.all_genres,
-        'is_authenticated': request.user.is_authenticated,
-        'from_classics': from_classics,
-        'similar_films': similar_films,
-    }
-    
-    return render(request, 'films_app/film_detail.html', context)
 
 
 @login_required
