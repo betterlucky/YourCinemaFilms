@@ -18,16 +18,34 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-default-key-for-development')
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-default-key')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
+DEBUG = os.environ.get('DEBUG', '0') == '1'
 
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+SITE_DOMAIN = 'http://localhost:8080'
 
-# Add render.com domain to allowed hosts
-if not DEBUG:
-    ALLOWED_HOSTS.extend(['.onrender.com'])
+# Security settings
+if DEBUG:
+    # For local development, disable secure SSL settings
+    SECURE_PROXY_SSL_HEADER = None
+    SESSION_COOKIE_SECURE = False
+    CSRF_COOKIE_SECURE = False
+else:
+    # For production, enable secure SSL settings
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+
+# CSRF Trusted Origins - needed for Docker and OAuth
+CSRF_TRUSTED_ORIGINS = [
+    'http://localhost:8080',
+    'http://127.0.0.1:8080',
+    'http://localhost',
+    'http://127.0.0.1'
+]
+
 
 # Configure logging
 LOGGING = {
@@ -116,12 +134,12 @@ TEMPLATES = [
 WSGI_APPLICATION = 'films_project.wsgi.application'
 
 # Database
-# https://docs.djangoproject.com/en/5.1/ref/settings/#databases
+# https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'NAME': os.environ.get('DJANGO_DB_PATH', os.path.join(BASE_DIR, 'db.sqlite3')),
     }
 }
 
@@ -212,7 +230,7 @@ AUTHENTICATION_BACKENDS = [
     'allauth.account.auth_backends.AuthenticationBackend',
 ]
 
-SITE_ID = 1
+SITE_ID = 'localhost:8080'
 
 # AllAuth settings
 ACCOUNT_EMAIL_REQUIRED = True
@@ -232,6 +250,10 @@ SOCIALACCOUNT_ADAPTER = 'films_app.adapters.CustomSocialAccountAdapter'
 SOCIALACCOUNT_QUERY_EMAIL = True  # Request email from providers that don't provide it by default
 SOCIALACCOUNT_STORE_TOKENS = True  # Store authentication tokens
 SOCIALACCOUNT_USERNAME_REQUIRED = False  # Don't require a username for social accounts
+
+# Disable strict origin checking for allauth
+ACCOUNT_DEFAULT_HTTP_PROTOCOL = "http"
+SOCIALACCOUNT_CALLBACK_URL = "http://localhost:8080/accounts/google/login/callback/"
 
 # Social account providers
 SOCIALACCOUNT_PROVIDERS = {
@@ -268,7 +290,11 @@ else:
     EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True').lower() == 'true'
     EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
     EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
-    DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@yourcinemafilms.onrender.com')
+    DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'dwgharris@gmail.com')
+
+# Add this line if it doesn't exist, or update it if it's not an integer
+SITE_ID = 1
+
 
 # Modify AllAuth settings to handle email verification better
 ACCOUNT_EMAIL_VERIFICATION = 'optional'  # Options: 'mandatory', 'optional', 'none'
@@ -277,7 +303,7 @@ ACCOUNT_EMAIL_CONFIRMATION_EXPIRE_DAYS = 3
 ACCOUNT_EMAIL_SUBJECT_PREFIX = 'YourCinemaFilms - '
 
 # TMDB API settings
-TMDB_API_KEY = os.getenv('TMDB_API_KEY', '')
+TMDB_API_KEY = os.environ.get('TMDB_API_KEY', '')
 TMDB_SORT_BY = os.getenv('TMDB_SORT_BY', 'revenue.desc,vote_count.desc,popularity.desc')  # Updated sort order for TMDB API requests
 
 # Cinema settings
@@ -294,6 +320,8 @@ CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:8000',
     'http://127.0.0.1:8000',
+    'http://localhost:8080',
+    'http://127.0.0.1:8080',
 ]
 
 # REST Framework settings
@@ -304,4 +332,8 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
     ],
-} 
+}
+
+# Cache settings
+CACHE_TYPE = os.environ.get('CACHE_TYPE', 'local')
+CACHE_TIMEOUT = int(os.environ.get('CACHE_TIMEOUT', 3600)) 

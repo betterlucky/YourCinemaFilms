@@ -1,66 +1,16 @@
-version: '3'
-
 services:
   web:
     build: .
-    restart: always
-    depends_on:
-      - db
-    environment:
-      - DEBUG=False
-      - SECRET_KEY=${SECRET_KEY}
-      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost,127.0.0.1}
-      - DJANGO_SETTINGS_MODULE=films_project.settings
-      - TMDB_API_KEY=${TMDB_API_KEY}
-      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
-      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
-      - DATABASE_URL=postgres://${POSTGRES_USER:-yourcinemafilms}:${POSTGRES_PASSWORD:-yourcinemafilms}@db:5432/${POSTGRES_DB:-yourcinemafilms}
-      - UPCOMING_FILMS_MONTHS=${UPCOMING_FILMS_MONTHS:-6}
-      - TMDB_SORT_BY=${TMDB_SORT_BY:-popularity.desc}
     volumes:
-      - ./static:/app/static
-      - ./media:/app/media
-      - ./profile_images:/app/profile_images
-    command: >
-      bash -c "./build.sh && gunicorn films_project.wsgi:application --bind 0.0.0.0:8000"
-
-  db:
-    image: postgres:15
-    restart: always
-    volumes:
-      - postgres_data:/var/lib/postgresql/data/
-    environment:
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-yourcinemafilms}
-      - POSTGRES_USER=${POSTGRES_USER:-yourcinemafilms}
-      - POSTGRES_DB=${POSTGRES_DB:-yourcinemafilms}
-
-  nginx:
-    image: nginx:latest
-    restart: always
+      - ./db:/app/db
     ports:
-      - "80:80"
-    volumes:
-      - ./nginx/conf.d:/etc/nginx/conf.d
-      - ./static:/var/www/static
-      - ./media:/var/www/media
-      - ./profile_images:/var/www/profile_images
-    depends_on:
-      - web
-
-  # Cron service for scheduled tasks
-  cron:
-    build: .
-    restart: always
-    depends_on:
-      - db
+      - "8080:8080"
+    env_file:
+      - .env
     environment:
-      - DJANGO_SETTINGS_MODULE=films_project.settings
-      - TMDB_API_KEY=${TMDB_API_KEY}
-      - DATABASE_URL=postgres://${POSTGRES_USER:-yourcinemafilms}:${POSTGRES_PASSWORD:-yourcinemafilms}@db:5432/${POSTGRES_DB:-yourcinemafilms}
-      - UPCOMING_FILMS_MONTHS=${UPCOMING_FILMS_MONTHS:-6}
-      - TMDB_SORT_BY=${TMDB_SORT_BY:-popularity.desc}
-    command: >
-      bash -c "pip install -r requirements.txt && python update_cinema_cache.py"
+      - DJANGO_DB_PATH=/app/db/db.sqlite3
+    restart: on-failure
 
 volumes:
-  postgres_data: 
+  sqlite_data:
+    driver: local  # Explicitly set the local driver 

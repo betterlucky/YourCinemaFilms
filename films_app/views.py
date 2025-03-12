@@ -1952,7 +1952,8 @@ def update_cinema_cache(request):
         # Run the management command with limited pages to avoid timeouts
         # Always use force=True to reset is_in_cinema flag for all films
         logger.info("Starting cinema cache update with max_pages=2 and force=True")
-        call_command('update_movie_cache', type='cinema', force=True, max_pages=2)
+        # Remove the 'type' parameter as it's not supported
+        call_command('update_movie_cache', force=True, max_pages=2)
         
         result = cleanup_output + "\n\n" + output.getvalue()
         status = 'success'
