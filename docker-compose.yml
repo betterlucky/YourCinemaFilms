@@ -7,6 +7,7 @@ services:
     volumes:
       - ./db:/app/db
       - /etc/yourcinemafilms/env.py:/etc/yourcinemafilms/env.py:ro  # Mount only the environment file as read-only
+      - static_data:/app/staticfiles  # Use a named volume for static files
     environment:
       - DJANGO_DB_PATH=/app/db/db.sqlite3
       - HOST_UID=${HOST_UID:-1000}  # Make HOST_UID available in container
@@ -21,7 +22,6 @@ services:
       - /run/nginx:rw  # Add nginx run directory with write permissions
       - /var/lib/nginx:rw  # Add nginx temp directory with write permissions
       - /var/log/nginx:rw  # Add nginx log directory with write permissions
-      - /app/staticfiles:rw  # Use tmpfs for staticfiles instead of a volume
     restart: on-failure
     logging:
       driver: "json-file"
@@ -39,6 +39,7 @@ services:
     volumes:
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro # Mount Let's Encrypt certificates
+      - static_data:/var/www/YourCinemaFilms/staticfiles:ro # Mount static files as read-only
     security_opt:
       - no-new-privileges:true
     read_only: false  # Changed to allow writing to static files
@@ -48,7 +49,6 @@ services:
       - /run/nginx:rw  # Add nginx run directory with write permissions
       - /var/lib/nginx:rw  # Add nginx temp directory with write permissions
       - /var/log/nginx:rw  # Add nginx log directory with write permissions
-      - /var/www/YourCinemaFilms/staticfiles:rw # Use tmpfs for static files
     depends_on:
       - web
     logging:
@@ -58,7 +58,7 @@ services:
         max-file: "3"
 
 volumes:
-  static_volume:
+  static_data:
     driver: local  # For storing static files
   sqlite_data:
     driver: local  # For storing database files
