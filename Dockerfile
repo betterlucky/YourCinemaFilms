@@ -13,9 +13,8 @@ WORKDIR /app
 ARG HOST_UID=1000
 
 # Install system dependencies and security updates
-RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
-# Install system dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get upgrade -y \
+    && apt-get install -y --no-install-recommends \
     gcc \
     net-tools \
     curl \
@@ -36,16 +35,6 @@ RUN mkdir -p /app/db /app/staticfiles /etc/yourcinemafilms \
     && chown -R appuser:www-data /app \
     && chmod 755 /app/staticfiles \
     && chmod 770 /app/db \
-    && rm -rf /var/lib/apt/lists/*
-
-# Create a user with the same UID
-RUN adduser --disabled-password --gecos "" --uid "${HOST_UID}" appuser
-
-# Create necessary directories with proper permissions
-RUN mkdir -p /app/db /app/staticfiles /etc/yourcinemafilms \
-    && chown -R appuser:appuser /app \
-    && chmod 755 /app/staticfiles \
-    && chmod 777 /app/db \
     && chown -R appuser:appuser /etc/yourcinemafilms \
     && touch /etc/yourcinemafilms/env.py \
     && chown appuser:appuser /etc/yourcinemafilms/env.py \
@@ -65,14 +54,6 @@ RUN find . -type f -name '*.pyc' -delete && \
 
 # Copy and set permissions for entrypoint script
 COPY --chown=appuser:www-data entrypoint.sh .
-COPY --chown=appuser:appuser requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Copy project files with correct ownership
-COPY --chown=appuser:appuser . .
-
-# Copy and set permissions for entrypoint script
-COPY --chown=appuser:appuser entrypoint.sh .
 RUN chmod +x entrypoint.sh
 
 # Switch to non-root user
