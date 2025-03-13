@@ -20,3 +20,4 @@ django-ratelimit==4.1.0
 django-axes==6.3.0  # Login attempt monitoring
 django-honeypot==1.1.1  # Anti-spam
 django-permissions-policy==4.18.0  # Permissions-Policy header 
+Pillow==11.1.0 

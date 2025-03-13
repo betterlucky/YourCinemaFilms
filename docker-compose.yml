@@ -25,6 +25,7 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+    restart: on-failure
 
   nginx:
     build:
@@ -51,6 +52,11 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - /etc/letsencrypt:/etc/letsencrypt # Mount Let's Encrypt certificates
+      - static_volume:/var/www/YourCinemaFilms/staticfiles # Mount static files
+    depends_on:
+      - web
 
 volumes:
   static_volume:
