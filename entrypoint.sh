@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Start Nginx
+nginx -g "daemon off;" & # & runs nginx in the background
+
 # Create db directory if it doesn't exist
 mkdir -p /app/db
 
@@ -23,6 +26,10 @@ python manage.py makemigrations
 # Apply database migrations
 echo "Applying database migrations..."
 python manage.py migrate --noinput
+
+# Collect static
+echo "Collecting static..."
+python manage.py collectstatic
 
 # Create superuser using Django shell
 echo "Creating superuser..."

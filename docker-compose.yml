@@ -3,13 +3,26 @@ services:
     build: .
     volumes:
       - ./db:/app/db
-    ports:
-      - "8080:8080"
     env_file:
       - .env
     environment:
       - DJANGO_DB_PATH=/app/db/db.sqlite3
     restart: on-failure
+
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - /etc/letsencrypt:/etc/letsencrypt # Mount Let's Encrypt certificates
+      - /var/www/YourCinemaFilms/staticfiles/:/var/www/YourCinemaFilms/staticfiles/ # Mount static files
+
+    depends_on:
+      - web
 
 volumes:
   sqlite_data:
