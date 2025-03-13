@@ -67,7 +67,7 @@
                     </div>
                     {% if film.uk_certification %}
                         <div class="certification-badge">
-                            <img src="{% static 'img/bbfc_' %}{{ film.uk_certification|upper }}{% if film.uk_certification == '12a' %}A{% endif %}.svg" alt="{{ film.uk_certification }}" width="40" height="40">
+                            <img src="{% static 'img/bbfc_' %}{{ film.uk_certification }}{% if film.uk_certification == '12a' %}A{% endif %}.svg" alt="{{ film.uk_certification }}" width="40" height="40">
                         </div>
                     {% else %}
                         <div class="certification-badge">
