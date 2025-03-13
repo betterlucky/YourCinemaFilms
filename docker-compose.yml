@@ -19,7 +19,8 @@ services:
     tmpfs:
       - /tmp:size=256M  # Temporary storage
       - /run
-      - /var/lib/nginx  # Add nginx temp directory
+      - /var/lib/nginx:rw  # Add nginx temp directory with write permissions
+      - /var/log/nginx:rw  # Add nginx log directory with write permissions
     restart: on-failure
     logging:
       driver: "json-file"
@@ -44,7 +45,8 @@ services:
     tmpfs:
       - /tmp:size=64M
       - /run
-      - /var/lib/nginx  # Add nginx temp directory
+      - /var/lib/nginx:rw  # Add nginx temp directory with write permissions
+      - /var/log/nginx:rw  # Add nginx log directory with write permissions
     depends_on:
       - web
     logging:

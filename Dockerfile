@@ -22,9 +22,12 @@ RUN apt-get update && apt-get upgrade -y \
     ca-certificates \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* \
-    && rm -rf /tmp/* /var/tmp/* \
-    && mkdir -p /var/lib/nginx/body \
-    && chown -R www-data:www-data /var/lib/nginx
+    && rm -rf /tmp/* /var/tmp/*
+
+# Create nginx directories with proper permissions first
+RUN mkdir -p /var/lib/nginx/body /var/log/nginx /run/nginx \
+    && chown -R www-data:www-data /var/lib/nginx /var/log/nginx /run/nginx \
+    && chmod -R 755 /var/lib/nginx /var/log/nginx /run/nginx
 
 # Create a user with the same UID and add to www-data group
 RUN adduser --disabled-password --gecos "" --uid "${HOST_UID}" appuser \
@@ -33,7 +36,7 @@ RUN adduser --disabled-password --gecos "" --uid "${HOST_UID}" appuser \
 # Create necessary directories with proper permissions
 RUN mkdir -p /app/db /app/staticfiles /etc/yourcinemafilms \
     && chown -R appuser:www-data /app \
-    && chmod 775 /app/staticfiles \
+    && chmod -R 775 /app/staticfiles \
     && chmod 770 /app/db \
     && chown -R appuser:www-data /etc/yourcinemafilms \
     && touch /etc/yourcinemafilms/env.py \
@@ -55,11 +58,6 @@ RUN find . -type f -name '*.pyc' -delete && \
 # Copy and set permissions for entrypoint script
 COPY --chown=appuser:www-data entrypoint.sh .
 RUN chmod +x entrypoint.sh
-
-# Create required nginx directories
-RUN mkdir -p /var/log/nginx /var/lib/nginx/body \
-    && chown -R www-data:www-data /var/log/nginx /var/lib/nginx \
-    && chmod -R 755 /var/log/nginx /var/lib/nginx
 
 # Switch to non-root user
 USER appuser
