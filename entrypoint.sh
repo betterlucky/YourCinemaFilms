@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Start Nginx
-nginx -g "daemon off;" & # & runs nginx in the background
+# Start Nginx with the custom configuration
+nginx -c /etc/nginx/nginx.conf -g "daemon off;" &
 
 # Create db directory if it doesn't exist
 mkdir -p /app/db

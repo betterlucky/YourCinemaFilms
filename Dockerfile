@@ -16,6 +16,30 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Create a user with the same UID
 RUN adduser --disabled-password --gecos "" --uid "${HOST_UID}" appuser
 
+# Create a custom nginx configuration that doesn't use the user directive
+RUN echo 'worker_processes auto;\n\
+pid /tmp/nginx.pid;\n\
+events {\n\
+    worker_connections 1024;\n\
+}\n\
+http {\n\
+    include /etc/nginx/mime.types;\n\
+    default_type application/octet-stream;\n\
+    access_log /tmp/nginx_access.log;\n\
+    error_log /tmp/nginx_error.log;\n\
+    client_body_temp_path /tmp/client_body;\n\
+    proxy_temp_path /tmp/proxy_temp;\n\
+    fastcgi_temp_path /tmp/fastcgi_temp;\n\
+    uwsgi_temp_path /tmp/uwsgi_temp;\n\
+    scgi_temp_path /tmp/scgi_temp;\n\
+    include /etc/nginx/conf.d/*.conf;\n\
+}' > /etc/nginx/nginx.conf
+
+# Create temp directories for nginx that are writable by appuser
+RUN mkdir -p /tmp/client_body /tmp/proxy_temp /tmp/fastcgi_temp /tmp/uwsgi_temp /tmp/scgi_temp \
+    && chown -R appuser:appuser /tmp/client_body /tmp/proxy_temp /tmp/fastcgi_temp /tmp/uwsgi_temp /tmp/scgi_temp \
+    && chmod -R 777 /tmp/client_body /tmp/proxy_temp /tmp/fastcgi_temp /tmp/uwsgi_temp /tmp/scgi_temp
+
 # Create necessary directories with proper permissions
 RUN mkdir -p /app/db /app/staticfiles /etc/yourcinemafilms \
     && chown -R appuser:appuser /app \
