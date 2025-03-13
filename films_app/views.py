@@ -57,7 +57,10 @@ from .utils import (
     get_cached_search_results, cache_search_results, fetch_and_update_film_from_tmdb,
     get_cache_directory, get_user_votes_and_remaining, user_can_vote, get_top_films_data
 )
-from .tmdb_api import get_movie_details, format_tmdb_data_for_film
+from .tmdb_api import (
+    get_movie_details, format_tmdb_data_for_film,
+    search_movies, sort_and_limit_films
+)
 
 
 def landing(request):
