@@ -459,11 +459,59 @@ def film_detail(request, imdb_id):
     try:
         film = Film.objects.get(imdb_id=imdb_id)
     except Film.DoesNotExist:
-        messages.error(request, _('Film not found.'))
-        return redirect('films_app:classics')
-    
-    # We're no longer collecting voting information, so these variables have been removed:
-    # has_voted, has_cinema_voted, cinema_vote, can_vote, vote_count, commitment_metrics, etc.
+        # If the film doesn't exist in our database, try to fetch it from TMDB
+        if imdb_id.startswith('tmdb-'):
+            tmdb_id = imdb_id.replace('tmdb-', '')
+            try:
+                # Import the function to fetch and update film from TMDB
+                from .tmdb_api import get_movie_details, format_tmdb_data_for_film
+                
+                # Log the attempt to fetch from TMDB
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.info(f"Attempting to fetch film with TMDB ID {tmdb_id} from TMDB API")
+                
+                # Fetch the movie details from TMDB
+                movie_data = get_movie_details(tmdb_id)
+                
+                if movie_data:
+                    # Format the data for our Film model
+                    film_data = format_tmdb_data_for_film(movie_data)
+                    
+                    # Create the film in our database
+                    film = Film.objects.create(
+                        imdb_id=imdb_id,
+                        title=film_data.get('title', ''),
+                        year=film_data.get('year', ''),
+                        director=film_data.get('director', ''),
+                        poster_url=film_data.get('poster_url', ''),
+                        plot=film_data.get('plot', ''),
+                        genres=film_data.get('genres', ''),  # Note: 'genres' is the field name in the Film model
+                        runtime=film_data.get('runtime', 0),
+                        popularity=film_data.get('popularity', 0.0),
+                        vote_count=film_data.get('vote_count', 0),
+                        vote_average=film_data.get('vote_average', 0.0),
+                        uk_certification=film_data.get('uk_certification', ''),
+                        uk_release_date=film_data.get('uk_release_date'),
+                        revenue=film_data.get('revenue', 0),
+                        actors=film_data.get('actors', ''),
+                        # The Film model doesn't have a tmdb_id field
+                    )
+                    
+                    logger.info(f"Successfully created film {film.title} with ID {film.imdb_id}")
+                else:
+                    logger.error(f"Failed to fetch film with TMDB ID {tmdb_id} from TMDB API")
+                    messages.error(request, _('Film not found in TMDB.'))
+                    return redirect('films_app:classics')
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Error fetching film from TMDB: {str(e)}")
+                messages.error(request, _('Error fetching film details.'))
+                return redirect('films_app:classics')
+        else:
+            messages.error(request, _('Film not found.'))
+            return redirect('films_app:classics')
     
     # Get similar films
     similar_films = Film.objects.filter(

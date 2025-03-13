@@ -231,15 +231,6 @@
                     $(this).trigger('keyup');
                 }
             });
-            
-            // Handle click on search results to navigate to film detail page
-            $(document).on('click', '.search-result-link', function(e) {
-                e.preventDefault();
-                const filmId = $(this).data('film-id');
-                if (filmId) {
-                    window.location.href = "{% url 'films_app:film_detail' 'placeholder' %}".replace('placeholder', filmId);
-                }
-            });
         });
     </script>
     
