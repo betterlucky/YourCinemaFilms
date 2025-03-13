@@ -11,4 +11,12 @@ whitenoise==6.6.0
 dj-database-url==2.1.0
 # psycopg2-binary==2.9.9
 django-htmx==1.22.0
-Pillow==11.1.0 
+Pillow==11.1.0
+
+# Security packages
+django-secure==1.0.2
+django-csp==3.7  # Content Security Policy
+django-ratelimit==4.1.0
+django-axes==6.3.0  # Login attempt monitoring
+django-honeypot==1.1.1  # Anti-spam
+django-permissions-policy==4.18.0  # Permissions-Policy header 

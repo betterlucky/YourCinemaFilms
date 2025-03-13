@@ -11,7 +11,18 @@ services:
     environment:
       - DJANGO_DB_PATH=/app/db/db.sqlite3
       - HOST_UID=${HOST_UID:-1000}  # Make HOST_UID available in container
+    security_opt:
+      - no-new-privileges:true
+    read_only: true  # Make root filesystem read-only
+    tmpfs:
+      - /tmp:size=256M  # Temporary storage
+      - /run
     restart: on-failure
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   nginx:
     build:
@@ -21,11 +32,22 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./nginx/conf.d:/etc/nginx/conf.d
-      - /etc/letsencrypt:/etc/letsencrypt # Mount Let's Encrypt certificates
-      - static_volume:/var/www/YourCinemaFilms/staticfiles # Mount static files
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro # Mount Let's Encrypt certificates
+      - static_volume:/var/www/YourCinemaFilms/staticfiles:ro # Mount static files
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:size=64M
+      - /run
     depends_on:
       - web
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 volumes:
   static_volume:
