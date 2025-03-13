@@ -23,6 +23,7 @@ def get_current_domain():
     # Check if we're in a production environment
     # Explicitly check for PRODUCTION=true/false first
     production_env = os.environ.get('PRODUCTION', '').lower()
+    
     if production_env == 'true':
         return 'yourcinemafilms.theworkpc.com'
     elif production_env == 'false':
