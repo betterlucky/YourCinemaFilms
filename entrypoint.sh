@@ -29,7 +29,7 @@ python manage.py migrate --noinput
 
 # Collect static
 echo "Collecting static..."
-python manage.py collectstatic
+python manage.py collectstatic --noinput
 
 # Create superuser using Django shell
 echo "Creating superuser..."
