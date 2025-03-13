@@ -7,6 +7,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     && rm -rf /var/lib/apt/lists/*
 
+RUN apt-get update && apt-get install -y net-tools curl
+
+# Install Nginx
+RUN apt-get update && apt-get install -y nginx
+
 # Install Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
