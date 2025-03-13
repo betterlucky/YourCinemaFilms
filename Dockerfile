@@ -2,6 +2,12 @@ FROM python:3.13.1-slim
 
 WORKDIR /app
 
+# Get the host user's UID (replace with your actual UID)
+ARG HOST_UID=1000
+
+# Create a user with the same UID
+RUN adduser --disabled-password --gecos "" --uid "${HOST_UID}" appuser
+
 # Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
@@ -18,6 +24,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy project files
 COPY . .
+
+# Create environment directory
+RUN mkdir -p /etc/yourcinemafilms
 
 # Copy entrypoint script and set permissions
 COPY entrypoint.sh .

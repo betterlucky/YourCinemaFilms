@@ -3,6 +3,8 @@ services:
     build: .
     volumes:
       - ./db:/app/db
+      - static_volume:/app/staticfiles
+      - /etc/yourcinemafilms:/etc/yourcinemafilms:ro  # Mount production environment file as read-only
     env_file:
       - .env
     environment:
@@ -20,10 +22,11 @@ services:
       - ./nginx/conf.d:/etc/nginx/conf.d
       - /etc/letsencrypt:/etc/letsencrypt # Mount Let's Encrypt certificates
       - /var/www/YourCinemaFilms/staticfiles/:/var/www/YourCinemaFilms/staticfiles/ # Mount static files
-
+      - static_volume:/app/staticfiles
     depends_on:
       - web
 
 volumes:
+  static_volume:
   sqlite_data:
     driver: local  # Explicitly set the local driver 
