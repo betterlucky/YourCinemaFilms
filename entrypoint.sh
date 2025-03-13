@@ -35,6 +35,9 @@ python manage.py collectstatic --noinput
 echo "Creating superuser..."
 echo "from django.contrib.auth.models import User; User.objects.create_superuser('admin', 'admin@example.com', 'pw7443') if not User.objects.filter(username='admin').exists() else print('Superuser already exists')" | python manage.py shell
 
+echo "Run google Oauth update"
+python setup_google_oauth.py
+
 # Start Gunicorn
 echo "Starting Gunicorn server..."
 exec gunicorn --bind 0.0.0.0:8080 \
