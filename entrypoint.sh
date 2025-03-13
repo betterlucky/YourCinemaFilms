@@ -16,19 +16,8 @@ chmod -R 777 /app/db
 chmod 666 /app/db/db.sqlite3
 
 # Create staticfiles directory with proper permissions
-echo "Setting up static files directory..."
-rm -rf /app/staticfiles
 mkdir -p /app/staticfiles
-mkdir -p /app/staticfiles/css
-mkdir -p /app/staticfiles/js
-mkdir -p /app/staticfiles/img
-mkdir -p /app/staticfiles/admin
-mkdir -p /app/staticfiles/admin/css
-mkdir -p /app/staticfiles/admin/js
-mkdir -p /app/staticfiles/admin/img
-mkdir -p /app/staticfiles/rest_framework
-chmod -R 777 /app/staticfiles
-ls -la /app/staticfiles
+# Don't try to change permissions of existing files
 
 # Debug information
 echo "Database directory permissions:"
@@ -44,10 +33,7 @@ python manage.py migrate --noinput
 
 # Collect static
 echo "Collecting static..."
-PYTHONUNBUFFERED=1 python manage.py collectstatic --noinput --clear
-
-# Don't try to copy to nginx container - we're using tmpfs in both containers
-echo "Static files collected successfully"
+python manage.py collectstatic --noinput --clear
 
 # Create superuser using Django shell
 echo "Creating superuser..."
