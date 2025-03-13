@@ -178,6 +178,9 @@
     <!-- jQuery -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     
+    <!-- Custom JS -->
+    <script src="{% static 'js/search.js' %}"></script>
+    
     <!-- Search Script -->
     <script>
         // Define Django template variables as global variables
@@ -226,6 +229,15 @@
                 if (query.length >= 3) {
                     // Trigger search again to show results
                     $(this).trigger('keyup');
+                }
+            });
+            
+            // Handle click on search results to navigate to film detail page
+            $(document).on('click', '.search-result-link', function(e) {
+                e.preventDefault();
+                const filmId = $(this).data('film-id');
+                if (filmId) {
+                    window.location.href = "{% url 'films_app:film_detail' 'placeholder' %}".replace('placeholder', filmId);
                 }
             });
         });
