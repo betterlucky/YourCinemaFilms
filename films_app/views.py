@@ -2,17 +2,27 @@ import json
 import os
 import requests
 import logging
+import sys
+import re
+import base64
+import time
+import urllib.parse
 from datetime import datetime, timedelta, date
 from dateutil.relativedelta import relativedelta
+from io import StringIO
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib.admin.views.decorators import staff_member_required
 from django.http import JsonResponse, HttpResponse, FileResponse, HttpResponseNotAllowed
 from django.conf import settings
 from django.contrib import messages
-from django.db.models import Count, Q, F, Sum, Avg, Case, When, IntegerField, Subquery, OuterRef
+from django.db.models import (
+    Count, Q, F, Sum, Avg, Case, When, IntegerField,
+    Subquery, OuterRef
+)
 from django.db.models.functions import TruncMonth, TruncYear
 from django.utils import timezone
+from django.utils.safestring import mark_safe
 from django.contrib.auth.models import User
 from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 from django.views.decorators.http import require_http_methods
@@ -20,18 +30,13 @@ from django.views.decorators.csrf import csrf_exempt
 from django.urls import reverse
 from django.template.loader import render_to_string
 from django.core.cache import cache
-from allauth.socialaccount.models import SocialAccount
-from django.db import connection
 from django.core.management import call_command
-from io import StringIO
-import sys
-import re
-import base64
-import urllib.parse
+from django.utils.translation import gettext as _
+from allauth.socialaccount.models import SocialAccount
 from rest_framework.decorators import permission_classes
 from rest_framework.permissions import AllowAny
-from django.utils.translation import gettext as _
 import glob
+from django.db import models
 
 # Try to import PIL, but don't fail if it's not available
 try:
@@ -41,16 +46,18 @@ except ImportError:
     PIL_AVAILABLE = False
     logging.warning("PIL not available. Image processing features will be disabled.")
 
-from .models import Film, Vote, UserProfile, GenreTag, Activity, CinemaVote, PageTracker, Cinema, CinemaPreference
+from .models import (
+    Film, Vote, UserProfile, GenreTag, Activity,
+    CinemaVote, PageTracker, Cinema, CinemaPreference,
+    Achievement
+)
 from .utils import (
     contains_profanity, validate_and_format_genre_tag, require_http_method,
     count_film_votes, get_date_range_from_period, filter_votes_by_period,
     get_cached_search_results, cache_search_results, fetch_and_update_film_from_tmdb,
     get_cache_directory, get_user_votes_and_remaining, user_can_vote, get_top_films_data
 )
-from .tmdb_api import search_movies, sort_and_limit_films, get_movie_details, format_tmdb_data_for_film, get_movie_by_imdb_id, get_uk_certification
-# Import forms if they exist in your project
-# from .forms import FilmSearchForm, UploadProfileImageForm
+from .tmdb_api import get_movie_details, format_tmdb_data_for_film
 
 
 def landing(request):
@@ -229,31 +236,26 @@ def profile(request):
     user_votes, votes_remaining = get_user_votes_and_remaining(request.user)
     
     # Get user achievements
-    from films_app.models import Achievement
     achievements = Achievement.objects.filter(user=request.user)
     
-    # Check for Google accounts using raw SQL query
-    with connection.cursor() as cursor:
-        cursor.execute(
-            "SELECT COUNT(*) FROM socialaccount_socialaccount WHERE user_id = %s AND LOWER(provider) = 'google'",
-            [request.user.id]
-        )
-        google_account_count = cursor.fetchone()[0]
+    # Get Google accounts using Django ORM
+    has_google_account = SocialAccount.objects.filter(
+        user=request.user,
+        provider__iexact='google'
+    ).exists()
     
-    has_google_account = google_account_count > 0
-    logger.info(f"User: {request.user.username}, Has Google account (SQL): {has_google_account}")
+    logger.info(
+        "User: %s, Has Google account: %s",
+        request.user.username,
+        has_google_account
+    )
     
-    # Get all social accounts using raw SQL
-    with connection.cursor() as cursor:
-        cursor.execute(
-            "SELECT id, LOWER(provider) as provider FROM socialaccount_socialaccount WHERE user_id = %s",
-            [request.user.id]
-        )
-        social_accounts_raw = cursor.fetchall()
+    # Get all social accounts using Django ORM
+    social_accounts = SocialAccount.objects.filter(
+        user=request.user
+    ).values('id', 'provider')
     
-    # Convert to a list of dictionaries for the template
-    social_accounts = [{'id': row[0], 'provider': row[1]} for row in social_accounts_raw]
-    logger.info(f"Social accounts (SQL): {social_accounts}")
+    logger.info("Social accounts: %s", list(social_accounts))
     
     context = {
         'profile': request.user.profile,
@@ -456,6 +458,8 @@ def search_films(request):
 @permission_classes([AllowAny])
 def film_detail(request, imdb_id):
     """Film detail view."""
+    logger = logging.getLogger(__name__)
+    
     try:
         film = Film.objects.get(imdb_id=imdb_id)
     except Film.DoesNotExist:
@@ -463,12 +467,6 @@ def film_detail(request, imdb_id):
         if imdb_id.startswith('tmdb-'):
             tmdb_id = imdb_id.replace('tmdb-', '')
             try:
-                # Import the function to fetch and update film from TMDB
-                from .tmdb_api import get_movie_details, format_tmdb_data_for_film
-                
-                # Log the attempt to fetch from TMDB
-                import logging
-                logger = logging.getLogger(__name__)
                 logger.info(f"Attempting to fetch film with TMDB ID {tmdb_id} from TMDB API")
                 
                 # Fetch the movie details from TMDB
@@ -486,7 +484,7 @@ def film_detail(request, imdb_id):
                         director=film_data.get('director', ''),
                         poster_url=film_data.get('poster_url', ''),
                         plot=film_data.get('plot', ''),
-                        genres=film_data.get('genres', ''),  # Note: 'genres' is the field name in the Film model
+                        genres=film_data.get('genres', ''),
                         runtime=film_data.get('runtime', 0),
                         popularity=film_data.get('popularity', 0.0),
                         vote_count=film_data.get('vote_count', 0),
@@ -495,7 +493,6 @@ def film_detail(request, imdb_id):
                         uk_release_date=film_data.get('uk_release_date'),
                         revenue=film_data.get('revenue', 0),
                         actors=film_data.get('actors', ''),
-                        # The Film model doesn't have a tmdb_id field
                     )
                     
                     logger.info(f"Successfully created film {film.title} with ID {film.imdb_id}")
@@ -504,8 +501,6 @@ def film_detail(request, imdb_id):
                     messages.error(request, _('Film not found in TMDB.'))
                     return redirect('films_app:classics')
             except Exception as e:
-                import logging
-                logger = logging.getLogger(__name__)
                 logger.error(f"Error fetching film from TMDB: {str(e)}")
                 messages.error(request, _('Error fetching film details.'))
                 return redirect('films_app:classics')
@@ -514,9 +509,11 @@ def film_detail(request, imdb_id):
             return redirect('films_app:classics')
     
     # Get similar films
-    similar_films = Film.objects.filter(
-        Q(director=film.director) 
-    ).exclude(imdb_id=film.imdb_id).order_by('-popularity')[:6]
+    similar_films = (
+        Film.objects.filter(director=film.director)
+        .exclude(imdb_id=film.imdb_id)
+        .order_by('-popularity')[:6]
+    )
     
     # Get all approved tags for this film
     approved_tags = GenreTag.objects.filter(film=film, is_approved=True)
@@ -534,24 +531,15 @@ def film_detail(request, imdb_id):
         user_tags = GenreTag.objects.filter(film=film, user=request.user)
         
         # Check if user has voted for this film
-        from .models import Vote
         has_voted = Vote.objects.filter(user=request.user, film=film).exists()
         
         # Get user's votes and remaining votes
-        from .utils import get_user_votes_and_remaining
         user_votes, votes_remaining = get_user_votes_and_remaining(request.user)
         
         # User can vote if they haven't already voted for this film and have votes remaining
         can_vote = not has_voted and votes_remaining > 0
     else:
         user_tags = []
-    
-    # Check if the user is coming from the classics page
-    source = request.GET.get('source', '')
-    from_classics = source == 'classics'
-    
-    # Get the total vote count for this film
-    vote_count = film.votes_count
     
     context = {
         'film': film,
@@ -560,12 +548,12 @@ def film_detail(request, imdb_id):
         'genres': film.genre_list,
         'all_genres': film.all_genres,
         'is_authenticated': request.user.is_authenticated,
-        'from_classics': from_classics,
+        'from_classics': False,
         'similar_films': similar_films,
         'has_voted': has_voted,
         'can_vote': can_vote,
         'votes_remaining': votes_remaining,
-        'vote_count': vote_count,
+        'vote_count': film.votes_count,
     }
     
     return render(request, 'films_app/film_detail.html', context)
@@ -1199,22 +1187,25 @@ def get_genre_distribution(votes_queryset):
     """Get genre distribution from votes."""
     genre_counts = {}
     
-    # Get all films from votes
-    films = Film.objects.filter(votes__in=votes_queryset).distinct()
+    # Get all films from votes and count genres
+    films = (Film.objects.filter(votes__in=votes_queryset)
+            .distinct()
+            .values_list('genres', flat=True))
     
     # Count genres (including approved user tags)
-    for film in films:
-        for genre in film.all_genres:
-            if genre in genre_counts:
-                genre_counts[genre] += 1
-            else:
-                genre_counts[genre] = 1
+    for genres in films:
+        if genres:
+            for genre in genres.split(', '):
+                genre_counts[genre] = genre_counts.get(genre, 0) + 1
     
-    # Sort by count (descending)
-    sorted_genres = dict(sorted(genre_counts.items(), key=lambda item: item[1], reverse=True))
+    # Sort by count (descending) and return top 10
+    sorted_genres = dict(sorted(
+        genre_counts.items(),
+        key=lambda item: item[1],
+        reverse=True
+    )[:10])
     
-    # Return top 10 genres
-    return dict(list(sorted_genres.items())[:10])
+    return sorted_genres
 
 
 def user_profile_view(request, username):
@@ -1959,54 +1950,58 @@ def get_vote_button(request, imdb_id):
         film = Film.objects.get(imdb_id=imdb_id)
         
         # Check if the user has already voted for this film
-        try:
-            vote = Vote.objects.get(user=request.user, film=film)
-            context = {
-                'vote': vote,
-                'film': film,
-            }
-            return render(request, 'films_app/partials/remove_vote_button.html', context)
-        except Vote.DoesNotExist:
-            # Check if the user can vote
-            _, votes_remaining = get_user_votes_and_remaining(request.user)
-            context = {
-                'film': film,
-                'can_vote': votes_remaining > 0,
-            }
-            return render(request, 'films_app/partials/vote_button.html', context)
+        vote = Vote.objects.filter(
+            user=request.user,
+            film=film
+        ).first()
+        
+        if vote:
+            return render(
+                request,
+                'films_app/partials/remove_vote_button.html',
+                {'vote': vote, 'film': film}
+            )
+        
+        # Check if the user can vote
+        _, votes_remaining = get_user_votes_and_remaining(request.user)
+        return render(
+            request,
+            'films_app/partials/vote_button.html',
+            {'film': film, 'can_vote': votes_remaining > 0}
+        )
     except Film.DoesNotExist:
         return HttpResponse("Film not found", status=404)
 
 def get_top_films_partial(request):
     """Get the top films partial HTML."""
-    top_films = get_top_films_data()
-    return render(request, 'films_app/partials/top_films.html', {'top_films': top_films})
+    return render(
+        request,
+        'films_app/partials/top_films.html',
+        {'top_films': get_top_films_data()}
+    )
 
 
 @login_required
 def get_cinema_vote_status(request):
     """Get the user's cinema vote status."""
-    user_cinema_votes = CinemaVote.objects.filter(user=request.user).select_related('film')
+    user_cinema_votes = (CinemaVote.objects
+                        .filter(user=request.user)
+                        .select_related('film'))
     cinema_votes_remaining = 3 - user_cinema_votes.count()
     
-    return render(request, 'films_app/partials/user_cinema_vote_status.html', {
-        'user_cinema_votes': user_cinema_votes,
-        'cinema_votes_remaining': cinema_votes_remaining
-    })
+    return render(
+        request,
+        'films_app/partials/user_cinema_vote_status.html',
+        {
+            'user_cinema_votes': user_cinema_votes,
+            'cinema_votes_remaining': cinema_votes_remaining
+        }
+    )
 
 
 @staff_member_required
 def update_cinema_cache(request):
     """Update the cinema cache with current and upcoming UK releases."""
-    from django.core.management import call_command
-    from io import StringIO
-    import sys
-    import logging
-    import glob
-    from datetime import datetime, timedelta
-    from films_app.models import PageTracker
-    from films_app.utils import get_cache_directory
-    
     logger = logging.getLogger(__name__)
     
     if request.method != 'POST':
@@ -2021,13 +2016,11 @@ def update_cinema_cache(request):
         logger.info("Cleaning up cache files before update")
         cleanup_output = cleanup_cache_files()
         
-        # Run the management command with limited pages to avoid timeouts
-        # Always use force=True to reset is_in_cinema flag for all films
+        # Run the management command with limited pages
         logger.info("Starting cinema cache update with max_pages=2 and force=True")
-        # Remove the 'type' parameter as it's not supported
         call_command('update_movie_cache', force=True, max_pages=2)
         
-        result = cleanup_output + "\n\n" + output.getvalue()
+        result = f"{cleanup_output}\n\n{output.getvalue()}"
         status = 'success'
         logger.info("Cinema cache update completed successfully")
     except Exception as e:
@@ -2035,21 +2028,17 @@ def update_cinema_cache(request):
         status = 'error'
         logger.error(f"Cinema cache update failed: {str(e)}")
     finally:
-        # Reset stdout
         sys.stdout = sys.__stdout__
     
-    # Format the output for display
-    formatted_output = result.replace('\n', '<br>')
+    template = (
+        'films_app/partials/cache_update_success.html'
+        if status == 'success'
+        else 'films_app/partials/cache_update_error.html'
+    )
     
-    # Return the result
-    if status == 'success':
-        return render(request, 'films_app/partials/cache_update_success.html', {
-            'output': formatted_output
-        })
-    else:
-        return render(request, 'films_app/partials/cache_update_error.html', {
-            'output': formatted_output
-        })
+    return render(request, template, {
+        'output': result.replace('\n', '<br>')
+    })
 
 def cleanup_cache_files():
     """Clean up all JSON cache files to ensure fresh data."""
@@ -2545,68 +2534,75 @@ def update_travel_distance(request):
 # Helper function for vote achievements
 def check_vote_achievements(user):
     """Check and award vote-related achievements."""
-    from .models import Achievement
+    vote_count = Vote.objects.filter(user=user).count()
     
     # Check for first vote achievement
-    if Vote.objects.filter(user=user).count() == 1:
+    if vote_count == 1:
         Achievement.objects.get_or_create(
             user=user,
             achievement_type='first_vote'
         )
     
     # Check for 10 votes achievement
-    if Vote.objects.filter(user=user).count() >= 10:
+    if vote_count >= 10:
         Achievement.objects.get_or_create(
             user=user,
             achievement_type='ten_votes'
         )
     
     # Check for 50 votes achievement
-    if Vote.objects.filter(user=user).count() >= 50:
+    if vote_count >= 50:
         Achievement.objects.get_or_create(
             user=user,
             achievement_type='fifty_votes'
         )
 
+@login_required
 def cinema_vote(request, imdb_id):
     """Add a cinema vote for a film."""
-    # Check if the request method is POST
     if request.method != 'POST':
-        return HttpResponse("Method not allowed. Expected POST.", status=405)
-    
-    # Check if user is authenticated
-    if not request.user.is_authenticated:
-        return HttpResponse("You must be logged in to vote.", status=401)
+        return HttpResponse(
+            "Method not allowed. Expected POST.",
+            status=405
+        )
     
     try:
-        # Get the film
         film = Film.objects.get(imdb_id=imdb_id)
         
         # Check if user has already voted for this film
-        existing_vote = CinemaVote.objects.filter(user=request.user, film=film).first()
+        existing_vote = (CinemaVote.objects
+                        .filter(user=request.user, film=film)
+                        .exists())
         if existing_vote:
-            return HttpResponse("You have already voted for this film.", status=400)
+            return HttpResponse(
+                "You have already voted for this film.",
+                status=400
+            )
         
         # Check if user has reached the maximum number of votes
-        user_cinema_votes = CinemaVote.objects.filter(user=request.user)
-        if user_cinema_votes.count() >= 3:
-            return HttpResponse("You have reached the maximum number of cinema votes (3).", status=400)
+        user_cinema_votes_count = (CinemaVote.objects
+                                 .filter(user=request.user)
+                                 .count())
+        if user_cinema_votes_count >= 3:
+            return HttpResponse(
+                "You have reached the maximum number of cinema votes (3).",
+                status=400
+            )
         
         # Create the vote
-        vote = CinemaVote(
+        vote = CinemaVote.objects.create(
             user=request.user,
             film=film,
-            commitment_level='interested',  # Default values
+            commitment_level='interested',
             preferred_format='any',
             social_preference='undecided'
         )
-        vote.save()
         
-        # Get updated vote count
+        # Get updated vote count and user's cinema votes
         vote_count = film.cinema_votes.count()
-        
-        # Get user's cinema votes for the response
-        user_cinema_votes = CinemaVote.objects.filter(user=request.user).select_related('film')
+        user_cinema_votes = (CinemaVote.objects
+                           .filter(user=request.user)
+                           .select_related('film'))
         
         # Create activity record
         Activity.objects.create(
@@ -2616,7 +2612,6 @@ def cinema_vote(request, imdb_id):
             description=f"Voted for cinema film: {film.title}"
         )
         
-        # Return the updated vote count and button
         context = {
             'film': film,
             'vote': vote,
@@ -2624,7 +2619,11 @@ def cinema_vote(request, imdb_id):
             'user_cinema_votes': user_cinema_votes,
         }
         
-        return render(request, 'films_app/partials/cinema_vote_success.html', context)
+        return render(
+            request,
+            'films_app/partials/cinema_vote_success.html',
+            context
+        )
     
     except Film.DoesNotExist:
         return HttpResponse("Film not found.", status=404)
@@ -2632,33 +2631,42 @@ def cinema_vote(request, imdb_id):
         return HttpResponse(f"An error occurred: {str(e)}", status=500)
 
 
+@login_required
 def remove_cinema_vote(request, imdb_id):
     """Remove a cinema vote for a film."""
-    # Check if the request method is POST
     if request.method != 'POST':
-        return HttpResponse("Method not allowed. Expected POST.", status=405)
+        return HttpResponse(
+            "Method not allowed. Expected POST.",
+            status=405
+        )
     
-    # Check if user is authenticated
     if not request.user.is_authenticated:
-        return HttpResponse("You must be logged in to remove a vote.", status=401)
+        return HttpResponse(
+            "You must be logged in to remove a vote.",
+            status=401
+        )
     
     try:
-        # Get the film
         film = Film.objects.get(imdb_id=imdb_id)
         
         # Check if user has voted for this film
-        vote = CinemaVote.objects.filter(user=request.user, film=film).first()
+        vote = (CinemaVote.objects
+               .filter(user=request.user, film=film)
+               .first())
         if not vote:
-            return HttpResponse("You have not voted for this film.", status=400)
+            return HttpResponse(
+                "You have not voted for this film.",
+                status=400
+            )
         
         # Remove the vote
         vote.delete()
         
-        # Get updated vote count
+        # Get updated vote count and user's cinema votes
         vote_count = film.cinema_votes.count()
-        
-        # Get user's cinema votes for the response
-        user_cinema_votes = CinemaVote.objects.filter(user=request.user).select_related('film')
+        user_cinema_votes = (CinemaVote.objects
+                           .filter(user=request.user)
+                           .select_related('film'))
         cinema_votes_remaining = 3 - user_cinema_votes.count()
         
         # Create activity record
@@ -2669,7 +2677,6 @@ def remove_cinema_vote(request, imdb_id):
             description=f"Removed vote for cinema film: {film.title}"
         )
         
-        # Return the updated vote count and button
         context = {
             'film': film,
             'vote_count': vote_count,
@@ -2677,7 +2684,11 @@ def remove_cinema_vote(request, imdb_id):
             'cinema_votes_remaining': cinema_votes_remaining,
         }
         
-        return render(request, 'films_app/partials/cinema_vote_removed_response.html', context)
+        return render(
+            request,
+            'films_app/partials/cinema_vote_removed_response.html',
+            context
+        )
     
     except Film.DoesNotExist:
         return HttpResponse("Film not found.", status=404)
