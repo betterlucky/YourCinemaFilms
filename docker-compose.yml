@@ -12,6 +12,7 @@ services:
       - DJANGO_DB_PATH=/app/db/db.sqlite3
       - HOST_UID=${HOST_UID:-1000}  # Make HOST_UID available in container
       - DJANGO_ALLOWED_HOSTS=yourcinemafilms.theworkpc.com,localhost,127.0.0.1
+      - PYTHONPATH=/etc/yourcinemafilms:/app  # Add env.py directory to Python path
     security_opt:
       - no-new-privileges:true
     read_only: false  # Changed to false to allow writing to static files

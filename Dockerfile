@@ -26,19 +26,19 @@ RUN apt-get update && apt-get upgrade -y \
     && mkdir -p /var/lib/nginx/body \
     && chown -R www-data:www-data /var/lib/nginx
 
-# Create a user with the same UID
+# Create a user with the same UID and add to www-data group
 RUN adduser --disabled-password --gecos "" --uid "${HOST_UID}" appuser \
     && usermod -aG www-data appuser
 
 # Create necessary directories with proper permissions
 RUN mkdir -p /app/db /app/staticfiles /etc/yourcinemafilms \
     && chown -R appuser:www-data /app \
-    && chmod 755 /app/staticfiles \
+    && chmod 775 /app/staticfiles \
     && chmod 770 /app/db \
-    && chown -R appuser:appuser /etc/yourcinemafilms \
+    && chown -R appuser:www-data /etc/yourcinemafilms \
     && touch /etc/yourcinemafilms/env.py \
-    && chown appuser:appuser /etc/yourcinemafilms/env.py \
-    && chmod 600 /etc/yourcinemafilms/env.py
+    && chown appuser:www-data /etc/yourcinemafilms/env.py \
+    && chmod 640 /etc/yourcinemafilms/env.py
 
 # Install Python dependencies
 COPY --chown=appuser:www-data requirements.txt .
@@ -55,6 +55,11 @@ RUN find . -type f -name '*.pyc' -delete && \
 # Copy and set permissions for entrypoint script
 COPY --chown=appuser:www-data entrypoint.sh .
 RUN chmod +x entrypoint.sh
+
+# Create required nginx directories
+RUN mkdir -p /var/log/nginx /var/lib/nginx/body \
+    && chown -R www-data:www-data /var/log/nginx /var/lib/nginx \
+    && chmod -R 755 /var/log/nginx /var/lib/nginx
 
 # Switch to non-root user
 USER appuser
