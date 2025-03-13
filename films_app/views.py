@@ -157,6 +157,7 @@ def filter_classics_films(request):
     
     # Get classic films (films with votes)
     from django.db.models import Count
+    from django.conf import settings
     
     # Base query for classic films - films with at least one vote
     # Using 'total_votes' instead of 'vote_count' to avoid conflict with existing field
@@ -2083,6 +2084,7 @@ def cleanup_cache_files():
 def filter_cinema_films(request):
     """Filter cinema films by title."""
     from django.db.models import Q
+    from django.conf import settings
     
     query = request.GET.get('query', '').strip()
     today = timezone.now().date()
