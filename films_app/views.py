@@ -521,17 +521,37 @@ def film_detail(request, imdb_id):
     # Get all approved tags for this film
     approved_tags = GenreTag.objects.filter(film=film, is_approved=True)
     
-    # If user is authenticated, exclude their tags from approved tags
+    # Initialize vote-related variables
+    has_voted = False
+    can_vote = False
+    votes_remaining = 0
+    
+    # If user is authenticated, check if they've voted for this film and how many votes they have left
     if request.user.is_authenticated:
+        # Exclude user's tags from approved tags
         approved_tags = approved_tags.exclude(user=request.user)
         # Get user tags for this film
         user_tags = GenreTag.objects.filter(film=film, user=request.user)
+        
+        # Check if user has voted for this film
+        from .models import Vote
+        has_voted = Vote.objects.filter(user=request.user, film=film).exists()
+        
+        # Get user's votes and remaining votes
+        from .utils import get_user_votes_and_remaining
+        user_votes, votes_remaining = get_user_votes_and_remaining(request.user)
+        
+        # User can vote if they haven't already voted for this film and have votes remaining
+        can_vote = not has_voted and votes_remaining > 0
     else:
         user_tags = []
     
     # Check if the user is coming from the classics page
     source = request.GET.get('source', '')
     from_classics = source == 'classics'
+    
+    # Get the total vote count for this film
+    vote_count = film.votes_count
     
     context = {
         'film': film,
@@ -542,6 +562,10 @@ def film_detail(request, imdb_id):
         'is_authenticated': request.user.is_authenticated,
         'from_classics': from_classics,
         'similar_films': similar_films,
+        'has_voted': has_voted,
+        'can_vote': can_vote,
+        'votes_remaining': votes_remaining,
+        'vote_count': vote_count,
     }
     
     return render(request, 'films_app/film_detail.html', context)
