@@ -354,18 +354,6 @@
         const mainSearchResults = document.getElementById('main-search-results');
         const searchContainer = document.querySelector('.main-search-container .input-group');
         
-        // Add event listener for clicks on search results
-        document.addEventListener('click', function(e) {
-            const searchResultLink = e.target.closest('.search-result-link');
-            if (searchResultLink) {
-                e.preventDefault();
-                const filmId = searchResultLink.dataset.filmId;
-                if (filmId) {
-                    window.location.href = "{% url 'films_app:film_detail' 'placeholder' %}".replace('placeholder', filmId);
-                }
-            }
-        });
-        
         // Add pulsing effect that stops after a few seconds
         searchContainer.classList.add('pulse-animation');
         setTimeout(function() {
