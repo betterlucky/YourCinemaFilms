@@ -67,11 +67,11 @@
                     </div>
                     {% if film.uk_certification %}
                         <div class="certification-badge">
-                            <img src="{% static 'img/BBFC_' %}{{ film.uk_certification|upper }}{% if film.uk_certification == '12a' %}A{% endif %}_(2019).svg" alt="{{ film.uk_certification }}" width="40" height="40">
+                            <img src="{% static 'img/bbfc_' %}{{ film.uk_certification|upper }}{% if film.uk_certification == '12a' %}A{% endif %}.svg" alt="{{ film.uk_certification }}" width="40" height="40">
                         </div>
                     {% else %}
                         <div class="certification-badge">
-                            <img src="{% static 'img/BBFC_TBC.svg' %}" alt="TBC" width="40" height="40">
+                            <img src="{% static 'img/bbfc_tbc.svg' %}" alt="TBC" width="40" height="40">
                         </div>
                     {% endif %}
                     <img src="{{ film.poster_url|default:'https://via.placeholder.com/300x450?text=No+Poster' }}" 
