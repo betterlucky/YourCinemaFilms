@@ -18,6 +18,7 @@ services:
     tmpfs:
       - /tmp:size=256M  # Temporary storage
       - /run
+      - /run/nginx:rw  # Add nginx run directory with write permissions
       - /var/lib/nginx:rw  # Add nginx temp directory with write permissions
       - /var/log/nginx:rw  # Add nginx log directory with write permissions
       - /app/staticfiles:rw  # Use tmpfs for staticfiles instead of a volume
@@ -38,13 +39,13 @@ services:
     volumes:
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro # Mount Let's Encrypt certificates
-      # Use a bind mount from the web container's staticfiles
     security_opt:
       - no-new-privileges:true
-    read_only: true
+    read_only: false  # Changed to allow writing to static files
     tmpfs:
       - /tmp:size=64M
       - /run
+      - /run/nginx:rw  # Add nginx run directory with write permissions
       - /var/lib/nginx:rw  # Add nginx temp directory with write permissions
       - /var/log/nginx:rw  # Add nginx log directory with write permissions
       - /var/www/YourCinemaFilms/staticfiles:rw # Use tmpfs for static files

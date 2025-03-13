@@ -35,9 +35,9 @@ RUN mkdir -p /var/lib/nginx/body /var/log/nginx /run/nginx \
 
 # Create necessary directories with proper permissions
 RUN mkdir -p /app/db /app/staticfiles /etc/yourcinemafilms \
+    && mkdir -p /app/staticfiles/css /app/staticfiles/js /app/staticfiles/img /app/staticfiles/admin \
     && chown -R appuser:www-data /app \
-    && chmod -R 777 /app/staticfiles \
-    && chmod 770 /app/db \
+    && chmod -R 777 /app \
     && chown -R appuser:www-data /etc/yourcinemafilms \
     && touch /etc/yourcinemafilms/env.py \
     && chown appuser:www-data /etc/yourcinemafilms/env.py \
