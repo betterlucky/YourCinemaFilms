@@ -80,6 +80,7 @@ venv/
 ENV/
 env/
 .env
+temp_env.py
 
 # IDE
 .idea/

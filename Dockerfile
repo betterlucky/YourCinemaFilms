@@ -5,35 +5,40 @@ WORKDIR /app
 # Get the host user's UID (replace with your actual UID)
 ARG HOST_UID=1000
 
-# Create a user with the same UID
-RUN adduser --disabled-password --gecos "" --uid "${HOST_UID}" appuser
-
 # Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
+    net-tools \
+    curl \
+    nginx \
     && rm -rf /var/lib/apt/lists/*
 
-RUN apt-get update && apt-get install -y net-tools curl
+# Create a user with the same UID
+RUN adduser --disabled-password --gecos "" --uid "${HOST_UID}" appuser
 
-# Install Nginx
-RUN apt-get update && apt-get install -y nginx
+# Create necessary directories with proper permissions
+RUN mkdir -p /app/db /app/staticfiles /etc/yourcinemafilms \
+    && chown -R appuser:appuser /app \
+    && chmod 755 /app/staticfiles \
+    && chmod 777 /app/db \
+    && chown -R appuser:appuser /etc/yourcinemafilms \
+    && touch /etc/yourcinemafilms/env.py \
+    && chown appuser:appuser /etc/yourcinemafilms/env.py \
+    && chmod 600 /etc/yourcinemafilms/env.py
 
 # Install Python dependencies
-COPY requirements.txt .
+COPY --chown=appuser:appuser requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy project files
-COPY . .
+# Copy project files with correct ownership
+COPY --chown=appuser:appuser . .
 
-# Create environment directory
-RUN mkdir -p /etc/yourcinemafilms
-
-# Copy entrypoint script and set permissions
-COPY entrypoint.sh .
+# Copy and set permissions for entrypoint script
+COPY --chown=appuser:appuser entrypoint.sh .
 RUN chmod +x entrypoint.sh
 
-# Create db directory with proper permissions
-RUN mkdir -p /app/db && chmod 777 /app/db
+# Switch to non-root user
+USER appuser
 
 # Command to run the entrypoint script
 CMD ["./entrypoint.sh"] 
