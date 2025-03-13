@@ -3,6 +3,7 @@ services:
     build: .
     volumes:
       - ./db:/app/db
+      - /etc/yourcinemafilms:/etc/yourcinemafilms:ro  # Mount production environment file as read-only
     env_file:
       - .env
     environment:
