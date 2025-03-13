@@ -11,12 +11,14 @@ services:
     environment:
       - DJANGO_DB_PATH=/app/db/db.sqlite3
       - HOST_UID=${HOST_UID:-1000}  # Make HOST_UID available in container
+      - DJANGO_ALLOWED_HOSTS=yourcinemafilms.theworkpc.com,localhost,127.0.0.1
     security_opt:
       - no-new-privileges:true
-    read_only: true  # Make root filesystem read-only
+    read_only: false  # Changed to false to allow writing to static files
     tmpfs:
       - /tmp:size=256M  # Temporary storage
       - /run
+      - /var/lib/nginx  # Add nginx temp directory
     restart: on-failure
     logging:
       driver: "json-file"
@@ -41,6 +43,7 @@ services:
     tmpfs:
       - /tmp:size=64M
       - /run
+      - /var/lib/nginx  # Add nginx temp directory
     depends_on:
       - web
     logging:

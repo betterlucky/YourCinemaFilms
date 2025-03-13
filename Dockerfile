@@ -21,14 +21,17 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-reco
     ca-certificates \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* \
-    && rm -rf /tmp/* /var/tmp/*
+    && rm -rf /tmp/* /var/tmp/* \
+    && mkdir -p /var/lib/nginx/body \
+    && chown -R www-data:www-data /var/lib/nginx
 
 # Create a user with the same UID
-RUN adduser --disabled-password --gecos "" --uid "${HOST_UID}" appuser
+RUN adduser --disabled-password --gecos "" --uid "${HOST_UID}" appuser \
+    && usermod -aG www-data appuser
 
 # Create necessary directories with proper permissions
 RUN mkdir -p /app/db /app/staticfiles /etc/yourcinemafilms \
-    && chown -R appuser:appuser /app \
+    && chown -R appuser:www-data /app \
     && chmod 755 /app/staticfiles \
     && chmod 770 /app/db \
     && chown -R appuser:appuser /etc/yourcinemafilms \
@@ -37,19 +40,19 @@ RUN mkdir -p /app/db /app/staticfiles /etc/yourcinemafilms \
     && chmod 600 /etc/yourcinemafilms/env.py
 
 # Install Python dependencies
-COPY --chown=appuser:appuser requirements.txt .
+COPY --chown=appuser:www-data requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt \
     && rm -rf ~/.cache/pip/*
 
 # Copy project files with correct ownership
-COPY --chown=appuser:appuser . .
+COPY --chown=appuser:www-data . .
 
 # Remove unnecessary files
 RUN find . -type f -name '*.pyc' -delete && \
     find . -type d -name '__pycache__' -delete
 
 # Copy and set permissions for entrypoint script
-COPY --chown=appuser:appuser entrypoint.sh .
+COPY --chown=appuser:www-data entrypoint.sh .
 RUN chmod +x entrypoint.sh
 
 # Switch to non-root user
