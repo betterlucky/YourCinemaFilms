@@ -1,14 +1,16 @@
 services:
   web:
-    build: .
+    build:
+      context: .
+      args:
+        - HOST_UID=${HOST_UID:-1000}  # Pass host user ID to Dockerfile
     volumes:
       - ./db:/app/db
       - static_volume:/app/staticfiles
-      - /etc/yourcinemafilms:/etc/yourcinemafilms:ro  # Mount production environment file as read-only
-    env_file:
-      - .env
+      - /etc/yourcinemafilms/env.py:/etc/yourcinemafilms/env.py:ro  # Mount only the environment file as read-only
     environment:
       - DJANGO_DB_PATH=/app/db/db.sqlite3
+      - HOST_UID=${HOST_UID:-1000}  # Make HOST_UID available in container
     restart: on-failure
 
   nginx:
@@ -21,12 +23,12 @@ services:
     volumes:
       - ./nginx/conf.d:/etc/nginx/conf.d
       - /etc/letsencrypt:/etc/letsencrypt # Mount Let's Encrypt certificates
-      - /var/www/YourCinemaFilms/staticfiles/:/var/www/YourCinemaFilms/staticfiles/ # Mount static files
-      - static_volume:/app/staticfiles
+      - static_volume:/var/www/YourCinemaFilms/staticfiles # Mount static files
     depends_on:
       - web
 
 volumes:
   static_volume:
+    driver: local  # For storing static files
   sqlite_data:
-    driver: local  # Explicitly set the local driver 
+    driver: local  # For storing database files
