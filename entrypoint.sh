@@ -11,13 +11,13 @@ if [ ! -f /app/db/db.sqlite3 ]; then
     touch /app/db/db.sqlite3
 fi
 
-# Ensure proper permissions
+# Ensure proper permissions for database
 chmod -R 777 /app/db
 chmod 666 /app/db/db.sqlite3
 
-# Ensure proper permissions for staticfiles directory
+# Create staticfiles directory with proper permissions
 mkdir -p /app/staticfiles
-chmod -R 775 /app/staticfiles
+# Don't try to change permissions of existing files
 
 # Debug information
 echo "Database directory permissions:"
@@ -33,7 +33,12 @@ python manage.py migrate --noinput
 
 # Collect static
 echo "Collecting static..."
-python manage.py collectstatic --noinput
+python manage.py collectstatic --noinput --clear
+
+# Copy static files to the nginx container's static directory
+echo "Copying static files to nginx container..."
+mkdir -p /var/www/YourCinemaFilms/staticfiles
+cp -r /app/staticfiles/* /var/www/YourCinemaFilms/staticfiles/ || true
 
 # Create superuser using Django shell
 echo "Creating superuser..."

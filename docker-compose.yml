@@ -6,7 +6,6 @@ services:
         - HOST_UID=${HOST_UID:-1000}  # Pass host user ID to Dockerfile
     volumes:
       - ./db:/app/db
-      - static_volume:/app/staticfiles
       - /etc/yourcinemafilms/env.py:/etc/yourcinemafilms/env.py:ro  # Mount only the environment file as read-only
     environment:
       - DJANGO_DB_PATH=/app/db/db.sqlite3
@@ -21,6 +20,7 @@ services:
       - /run
       - /var/lib/nginx:rw  # Add nginx temp directory with write permissions
       - /var/log/nginx:rw  # Add nginx log directory with write permissions
+      - /app/staticfiles:rw  # Use tmpfs for staticfiles instead of a volume
     restart: on-failure
     logging:
       driver: "json-file"
@@ -38,7 +38,7 @@ services:
     volumes:
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro # Mount Let's Encrypt certificates
-      - static_volume:/var/www/YourCinemaFilms/staticfiles:ro # Mount static files
+      # Use a bind mount from the web container's staticfiles
     security_opt:
       - no-new-privileges:true
     read_only: true
@@ -47,6 +47,7 @@ services:
       - /run
       - /var/lib/nginx:rw  # Add nginx temp directory with write permissions
       - /var/log/nginx:rw  # Add nginx log directory with write permissions
+      - /var/www/YourCinemaFilms/staticfiles:rw # Use tmpfs for static files
     depends_on:
       - web
     logging:
