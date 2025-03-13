@@ -250,6 +250,11 @@
                     <div class="card-body">
                         <h5>Update Cinema Cache</h5>
                         <p>Run this command to update the cache of current and upcoming UK cinema releases.</p>
+                        {% if last_update %}
+                            <div class="alert alert-info mb-3">
+                                <small><i class="fas fa-clock me-1"></i> Last updated: {{ last_update|date:"F j, Y, g:i a" }}</small>
+                            </div>
+                        {% endif %}
                         <button class="btn btn-primary"
                                 hx-post="{% url 'films_app:update_cinema_cache' %}"
                                 hx-target="#cache-update-result"

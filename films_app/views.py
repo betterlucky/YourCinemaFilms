@@ -108,6 +108,15 @@ def cinema(request):
     from django.conf import settings
     upcoming_films_months = getattr(settings, 'UPCOMING_FILMS_MONTHS', 6)
     
+    # Get the last update timestamp from PageTracker
+    last_update = None
+    try:
+        latest_tracker = PageTracker.objects.order_by('-last_updated').first()
+        if latest_tracker:
+            last_update = latest_tracker.last_updated
+    except Exception as e:
+        logging.error(f"Error getting last update timestamp: {str(e)}")
+    
     context = {
         'now_playing_films': now_playing_films,
         'upcoming_films': upcoming_films,
@@ -116,6 +125,7 @@ def cinema(request):
         'upcoming_films_months': upcoming_films_months,
         'user_cinema_votes': user_cinema_votes,
         'user_voted_films': user_voted_films,
+        'last_update': last_update,
     }
     
     return render(request, 'films_app/cinema.html', context)
@@ -2034,6 +2044,15 @@ def update_cinema_cache(request):
     finally:
         sys.stdout = sys.__stdout__
     
+    # Get the last update timestamp
+    last_update = None
+    try:
+        latest_tracker = PageTracker.objects.order_by('-last_updated').first()
+        if latest_tracker:
+            last_update = latest_tracker.last_updated
+    except Exception as e:
+        logger.error(f"Error getting last update timestamp: {str(e)}")
+    
     template = (
         'films_app/partials/cache_update_success.html'
         if status == 'success'
@@ -2041,7 +2060,8 @@ def update_cinema_cache(request):
     )
     
     return render(request, template, {
-        'output': result.replace('\n', '<br>')
+        'output': result.replace('\n', '<br>'),
+        'last_update': last_update
     })
 
 def cleanup_cache_files():
