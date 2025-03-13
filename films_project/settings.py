@@ -231,7 +231,8 @@ AUTHENTICATION_BACKENDS = [
     'allauth.account.auth_backends.AuthenticationBackend',
 ]
 
-SITE_ID = 'localhost:8080'
+# Site ID for django.contrib.sites
+SITE_ID = 1
 
 # AllAuth settings
 ACCOUNT_EMAIL_REQUIRED = True
@@ -252,9 +253,23 @@ SOCIALACCOUNT_QUERY_EMAIL = True  # Request email from providers that don't prov
 SOCIALACCOUNT_STORE_TOKENS = True  # Store authentication tokens
 SOCIALACCOUNT_USERNAME_REQUIRED = False  # Don't require a username for social accounts
 
+# Determine the appropriate protocol and domain based on environment
+# Explicitly check for PRODUCTION=true/false first
+production_env = os.environ.get('PRODUCTION', '').lower()
+if production_env == 'true':
+    PRODUCTION = True
+elif production_env == 'false':
+    PRODUCTION = False
+else:
+    # If PRODUCTION is not explicitly set, fall back to DEBUG setting
+    PRODUCTION = not DEBUG
+
+SITE_DOMAIN = 'yourcinemafilms.theworkpc.com' if PRODUCTION else f"localhost:{os.environ.get('PORT', '8000')}"
+SITE_PROTOCOL = 'https' if PRODUCTION else 'http'
+
 # Disable strict origin checking for allauth
-ACCOUNT_DEFAULT_HTTP_PROTOCOL = "http"
-SOCIALACCOUNT_CALLBACK_URL = "http://localhost:8080/accounts/google/login/callback/"
+ACCOUNT_DEFAULT_HTTP_PROTOCOL = SITE_PROTOCOL
+SOCIALACCOUNT_CALLBACK_URL = f"{SITE_PROTOCOL}://{SITE_DOMAIN}/accounts/google/login/callback/"
 
 # Social account providers
 SOCIALACCOUNT_PROVIDERS = {
