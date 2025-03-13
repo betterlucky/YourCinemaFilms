@@ -19,6 +19,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy project files
 COPY . .
 
+# Create environment directory
+RUN mkdir -p /etc/yourcinemafilms
+
 # Copy entrypoint script and set permissions
 COPY entrypoint.sh .
 RUN chmod +x entrypoint.sh
