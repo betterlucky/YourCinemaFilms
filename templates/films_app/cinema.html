@@ -146,7 +146,7 @@
                                              data-film-title="{{ vote.film.title }}">
                                             {% if vote.film.uk_certification %}
                                                 <div class="certification-badge">
-                                                    <img src="{% static 'img/bbfc_' %}{{ vote.film.uk_certification }}{% if vote.film.uk_certification == '12a' %}A{% endif %}.svg" alt="{{ vote.film.uk_certification }}" width="40" height="40">
+                                                    <img src="{% static 'img/bbfc_' %}{{ vote.film.uk_certification|lower }}{% if vote.film.uk_certification == '12a' %}A{% endif %}.svg" alt="{{ vote.film.uk_certification }}" width="40" height="40">
                                                 </div>
                                             {% else %}
                                                 <div class="certification-badge">

@@ -135,7 +135,7 @@
                                 <td>
                                     {% if film.uk_certification %}
                                         {{ film.uk_certification }}
-                                        <img src="{% static 'img/bbfc_' %}{{ film.uk_certification }}{% if film.uk_certification == '12a' %}A{% endif %}.svg" alt="{{ film.uk_certification }}" width="30" height="30" class="ms-2">
+                                        <img src="{% static 'img/bbfc_' %}{{ film.uk_certification|lower }}{% if film.uk_certification == '12a' %}A{% endif %}.svg" alt="{{ film.uk_certification }}" width="30" height="30" class="ms-2">
                                     {% else %}
                                         TBC
                                         <img src="{% static 'img/bbfc_tbc.svg' %}" alt="TBC" width="30" height="30" class="ms-2">
