@@ -1,8 +1,8 @@
-﻿Django==5.1.1
+﻿Django==5.1.6
 requests==2.31.0
 python-dotenv==1.0.0
 django-allauth==0.61.0
-djangorestframework==3.15.0
+djangorestframework==3.15.2
 django-cors-headers==4.3.1
 python-dateutil==2.8.2
 django-chartjs==2.3.0
@@ -18,6 +18,12 @@ django-secure==1.0.2
 django-csp==3.7  # Content Security Policy
 django-ratelimit==4.1.0
 django-axes==6.3.0  # Login attempt monitoring
-django-honeypot==1.1.1  # Anti-spam
-django-permissions-policy==4.18.0  # Permissions-Policy header 
+django-honeypot==1.2.1  # Anti-spam
+django-permissions-policy==4.18.0  # Permissions-Policy header
+
+# Additional security dependencies
+argon2-cffi==23.1.0  # For better password hashing
+pyOpenSSL==24.0.0  # For better SSL/TLS support
+cryptography==42.0.2  # Required by pyOpenSSL
+certifi==2024.2.2  # For secure SSL/TLS certificates
 
