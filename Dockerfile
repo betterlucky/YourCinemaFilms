@@ -24,14 +24,14 @@ RUN apt-get update && apt-get upgrade -y \
     && rm -rf /var/lib/apt/lists/* \
     && rm -rf /tmp/* /var/tmp/*
 
-# Create nginx directories with proper permissions first
-RUN mkdir -p /var/lib/nginx/body /var/log/nginx /run/nginx \
-    && chown -R www-data:www-data /var/lib/nginx /var/log/nginx /run/nginx \
-    && chmod -R 755 /var/lib/nginx /var/log/nginx /run/nginx
-
 # Create a user with the same UID and add to www-data group
 RUN adduser --disabled-password --gecos "" --uid "${HOST_UID}" appuser \
     && usermod -aG www-data appuser
+
+# Create nginx directories with proper permissions first
+RUN mkdir -p /var/lib/nginx/body /var/log/nginx /run/nginx \
+    && chown -R appuser:www-data /var/lib/nginx /var/log/nginx /run/nginx \
+    && chmod -R 775 /var/lib/nginx /var/log/nginx /run/nginx
 
 # Create necessary directories with proper permissions
 RUN mkdir -p /app/db /app/staticfiles /etc/yourcinemafilms \

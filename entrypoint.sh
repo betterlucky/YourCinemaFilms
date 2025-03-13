@@ -15,6 +15,10 @@ fi
 chmod -R 777 /app/db
 chmod 666 /app/db/db.sqlite3
 
+# Ensure proper permissions for staticfiles directory
+mkdir -p /app/staticfiles
+chmod -R 775 /app/staticfiles
+
 # Debug information
 echo "Database directory permissions:"
 ls -la /app/db/
