@@ -29,7 +29,16 @@ python manage.py migrate --noinput
 
 # Collect static
 echo "Collecting static..."
-python manage.py collectstatic --noinput
+python manage.py collectstatic --noinput --clear
+
+# Debug static files
+echo "Static files directory contents:"
+ls -la /app/staticfiles/
+ls -la /app/staticfiles/img/
+
+# Ensure proper permissions for static files
+echo "Setting proper permissions for static files..."
+chmod -R 755 /app/staticfiles
 
 # Create superuser using Django shell
 echo "Creating superuser..."

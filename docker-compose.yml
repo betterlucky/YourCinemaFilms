@@ -23,7 +23,7 @@ services:
     volumes:
       - ./nginx/conf.d:/etc/nginx/conf.d
       - /etc/letsencrypt:/etc/letsencrypt # Mount Let's Encrypt certificates
-      - static_volume:/var/www/YourCinemaFilms/staticfiles # Mount static files
+      - static_volume:/app/staticfiles # Mount static files at the same path as in the Nginx config
     depends_on:
       - web
 
