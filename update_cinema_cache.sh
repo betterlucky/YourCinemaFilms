@@ -13,9 +13,14 @@ docker exec $(docker ps -qf "name=yourcinemafilms_web") mkdir -p $LOG_DIR 2>/dev
 docker-compose exec -T web bash -c "echo '=== Cinema Cache Update Started at $(date) ===' >> $LOG_FILE" 2>/dev/null || \
 docker exec $(docker ps -qf "name=yourcinemafilms_web") bash -c "echo '=== Cinema Cache Update Started at $(date) ===' >> $LOG_FILE" 2>/dev/null
 
-# Run the Django management command using Docker
-echo "Running update_movie_cache command via Docker..."
-docker-compose exec -T web bash -c "echo 'Running update_movie_cache command...' >> $LOG_FILE && python manage.py update_movie_cache --force >> $LOG_FILE 2>&1"
+# First run the update_release_status command to flag films that need checking
+echo "Running update_release_status command via Docker..."
+docker-compose exec -T web bash -c "echo 'Running update_release_status command...' >> $LOG_FILE && python manage.py update_release_status --days=7 --batch-size=50 --use-parallel >> $LOG_FILE 2>&1" || \
+docker exec $(docker ps -qf "name=yourcinemafilms_web") bash -c "echo 'Running update_release_status command...' >> $LOG_FILE && python manage.py update_release_status --days=7 --batch-size=50 --use-parallel >> $LOG_FILE 2>&1"
+
+# Run the Django management command using Docker with optimized parameters
+echo "Running update_movie_cache command via Docker with optimized parameters..."
+docker-compose exec -T web bash -c "echo 'Running update_movie_cache command with optimized parameters...' >> $LOG_FILE && python manage.py update_movie_cache --force --max-pages=0 --batch-size=15 --batch-delay=1 --time-window-months=6 --prioritize-flags --use-parallel >> $LOG_FILE 2>&1"
 
 # Check if the command was successful
 if [ $? -eq 0 ]; then
@@ -27,7 +32,7 @@ else
     
     # Try alternative approach if the first command fails
     echo "Trying alternative Docker command..."
-    docker exec $(docker ps -qf "name=yourcinemafilms_web") bash -c "echo 'Trying alternative Docker command...' >> $LOG_FILE && python manage.py update_movie_cache --force >> $LOG_FILE 2>&1"
+    docker exec $(docker ps -qf "name=yourcinemafilms_web") bash -c "echo 'Trying alternative Docker command...' >> $LOG_FILE && python manage.py update_movie_cache --force --max-pages=0 --batch-size=15 --batch-delay=1 --time-window-months=6 --prioritize-flags --use-parallel >> $LOG_FILE 2>&1"
     
     if [ $? -eq 0 ]; then
         docker exec $(docker ps -qf "name=yourcinemafilms_web") bash -c "echo 'Cache update completed successfully with alternative command at $(date)' >> $LOG_FILE"

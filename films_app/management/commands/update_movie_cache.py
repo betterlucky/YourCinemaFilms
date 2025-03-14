@@ -1,12 +1,14 @@
 import os
 import json
 import time
+import concurrent.futures
 from django.core.management.base import BaseCommand
 from django.conf import settings
 from django.db.models import Q
+from django.utils import timezone
 from films_app.models import Film, PageTracker
 from films_app.utils import fetch_and_update_film_from_tmdb, get_cache_directory
-from films_app.tmdb_api import search_movies, get_now_playing_movies, get_upcoming_movies, get_movie_details
+from films_app.tmdb_api import search_movies, get_now_playing_movies, get_upcoming_movies, get_movie_details, get_movie_by_imdb_id, format_tmdb_data_for_film
 from datetime import datetime, date, timedelta
 from django.core.cache import cache
 
@@ -14,16 +16,17 @@ class Command(BaseCommand):
     help = 'Update the movie cache for cinema films'
 
     def add_arguments(self, parser):
+        """Add command arguments."""
         parser.add_argument(
             '--force',
             action='store_true',
-            help='Force update all films',
+            help='Force update all films regardless of status',
         )
         parser.add_argument(
             '--max-pages',
             type=int,
             default=10,
-            help='Maximum number of pages to process (0 for all pages)',
+            help='Maximum number of pages to process (0 for all)',
         )
         parser.add_argument(
             '--batch-size',
@@ -38,7 +41,7 @@ class Command(BaseCommand):
             help='Delay in seconds between processing batches',
         )
         parser.add_argument(
-            '--time-window',
+            '--time-window-months',
             type=int,
             default=6,
             help='Time window in months for upcoming films',
@@ -50,68 +53,37 @@ class Command(BaseCommand):
             help='Prioritize films flagged for status checks',
         )
         parser.add_argument(
-            '--all-pages',
+            '--use_parallel',
             action='store_true',
-            help='Process all available pages (overrides max-pages)',
+            default=False,
+            help='Use parallel processing for API calls and database operations',
         )
 
     def handle(self, *args, **options):
-        """Handle the command execution."""
-        # Lock key for preventing duplicate runs
-        LOCK_KEY = 'update_movie_cache_lock'
-        LOCK_TIMEOUT = 3600  # 1 hour in seconds
+        """Handle the command."""
+        # Get the options
+        max_pages = options['max_pages']
+        batch_size = options['batch_size']
+        batch_delay = options['batch_delay']
+        time_window_months = options['time_window_months']
+        prioritize_flags = options['prioritize_flags']
+        use_parallel = options['use_parallel']
         
-        # Check if another update process is already running
-        if cache.get(LOCK_KEY):
-            self.stdout.write(self.style.WARNING("Another update process is already running. Exiting."))
-            return
+        self.options = options  # Store options for use in other methods
         
-        # Set a lock to prevent duplicate runs
-        cache.set(LOCK_KEY, True, LOCK_TIMEOUT)
+        self.stdout.write(f'Starting update_movie_cache command with max_pages={max_pages}, batch_size={batch_size}, batch_delay={batch_delay}, time_window_months={time_window_months}, prioritize_flags={prioritize_flags}, use_parallel={use_parallel}')
         
-        try:
-            force = options.get('force', False)
-            max_pages = options.get('max_pages', 10)
-            all_pages = options.get('all_pages', False)
-            
-            # If all_pages is True, set max_pages to 0 to process all pages
-            if all_pages:
-                max_pages = 0
-                self.stdout.write('All pages option selected - will process all available pages')
-            
-            # Calculate dynamic max_pages based on the current date
-            # More pages during peak movie seasons (summer and winter holidays)
-            current_month = datetime.now().month
-            if current_month in [5, 6, 7, 8, 11, 12] and max_pages > 0:  # Summer and winter months
-                max_pages = max(max_pages, 15)  # Increase pages during peak seasons
-                self.stdout.write(f'Peak movie season detected - increasing max pages to {max_pages}')
-            
-            # Check if we're near the beginning of the month when new releases often come out
-            current_day = datetime.now().day
-            if current_day <= 7 and max_pages > 0:  # First week of the month
-                max_pages = max(max_pages, 12)  # Increase pages for new releases
-                self.stdout.write(f'Beginning of month detected - increasing max pages to {max_pages}')
-            
-            # Check if it's a weekend when more people watch movies
-            if datetime.now().weekday() >= 4 and max_pages > 0:  # Friday, Saturday, Sunday
-                max_pages = max(max_pages, 10)  # Increase pages for weekends
-                self.stdout.write(f'Weekend detected - increasing max pages to {max_pages}')
-            
-            if max_pages == 0:
-                self.stdout.write('Using unlimited pages - will process all available pages')
-            else:
-                self.stdout.write(f'Using max_pages: {max_pages}')
-            
-            # Update the database cache
-            self.update_cinema_db_cache(force, max_pages, options)
-            
-            # Update the last update timestamp
-            self.update_last_update_timestamp()
-        finally:
-            # Release the lock when done
-            cache.delete(LOCK_KEY)
-            self.stdout.write("Released update lock")
+        # Update the cinema database cache
+        self.update_cinema_db_cache(
+            max_pages=max_pages, 
+            batch_size=batch_size, 
+            batch_delay=batch_delay, 
+            time_window_months=time_window_months,
+            prioritize_flags=prioritize_flags,
+            use_parallel=use_parallel
+        )
         
+        self.stdout.write(self.style.SUCCESS('Successfully updated cinema database cache'))
         return
 
     def update_db_cache(self, force):
@@ -139,185 +111,207 @@ class Command(BaseCommand):
         
         self.stdout.write(self.style.SUCCESS('Database cache update completed'))
 
-    def update_cinema_db_cache(self, force, max_pages, options):
+    def update_cinema_db_cache(self, max_pages, batch_size, batch_delay, time_window_months, prioritize_flags, use_parallel):
         """Update the database cache with current and upcoming cinema films."""
         self.stdout.write('Updating cinema films in database...')
         
-        # Get batch processing options
-        batch_size = options.get('batch_size', 10)
-        batch_delay = options.get('batch_delay', 2)
-        prioritize_flags = options.get('prioritize_flags', True)
-        
         # Calculate cutoff date for upcoming films
         today = date.today()
-        time_window_months = options.get('time_window', 6)
         cutoff_date = today + timedelta(days=30 * time_window_months)
         self.stdout.write(f'Using cutoff date: {cutoff_date} for upcoming films')
         
-        # Keep track of films that are currently in cinemas or upcoming
-        processed_film_ids = set()
-        
-        # First, process films that need status checks if prioritize_flags is True
-        if prioritize_flags:
-            self.stdout.write('Processing films flagged for status checks...')
-            flagged_films = Film.objects.filter(needs_status_check=True)
-            flagged_count = flagged_films.count()
-            
-            if flagged_count > 0:
-                self.stdout.write(f'Found {flagged_count} films flagged for status checks')
-                
-                # Process flagged films in batches
-                for i in range(0, flagged_count, batch_size):
-                    batch = flagged_films[i:i+batch_size]
-                    self.stdout.write(f'Processing batch {i//batch_size + 1} of {(flagged_count-1)//batch_size + 1}')
-                    
-                    for film in batch:
-                        try:
-                            # Get updated film data from TMDB
-                            updated = self.update_film_status(film)
-                            if updated:
-                                processed_film_ids.add(film.imdb_id)
-                        except Exception as e:
-                            self.stdout.write(self.style.ERROR(f'Error updating {film.title}: {str(e)}'))
-                    
-                    # Add delay between batches to avoid resource exhaustion
-                    if i + batch_size < flagged_count:
-                        self.stdout.write(f'Waiting {batch_delay} seconds before next batch...')
-                        time.sleep(batch_delay)
-        
         # Reset cinema status for all films if force is True
-        if force:
+        if self.options.get('force', False):
             self.stdout.write('Force reset requested - resetting cinema status for all films')
             Film.objects.all().update(is_in_cinema=False, is_upcoming=False)
-            self.stdout.write('Reset cinema status for all films')
         
-        # Process now playing movies with smarter pagination
-        self.stdout.write('Fetching and processing now playing movies...')
-        # Set max_pages to 0 to process all pages
+        # Process films that need status check first if prioritize_flags is True
+        if prioritize_flags:
+            self.stdout.write('Prioritizing films that need status check')
+            
+            # Get films that need status check
+            flagged_films = Film.objects.filter(needs_status_check=True)
+            flagged_count = flagged_films.count()
+            self.stdout.write(f'Found {flagged_count} films that need status check')
+            
+            if flagged_count > 0:
+                # Process flagged films in batches
+                processed_count = 0
+                
+                # Use parallel processing if enabled and there are enough films
+                if use_parallel and flagged_count > 5:
+                    self.stdout.write(f'Using parallel processing for {flagged_count} flagged films')
+                    
+                    # Process films in batches to avoid resource exhaustion
+                    for i in range(0, flagged_count, batch_size):
+                        batch = flagged_films[i:i+batch_size]
+                        self.stdout.write(f'Processing batch {i//batch_size + 1} of {(flagged_count-1)//batch_size + 1} ({len(batch)} films)')
+                        
+                        # Use ThreadPoolExecutor for parallel processing
+                        with concurrent.futures.ThreadPoolExecutor(max_workers=min(8, len(batch))) as executor:
+                            # Submit all films for processing
+                            future_to_film = {executor.submit(self.update_film_status, film, self.options.get('force', False)): film for film in batch}
+                            
+                            # Process results as they complete
+                            for future in concurrent.futures.as_completed(future_to_film):
+                                film = future_to_film[future]
+                                try:
+                                    updated = future.result()
+                                    processed_count += 1
+                                    if processed_count % 10 == 0:
+                                        self.stdout.write(f'Processed {processed_count}/{flagged_count} flagged films')
+                                except Exception as e:
+                                    self.stdout.write(self.style.ERROR(f'Error processing film {film.title}: {str(e)}'))
+                        
+                        # Add delay between batches to avoid resource exhaustion
+                        if i + batch_size < flagged_count:
+                            self.stdout.write(f'Waiting {batch_delay} seconds before next batch...')
+                            time.sleep(batch_delay)
+                else:
+                    # Process films sequentially
+                    for i, film in enumerate(flagged_films):
+                        self.update_film_status(film, self.options.get('force', False))
+                        processed_count += 1
+                        
+                        if processed_count % 10 == 0:
+                            self.stdout.write(f'Processed {processed_count}/{flagged_count} flagged films')
+                        
+                        # Add delay between films to avoid resource exhaustion
+                        if i < flagged_count - 1:
+                            time.sleep(1)  # Short delay between individual films
+                
+                self.stdout.write(f'Processed {processed_count} flagged films')
+        
+        # Process now playing films
+        self.stdout.write('Processing now playing films...')
         now_playing_films = self._process_movie_batch('now_playing', max_pages, batch_size, batch_delay)
-        for film in now_playing_films:
-            processed_film_ids.add(film.imdb_id)
         
-        # Process upcoming movies with smarter pagination, prioritizing films with closer release dates
-        self.stdout.write('Fetching and processing upcoming movies...')
-        # First process films releasing in the next month - set max_pages to 0 to process all pages
-        upcoming_films_soon = self._process_movie_batch('upcoming', max_pages // 2, batch_size, batch_delay, time_window_months=1)
-        for film in upcoming_films_soon:
-            processed_film_ids.add(film.imdb_id)
+        # Process upcoming films
+        self.stdout.write('Processing upcoming films...')
+        upcoming_films = self._process_movie_batch('upcoming', max_pages, batch_size, batch_delay, time_window_months)
         
-        # Then process films releasing in the next 6 months - set max_pages to 0 to process all pages
-        upcoming_films_later = self._process_movie_batch('upcoming', max_pages // 2, batch_size, batch_delay, time_window_months=time_window_months)
-        for film in upcoming_films_later:
-            processed_film_ids.add(film.imdb_id)
-        
-        # Log the number of films processed
-        self.stdout.write(f'Processed {len(processed_film_ids)} films in total')
+        # Combine processed film IDs
+        processed_film_ids = [film.imdb_id for film in now_playing_films + upcoming_films]
         
         # Handle films that have left cinemas or are no longer upcoming
-        if force and processed_film_ids:
+        if self.options.get('force', False) and processed_film_ids:
             # Find films that were previously in cinemas but are no longer in the processed list
             films_left_cinemas_count = Film.objects.filter(is_in_cinema=True).exclude(imdb_id__in=processed_film_ids).update(is_in_cinema=False)
             
             # Find films that were previously upcoming but are no longer in the processed list
             films_no_longer_upcoming_count = Film.objects.filter(is_upcoming=True).exclude(imdb_id__in=processed_film_ids).update(is_upcoming=False)
             
-            if films_left_cinemas_count > 0:
-                self.stdout.write(f'Updated {films_left_cinemas_count} films that have left cinemas')
-            
-            if films_no_longer_upcoming_count > 0:
-                self.stdout.write(f'Updated {films_no_longer_upcoming_count} films that are no longer upcoming')
-        
-        # Print summary statistics
-        now_playing_count = Film.objects.filter(is_in_cinema=True).count()
-        upcoming_count = Film.objects.filter(is_upcoming=True).count()
-        self.stdout.write(f'Films currently in cinemas: {now_playing_count}')
-        self.stdout.write(f'Upcoming films (next {time_window_months} months): {upcoming_count}')
+            self.stdout.write(f'{films_left_cinemas_count} films have left cinemas')
+            self.stdout.write(f'{films_no_longer_upcoming_count} films are no longer upcoming')
         
         self.stdout.write(self.style.SUCCESS('Cinema database cache update completed'))
     
-    def update_film_status(self, film):
-        """Update a single film's status by checking TMDB."""
+    def update_film_status(self, film, force=False):
+        """Update the status of a film by checking if it's in cinema or upcoming.
+        
+        Args:
+            film (Film): The film to update
+            force (bool): Whether to force update regardless of last check time
+            
+        Returns:
+            bool: True if the film's status was updated, False otherwise
+        """
+        # Skip if the film was checked recently and force is False
+        if not force and film.last_status_check and (timezone.now() - film.last_status_check).days < 3:
+            self.stdout.write(f'Skipping status check for {film.title} - checked recently on {film.last_status_check}')
+            return False
+            
         try:
-            self.stdout.write(f'Checking status for {film.title} ({film.imdb_id})')
-            
-            # Extract TMDB ID if available
+            # Get the IMDb ID or TMDB ID
+            imdb_id = film.imdb_id
             tmdb_id = None
-            if film.imdb_id.startswith('tt'):
-                # This is an IMDb ID, need to look up TMDB ID
-                pass
-            elif film.imdb_id.startswith('tmdb-'):
-                # This is a TMDB ID
-                tmdb_id = film.imdb_id.replace('tmdb-', '')
             
-            # Get movie details from TMDB
-            movie_details = None
+            # Check if it's a TMDB ID
+            if imdb_id.startswith('tmdb-'):
+                tmdb_id = imdb_id.replace('tmdb-', '')
+            
+            # If we have a regular IMDb ID, try to get the TMDB ID
+            if not tmdb_id and not imdb_id.startswith('tmdb-'):
+                # Try to get the TMDB ID from the IMDb ID
+                movie_details = get_movie_by_imdb_id(imdb_id)
+                if movie_details:
+                    tmdb_id = movie_details.get('id')
+            
+            # If we have a TMDB ID, check if the film is in cinema or upcoming
             if tmdb_id:
+                # Get the movie details
                 movie_details = get_movie_details(tmdb_id)
-            
-            # Check if film is in now playing
-            found_in_now_playing = False
-            page = 1
-            max_pages = 5  # Check up to 5 pages
-            
-            while page <= max_pages:
-                now_playing, total_pages = get_now_playing_movies(page=page)
-                if not now_playing:
-                    break
+                if not movie_details:
+                    self.stdout.write(self.style.WARNING(f'Could not get movie details for {film.title} (TMDB ID: {tmdb_id})'))
+                    film.last_status_check = timezone.now()
+                    film.save(update_fields=['last_status_check'])
+                    return False
                 
-                for movie in now_playing:
-                    # Check if this is our film
-                    if (tmdb_id and str(movie.get('id')) == tmdb_id) or movie.get('imdb_id') == film.imdb_id:
-                        self.stdout.write(f'Found {film.title} in now playing (page {page})')
-                        film.is_in_cinema = True
-                        film.is_upcoming = False
-                        film.needs_status_check = False
-                        film.save()
-                        return True
+                # Check if the film is in cinema or upcoming
+                is_in_cinema = False
+                is_upcoming = False
                 
-                if page >= total_pages:
-                    break
-                page += 1
-            
-            # Check if film is in upcoming
-            found_in_upcoming = False
-            page = 1
-            max_pages = 10  # Check more pages for upcoming
-            cutoff_date = date.today() + timedelta(days=180)  # 6 months from now
-            
-            while page <= max_pages:
-                upcoming, total_pages = get_upcoming_movies(page=page)
-                if not upcoming:
-                    break
+                # Check if the film is in cinema
+                page = 1
+                while page <= 5:  # Limit to 5 pages to avoid excessive API calls
+                    now_playing, total_pages = get_now_playing_movies(page=page)
+                    if not now_playing:
+                        break
+                    
+                    for movie in now_playing:
+                        if movie.get('id') == int(tmdb_id):
+                            is_in_cinema = True
+                            break
+                    
+                    if is_in_cinema or page >= total_pages:
+                        break
+                    
+                    page += 1
                 
-                for movie in upcoming:
-                    # Check if this is our film
-                    if (tmdb_id and str(movie.get('id')) == tmdb_id) or movie.get('imdb_id') == film.imdb_id:
-                        # Check if release date is within our window
-                        release_date = movie.get('release_date')
-                        if release_date:
-                            release_date = datetime.strptime(release_date, '%Y-%m-%d').date()
-                            if release_date <= cutoff_date:
-                                self.stdout.write(f'Found {film.title} in upcoming (page {page})')
-                                film.is_in_cinema = False
-                                film.is_upcoming = True
-                                film.needs_status_check = False
-                                film.save()
-                                return True
+                # Check if the film is upcoming
+                if not is_in_cinema:
+                    page = 1
+                    while page <= 5:  # Limit to 5 pages to avoid excessive API calls
+                        upcoming, total_pages = get_upcoming_movies(page=page)
+                        if not upcoming:
+                            break
+                        
+                        for movie in upcoming:
+                            if movie.get('id') == int(tmdb_id):
+                                is_upcoming = True
+                                break
+                        
+                        if is_upcoming or page >= total_pages:
+                            break
+                        
+                        page += 1
                 
-                if page >= total_pages:
-                    break
-                page += 1
-            
-            # If not found in either, mark as not in cinema and not upcoming
-            self.stdout.write(f'Film {film.title} not found in now playing or upcoming')
-            film.is_in_cinema = False
-            film.is_upcoming = False
-            film.needs_status_check = False
-            film.save()
-            return True
-            
+                # Update the film's status
+                if film.is_in_cinema != is_in_cinema or film.is_upcoming != is_upcoming:
+                    film.is_in_cinema = is_in_cinema
+                    film.is_upcoming = is_upcoming
+                    film.needs_status_check = False
+                    film.last_status_check = timezone.now()
+                    film.save()
+                    
+                    status = "In Cinema" if is_in_cinema else "Upcoming" if is_upcoming else "Not in Cinema"
+                    self.stdout.write(f'Updated status for {film.title} to {status}')
+                    return True
+                else:
+                    film.needs_status_check = False
+                    film.last_status_check = timezone.now()
+                    film.save(update_fields=['needs_status_check', 'last_status_check'])
+                    self.stdout.write(f'Status unchanged for {film.title}')
+                    return False
+            else:
+                self.stdout.write(self.style.WARNING(f'Could not get TMDB ID for {film.title} (IMDb ID: {imdb_id})'))
+                film.last_status_check = timezone.now()
+                film.save(update_fields=['last_status_check'])
+                return False
         except Exception as e:
             self.stdout.write(self.style.ERROR(f'Error updating status for {film.title}: {str(e)}'))
+            film.last_status_check = timezone.now()
+            film.save(update_fields=['last_status_check'])
             return False
 
     def _process_movie_batch(self, movie_type, max_pages, batch_size=10, batch_delay=2, time_window_months=None):
@@ -333,6 +327,9 @@ class Command(BaseCommand):
         Returns:
             list: List of Film objects that were processed
         """
+        # Check if parallel processing is enabled
+        use_parallel = self.options.get('use_parallel', False)
+        
         # Calculate cutoff date for upcoming films
         today = date.today()
         cutoff_date = today + timedelta(days=30 * (time_window_months or 6))
@@ -388,128 +385,250 @@ class Command(BaseCommand):
                 batch = movies[i:i+batch_size]
                 self.stdout.write(f'Processing batch {i//batch_size + 1} of {(len(movies)-1)//batch_size + 1}')
                 
-                # Process each movie in the batch
-                for movie_data in batch:
-                    try:
-                        # Check if the release date is beyond our cutoff
-                        release_date = movie_data.get('release_date')
-                        if release_date:
-                            release_date = datetime.strptime(release_date, '%Y-%m-%d').date()
-                            if movie_type == 'upcoming' and release_date > cutoff_date:
-                                self.stdout.write(f'Skipping {movie_data.get("title")} - release date {release_date} is beyond cutoff {cutoff_date}')
-                                continue
-                        
-                        # Get the IMDb ID or TMDB ID
-                        imdb_id = movie_data.get('imdb_id')
-                        tmdb_id = movie_data.get('id')
-                        
-                        # Always fetch complete movie details to ensure we have certification information
-                        if tmdb_id:
-                            self.stdout.write(f'Fetching complete details for {movie_data.get("title")} (TMDB ID: {tmdb_id})')
-                            try:
-                                complete_details = get_movie_details(tmdb_id)
-                                if complete_details:
-                                    # Get IMDb ID from complete details
-                                    imdb_id = complete_details.get('imdb_id') or complete_details.get('external_ids', {}).get('imdb_id')
-                                    
-                                    # Update movie_data with complete details
-                                    formatted_data = format_tmdb_data_for_film(complete_details)
-                                    
-                                    # Log certification information
-                                    uk_certification = formatted_data.get('uk_certification')
-                                    if uk_certification:
-                                        self.stdout.write(f'Found UK certification for {movie_data.get("title")}: {uk_certification}')
-                                    else:
-                                        self.stdout.write(f'No UK certification found for {movie_data.get("title")}')
+                # Use parallel processing if enabled and batch is large enough
+                if use_parallel and len(batch) > 3:
+                    self.stdout.write(f'Using parallel processing for batch of {len(batch)} movies')
+                    
+                    # Define a function to process a single movie
+                    def process_movie(movie_data):
+                        try:
+                            # Check if the release date is beyond our cutoff
+                            release_date = movie_data.get('release_date')
+                            if release_date:
+                                release_date = datetime.strptime(release_date, '%Y-%m-%d').date()
+                                if movie_type == 'upcoming' and release_date > cutoff_date:
+                                    self.stdout.write(f'Skipping {movie_data.get("title")} - release date {release_date} is beyond cutoff {cutoff_date}')
+                                    return None
+                            
+                            # Get the IMDb ID or TMDB ID
+                            imdb_id = movie_data.get('imdb_id')
+                            tmdb_id = movie_data.get('id')
+                            
+                            # Always fetch complete movie details to ensure we have certification information
+                            if tmdb_id:
+                                try:
+                                    complete_details = get_movie_details(tmdb_id)
+                                    if complete_details:
+                                        # Get IMDb ID from complete details
+                                        imdb_id = complete_details.get('imdb_id') or complete_details.get('external_ids', {}).get('imdb_id')
                                         
-                                        # Debug the release_dates structure to help diagnose certification issues
-                                        release_dates = complete_details.get('release_dates')
-                                        if release_dates and 'results' in release_dates:
-                                            gb_data = None
-                                            for country_data in release_dates['results']:
-                                                if country_data['iso_3166_1'] == 'GB':
-                                                    gb_data = country_data
-                                                    break
-                                            
-                                            if gb_data:
-                                                self.stdout.write(f'GB release data found: {gb_data}')
-                                            else:
-                                                self.stdout.write(f'No GB release data found in {[c["iso_3166_1"] for c in release_dates["results"]]}')
-                                        else:
-                                            self.stdout.write(f'No release_dates data structure found or invalid format')
-                                    
-                                    movie_data.update(formatted_data)
+                                        # Update movie_data with complete details
+                                        formatted_data = format_tmdb_data_for_film(complete_details)
+                                        movie_data.update(formatted_data)
+                                except Exception as e:
+                                    self.stdout.write(self.style.WARNING(f'Error fetching complete details: {str(e)}'))
+                            
+                            # If still no IMDb ID, use TMDB ID with prefix
+                            if not imdb_id and tmdb_id:
+                                imdb_id = f"tmdb-{tmdb_id}"
+                            
+                            if not imdb_id:
+                                self.stdout.write(self.style.WARNING(f'Skipping movie with no IMDb ID: {movie_data.get("title")}'))
+                                return None
+                            
+                            # Set the cinema status flags based on movie type
+                            movie_data['is_in_cinema'] = is_in_cinema
+                            movie_data['is_upcoming'] = is_upcoming
+                            
+                            # Try to get existing film or create a new one
+                            film, created = Film.objects.get_or_create(
+                                imdb_id=imdb_id,
+                                defaults={
+                                    'title': movie_data.get('title', ''),
+                                    'year': movie_data.get('year', ''),
+                                    'poster_url': movie_data.get('poster_url'),
+                                    'director': movie_data.get('director', ''),
+                                    'plot': movie_data.get('plot', ''),
+                                    'genres': movie_data.get('genres', ''),
+                                    'runtime': movie_data.get('runtime', ''),
+                                    'actors': movie_data.get('actors', ''),
+                                    'is_in_cinema': movie_data.get('is_in_cinema', False),
+                                    'is_upcoming': movie_data.get('is_upcoming', False),
+                                    'uk_certification': movie_data.get('uk_certification'),
+                                    'popularity': movie_data.get('popularity', 0.0),
+                                    'vote_count': movie_data.get('vote_count', 0),
+                                    'vote_average': movie_data.get('vote_average', 0.0),
+                                    'revenue': movie_data.get('revenue', 0),
+                                    'needs_status_check': False,  # Reset the flag since we're updating now
+                                    'last_status_check': timezone.now(),  # Update the last status check time
+                                }
+                            )
+                            
+                            # Update film data if it already existed
+                            if not created:
+                                # Create a dictionary of fields to update
+                                update_fields = {}
+                                
+                                # Only include fields that have values in movie_data
+                                for field in ['title', 'year', 'poster_url', 'director', 'plot', 'genres', 
+                                             'runtime', 'actors', 'is_in_cinema', 'is_upcoming', 'uk_certification', 
+                                             'popularity', 'vote_count', 'vote_average', 'revenue']:
+                                    if field in movie_data and movie_data[field] is not None:
+                                        update_fields[field] = movie_data[field]
+                                
+                                # Always reset the needs_status_check flag and update last_status_check
+                                update_fields['needs_status_check'] = False
+                                update_fields['last_status_check'] = timezone.now()
+                                
+                                # Update the film with the fields that have values
+                                for field, value in update_fields.items():
+                                    setattr(film, field, value)
+                            
+                            # Update UK release date if present
+                            if movie_data.get('uk_release_date'):
+                                film.uk_release_date = movie_data['uk_release_date']
+                            
+                            # Save the film
+                            film.save()
+                            
+                            action = 'Created' if created else 'Updated'
+                            cert_info = f" with certification {film.uk_certification}" if film.uk_certification else " (no certification)"
+                            self.stdout.write(f'{action} {film.title} ({film.imdb_id}){cert_info} - {"In Cinema" if film.is_in_cinema else "Upcoming" if film.is_upcoming else "Not in Cinema"}')
+                            
+                            return film
+                        except Exception as e:
+                            self.stdout.write(self.style.ERROR(f'Error processing movie: {str(e)}'))
+                            return None
+                    
+                    # Use ThreadPoolExecutor for parallel processing
+                    with concurrent.futures.ThreadPoolExecutor(max_workers=min(8, len(batch))) as executor:
+                        # Submit all movies for processing
+                        future_to_movie = {executor.submit(process_movie, movie_data): movie_data for movie_data in batch}
+                        
+                        # Process results as they complete
+                        for future in concurrent.futures.as_completed(future_to_movie):
+                            movie_data = future_to_movie[future]
+                            try:
+                                film = future.result()
+                                if film:
+                                    processed_films.append(film)
                             except Exception as e:
-                                self.stdout.write(self.style.WARNING(f'Error fetching complete details: {str(e)}'))
-                        
-                        # If still no IMDb ID, use TMDB ID with prefix
-                        if not imdb_id and tmdb_id:
-                            imdb_id = f"tmdb-{tmdb_id}"
-                            self.stdout.write(f'Using TMDB ID format: {imdb_id} for {movie_data.get("title")}')
-                        
-                        if not imdb_id:
-                            self.stdout.write(self.style.WARNING(f'Skipping movie with no IMDb ID: {movie_data.get("title")}'))
-                            continue
-                        
-                        # Set the cinema status flags based on movie type
-                        movie_data['is_in_cinema'] = is_in_cinema
-                        movie_data['is_upcoming'] = is_upcoming
-                        
-                        # Try to get existing film or create a new one
-                        film, created = Film.objects.get_or_create(
-                            imdb_id=imdb_id,
-                            defaults={
-                                'title': movie_data.get('title', ''),
-                                'year': movie_data.get('year', ''),
-                                'poster_url': movie_data.get('poster_url'),
-                                'director': movie_data.get('director', ''),
-                                'plot': movie_data.get('plot', ''),
-                                'genres': movie_data.get('genres', ''),
-                                'runtime': movie_data.get('runtime', ''),
-                                'actors': movie_data.get('actors', ''),
-                                'is_in_cinema': movie_data.get('is_in_cinema', False),
-                                'is_upcoming': movie_data.get('is_upcoming', False),
-                                'uk_certification': movie_data.get('uk_certification'),
-                                'popularity': movie_data.get('popularity', 0.0),
-                                'vote_count': movie_data.get('vote_count', 0),
-                                'vote_average': movie_data.get('vote_average', 0.0),
-                                'revenue': movie_data.get('revenue', 0),
-                                'needs_status_check': False,  # Reset the flag since we're updating now
-                            }
-                        )
-                        
-                        # Update film data if it already existed - only update fields that are present in movie_data
-                        if not created:
-                            # Create a dictionary of fields to update
-                            update_fields = {}
+                                self.stdout.write(self.style.ERROR(f'Error processing movie {movie_data.get("title", "Unknown")}: {str(e)}'))
+                else:
+                    # Process each movie in the batch sequentially
+                    for movie_data in batch:
+                        try:
+                            # Check if the release date is beyond our cutoff
+                            release_date = movie_data.get('release_date')
+                            if release_date:
+                                release_date = datetime.strptime(release_date, '%Y-%m-%d').date()
+                                if movie_type == 'upcoming' and release_date > cutoff_date:
+                                    self.stdout.write(f'Skipping {movie_data.get("title")} - release date {release_date} is beyond cutoff {cutoff_date}')
+                                    continue
                             
-                            # Only include fields that have values in movie_data
-                            for field in ['title', 'year', 'poster_url', 'director', 'plot', 'genres', 
-                                         'runtime', 'actors', 'is_in_cinema', 'is_upcoming', 'uk_certification', 
-                                         'popularity', 'vote_count', 'vote_average', 'revenue']:
-                                if field in movie_data and movie_data[field] is not None:
-                                    update_fields[field] = movie_data[field]
+                            # Get the IMDb ID or TMDB ID
+                            imdb_id = movie_data.get('imdb_id')
+                            tmdb_id = movie_data.get('id')
                             
-                            # Always reset the needs_status_check flag
-                            update_fields['needs_status_check'] = False
+                            # Always fetch complete movie details to ensure we have certification information
+                            if tmdb_id:
+                                self.stdout.write(f'Fetching complete details for {movie_data.get("title")} (TMDB ID: {tmdb_id})')
+                                try:
+                                    complete_details = get_movie_details(tmdb_id)
+                                    if complete_details:
+                                        # Get IMDb ID from complete details
+                                        imdb_id = complete_details.get('imdb_id') or complete_details.get('external_ids', {}).get('imdb_id')
+                                        
+                                        # Update movie_data with complete details
+                                        formatted_data = format_tmdb_data_for_film(complete_details)
+                                        
+                                        # Log certification information
+                                        uk_certification = formatted_data.get('uk_certification')
+                                        if uk_certification:
+                                            self.stdout.write(f'Found UK certification for {movie_data.get("title")}: {uk_certification}')
+                                        else:
+                                            self.stdout.write(f'No UK certification found for {movie_data.get("title")}')
+                                            
+                                            # Debug the release_dates structure to help diagnose certification issues
+                                            release_dates = complete_details.get('release_dates')
+                                            if release_dates and 'results' in release_dates:
+                                                gb_data = None
+                                                for country_data in release_dates['results']:
+                                                    if country_data['iso_3166_1'] == 'GB':
+                                                        gb_data = country_data
+                                                        break
+                                                
+                                                if gb_data:
+                                                    self.stdout.write(f'GB release data found: {gb_data}')
+                                                else:
+                                                    self.stdout.write(f'No GB release data found in {[c["iso_3166_1"] for c in release_dates["results"]]}')
+                                            else:
+                                                self.stdout.write(f'No release_dates data structure found or invalid format')
+                                        
+                                        movie_data.update(formatted_data)
+                                except Exception as e:
+                                    self.stdout.write(self.style.WARNING(f'Error fetching complete details: {str(e)}'))
                             
-                            # Update the film with the fields that have values
-                            for field, value in update_fields.items():
-                                setattr(film, field, value)
-                        
-                        # Update UK release date if present
-                        if movie_data.get('uk_release_date'):
-                            film.uk_release_date = movie_data['uk_release_date']
-                        
-                        # Save the film
-                        film.save()
-                        processed_films.append(film)
-                        
-                        action = 'Created' if created else 'Updated'
-                        cert_info = f" with certification {film.uk_certification}" if film.uk_certification else " (no certification)"
-                        self.stdout.write(f'{action} {film.title} ({film.imdb_id}){cert_info} - {"In Cinema" if film.is_in_cinema else "Upcoming" if film.is_upcoming else "Not in Cinema"}')
-                    except Exception as e:
-                        self.stdout.write(self.style.ERROR(f'Error processing movie: {str(e)}'))
+                            # If still no IMDb ID, use TMDB ID with prefix
+                            if not imdb_id and tmdb_id:
+                                imdb_id = f"tmdb-{tmdb_id}"
+                                self.stdout.write(f'Using TMDB ID format: {imdb_id} for {movie_data.get("title")}')
+                            
+                            if not imdb_id:
+                                self.stdout.write(self.style.WARNING(f'Skipping movie with no IMDb ID: {movie_data.get("title")}'))
+                                continue
+                            
+                            # Set the cinema status flags based on movie type
+                            movie_data['is_in_cinema'] = is_in_cinema
+                            movie_data['is_upcoming'] = is_upcoming
+                            
+                            # Try to get existing film or create a new one
+                            film, created = Film.objects.get_or_create(
+                                imdb_id=imdb_id,
+                                defaults={
+                                    'title': movie_data.get('title', ''),
+                                    'year': movie_data.get('year', ''),
+                                    'poster_url': movie_data.get('poster_url'),
+                                    'director': movie_data.get('director', ''),
+                                    'plot': movie_data.get('plot', ''),
+                                    'genres': movie_data.get('genres', ''),
+                                    'runtime': movie_data.get('runtime', ''),
+                                    'actors': movie_data.get('actors', ''),
+                                    'is_in_cinema': movie_data.get('is_in_cinema', False),
+                                    'is_upcoming': movie_data.get('is_upcoming', False),
+                                    'uk_certification': movie_data.get('uk_certification'),
+                                    'popularity': movie_data.get('popularity', 0.0),
+                                    'vote_count': movie_data.get('vote_count', 0),
+                                    'vote_average': movie_data.get('vote_average', 0.0),
+                                    'revenue': movie_data.get('revenue', 0),
+                                    'needs_status_check': False,  # Reset the flag since we're updating now
+                                    'last_status_check': timezone.now(),  # Update the last status check time
+                                }
+                            )
+                            
+                            # Update film data if it already existed - only update fields that are present in movie_data
+                            if not created:
+                                # Create a dictionary of fields to update
+                                update_fields = {}
+                                
+                                # Only include fields that have values in movie_data
+                                for field in ['title', 'year', 'poster_url', 'director', 'plot', 'genres', 
+                                             'runtime', 'actors', 'is_in_cinema', 'is_upcoming', 'uk_certification', 
+                                             'popularity', 'vote_count', 'vote_average', 'revenue']:
+                                    if field in movie_data and movie_data[field] is not None:
+                                        update_fields[field] = movie_data[field]
+                                
+                                # Always reset the needs_status_check flag and update last_status_check
+                                update_fields['needs_status_check'] = False
+                                update_fields['last_status_check'] = timezone.now()
+                                
+                                # Update the film with the fields that have values
+                                for field, value in update_fields.items():
+                                    setattr(film, field, value)
+                            
+                            # Update UK release date if present
+                            if movie_data.get('uk_release_date'):
+                                film.uk_release_date = movie_data['uk_release_date']
+                            
+                            # Save the film
+                            film.save()
+                            processed_films.append(film)
+                            
+                            action = 'Created' if created else 'Updated'
+                            cert_info = f" with certification {film.uk_certification}" if film.uk_certification else " (no certification)"
+                            self.stdout.write(f'{action} {film.title} ({film.imdb_id}){cert_info} - {"In Cinema" if film.is_in_cinema else "Upcoming" if film.is_upcoming else "Not in Cinema"}')
+                        except Exception as e:
+                            self.stdout.write(self.style.ERROR(f'Error processing movie: {str(e)}'))
                 
                 # Add delay between batches to avoid resource exhaustion
                 if i + batch_size < len(movies):

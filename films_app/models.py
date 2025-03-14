@@ -29,6 +29,7 @@ class Film(models.Model):
     
     # Status tracking fields
     needs_status_check = models.BooleanField(default=False, help_text="Flag indicating this film needs a priority status check")
+    last_status_check = models.DateTimeField(blank=True, null=True, help_text="When this film was last checked for status updates")
     
     def __str__(self):
         return f"{self.title} ({self.year})"
