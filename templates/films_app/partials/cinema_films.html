@@ -8,32 +8,39 @@
     </div>
 {% endif %}
 
-<!-- Now Playing Films -->
+<!-- Now Playing Films Section -->
 {% if now_playing_films %}
     <div class="row mb-4">
         <div class="col-12">
             <h2 class="border-bottom pb-2">Now Playing in UK Cinemas</h2>
             <p class="text-muted">
                 {% if query %}
-                    Showing {{ now_playing_films|length }} films out of {{ total_now_playing }} currently in UK cinemas matching "{{ query }}".
+                    Showing page {{ now_playing_page }} of {{ now_playing_num_pages }} 
+                    ({{ now_playing_films|length }} films out of {{ total_now_playing }} currently in UK cinemas) matching "{{ query }}".
                     <span class="badge bg-primary">Filtered by: {{ query }}</span>
                 {% else %}
-                    Showing page {{ now_playing_page }} of {{ now_playing_num_pages }} ({{ now_playing_films|length }} films out of {{ total_now_playing }} currently in UK cinemas).
+                    Showing page {{ now_playing_page }} of {{ now_playing_num_pages }} 
+                    ({{ now_playing_films|length }} films out of {{ total_now_playing }} currently in UK cinemas).
                 {% endif %}
             </p>
         </div>
     </div>
-    
-    <div class="row mb-4" id="now-playing-container">
+
+    <!-- Now Playing Films Grid -->
+    <div class="row mb-4">
         {% for film in now_playing_films %}
             <div class="col-6 col-md-3 mb-4">
                 <div class="card film-card" 
                      onclick="navigateToFilmDetails(event, '{{ film.imdb_id }}')"
                      data-imdb-id="{{ film.imdb_id }}"
                      data-film-title="{{ film.title }}">
+                    
+                    <!-- Vote Badge -->
                     <div id="cinema-film-vote-count-{{ film.imdb_id }}" class="vote-badge">
                         {{ film.cinema_votes.count }} vote{{ film.cinema_votes.count|pluralize }}
                     </div>
+                    
+                    <!-- Certification Badge -->
                     {% if film.uk_certification %}
                         <div class="certification-badge">
                             <img src="{% static 'img/bbfc_' %}{{ film.uk_certification|lower }}{% if film.uk_certification == '12a' %}A{% endif %}.svg" alt="{{ film.uk_certification }}" width="40" height="40">
@@ -43,12 +50,16 @@
                             <img src="{% static 'img/bbfc_tbc.svg' %}" alt="TBC" width="40" height="40">
                         </div>
                     {% endif %}
+                    
+                    <!-- Film Poster -->
                     <img src="{{ film.poster_url|default:'https://via.placeholder.com/300x450?text=No+Poster' }}" 
                          class="card-img-top film-poster" alt="{{ film.title }}"
                          loading="lazy"
                          srcset="{{ film.poster_url|default:'https://via.placeholder.com/300x450?text=No+Poster' }} 300w,
                                  {{ film.poster_url|default:'https://via.placeholder.com/200x300?text=No+Poster' }} 200w"
                          sizes="(max-width: 576px) 200px, 300px">
+                    
+                    <!-- Film Info -->
                     <div class="card-body card-body-content">
                         <h5 class="card-title">{{ film.title }}</h5>
                         <p class="card-text text-muted">{{ film.year }}</p>
@@ -58,9 +69,13 @@
                             </p>
                         {% endif %}
                     </div>
+                    
+                    <!-- Card Actions -->
                     <div class="card-body card-body-actions pt-0">
                         <div class="d-flex align-items-center gap-2">
                             <a href="{% url 'films_app:film_detail' film.imdb_id %}" class="btn btn-sm btn-outline-primary flex-grow-1" onclick="event.stopPropagation();">View Details</a>
+                            
+                            <!-- Vote Buttons -->
                             <div id="vote-button-container-{{ film.imdb_id }}" class="flex-shrink-0">
                                 {% if user.is_authenticated %}
                                     {% if film.imdb_id in user_voted_films %}
@@ -78,20 +93,20 @@
             </div>
         {% endfor %}
     </div>
-    
+
     <!-- Now Playing Pagination -->
     <div class="row mb-5">
         <div class="col-12">
-            <nav aria-label="Page navigation">
-                <ul class="pagination justify-content-center">
+            <nav aria-label="Page navigation" class="p-3 bg-light border rounded">
+                <ul class="pagination justify-content-center mb-0">
                     {% if now_playing_has_previous %}
                         <li class="page-item">
                             <a class="page-link" 
                                href="#" 
-                               hx-get="{% url 'films_app:filter_cinema_films' %}?query={{ query }}&now_playing_page={{ now_playing_previous_page }}&upcoming_page={{ upcoming_page }}&section=both"
+                               hx-get="{% url 'films_app:filter_cinema_films' %}?query={{ query|default:'' }}&now_playing_page={{ now_playing_previous_page }}&upcoming_page={{ upcoming_page }}&section=both"
                                hx-target="#cinema-films-container"
-                               hx-indicator="#pagination-indicator-now-playing"
-                               hx-swap="innerHTML scroll:top">
+                               hx-indicator="#pagination-indicator-now_playing"
+                               hx-swap="innerHTML">
                                 <i class="fas fa-chevron-left"></i>
                             </a>
                         </li>
@@ -109,10 +124,10 @@
                         <li class="page-item">
                             <a class="page-link" 
                                href="#" 
-                               hx-get="{% url 'films_app:filter_cinema_films' %}?query={{ query }}&now_playing_page={{ now_playing_next_page }}&upcoming_page={{ upcoming_page }}&section=both"
+                               hx-get="{% url 'films_app:filter_cinema_films' %}?query={{ query|default:'' }}&now_playing_page={{ now_playing_next_page }}&upcoming_page={{ upcoming_page }}&section=both"
                                hx-target="#cinema-films-container"
-                               hx-indicator="#pagination-indicator-now-playing"
-                               hx-swap="innerHTML scroll:top">
+                               hx-indicator="#pagination-indicator-now_playing"
+                               hx-swap="innerHTML">
                                 <i class="fas fa-chevron-right"></i>
                             </a>
                         </li>
@@ -125,7 +140,7 @@
             </nav>
             
             <div class="text-center mt-2">
-                <span id="pagination-indicator-now-playing" class="htmx-indicator">
+                <span id="pagination-indicator-now_playing" class="htmx-indicator">
                     <i class="fas fa-spinner fa-spin"></i> Loading...
                 </span>
             </div>
@@ -141,32 +156,39 @@
     </div>
 {% endif %}
 
-<!-- Upcoming Films -->
+<!-- Upcoming Films Section -->
 {% if upcoming_films %}
     <div class="row mb-4">
         <div class="col-12">
             <h2 class="border-bottom pb-2">Coming Soon to UK Cinemas</h2>
             <p class="text-muted">
                 {% if query %}
-                    Showing {{ upcoming_films|length }} films out of {{ total_upcoming }} coming to UK cinemas in the next {{ upcoming_films_months }} months matching "{{ query }}".
+                    Showing page {{ upcoming_page }} of {{ upcoming_num_pages }} 
+                    ({{ upcoming_films|length }} films out of {{ total_upcoming }} coming to UK cinemas in the next {{ upcoming_films_months }} months) matching "{{ query }}".
                     <span class="badge bg-primary">Filtered by: {{ query }}</span>
                 {% else %}
-                    Showing page {{ upcoming_page }} of {{ upcoming_num_pages }} ({{ upcoming_films|length }} films out of {{ total_upcoming }} coming to UK cinemas in the next {{ upcoming_films_months }} months).
+                    Showing page {{ upcoming_page }} of {{ upcoming_num_pages }} 
+                    ({{ upcoming_films|length }} films out of {{ total_upcoming }} coming to UK cinemas in the next {{ upcoming_films_months }} months).
                 {% endif %}
             </p>
         </div>
     </div>
-    
-    <div class="row mb-4" id="upcoming-container">
+
+    <!-- Upcoming Films Grid -->
+    <div class="row mb-4">
         {% for film in upcoming_films %}
             <div class="col-6 col-md-3 mb-4">
                 <div class="card film-card" 
                      onclick="navigateToFilmDetails(event, '{{ film.imdb_id }}')"
                      data-imdb-id="{{ film.imdb_id }}"
                      data-film-title="{{ film.title }}">
+                    
+                    <!-- Vote Badge -->
                     <div id="cinema-film-vote-count-{{ film.imdb_id }}" class="vote-badge">
                         {{ film.cinema_votes.count }} vote{{ film.cinema_votes.count|pluralize }}
                     </div>
+                    
+                    <!-- Certification Badge -->
                     {% if film.uk_certification %}
                         <div class="certification-badge">
                             <img src="{% static 'img/bbfc_' %}{{ film.uk_certification|lower }}{% if film.uk_certification == '12a' %}A{% endif %}.svg" alt="{{ film.uk_certification }}" width="40" height="40">
@@ -176,12 +198,16 @@
                             <img src="{% static 'img/bbfc_tbc.svg' %}" alt="TBC" width="40" height="40">
                         </div>
                     {% endif %}
+                    
+                    <!-- Film Poster -->
                     <img src="{{ film.poster_url|default:'https://via.placeholder.com/300x450?text=No+Poster' }}" 
                          class="card-img-top film-poster" alt="{{ film.title }}"
                          loading="lazy"
                          srcset="{{ film.poster_url|default:'https://via.placeholder.com/300x450?text=No+Poster' }} 300w,
                                  {{ film.poster_url|default:'https://via.placeholder.com/200x300?text=No+Poster' }} 200w"
                          sizes="(max-width: 576px) 200px, 300px">
+                    
+                    <!-- Film Info -->
                     <div class="card-body card-body-content">
                         <h5 class="card-title">{{ film.title }}</h5>
                         <p class="card-text text-muted">{{ film.year }}</p>
@@ -191,9 +217,13 @@
                             </p>
                         {% endif %}
                     </div>
+                    
+                    <!-- Card Actions -->
                     <div class="card-body card-body-actions pt-0">
                         <div class="d-flex align-items-center gap-2">
                             <a href="{% url 'films_app:film_detail' film.imdb_id %}" class="btn btn-sm btn-outline-primary flex-grow-1" onclick="event.stopPropagation();">View Details</a>
+                            
+                            <!-- Vote Buttons -->
                             <div id="vote-button-container-{{ film.imdb_id }}" class="flex-shrink-0">
                                 {% if user.is_authenticated %}
                                     {% if film.imdb_id in user_voted_films %}
@@ -211,20 +241,20 @@
             </div>
         {% endfor %}
     </div>
-    
+
     <!-- Upcoming Pagination -->
     <div class="row mb-5">
         <div class="col-12">
-            <nav aria-label="Page navigation">
-                <ul class="pagination justify-content-center">
+            <nav aria-label="Page navigation" class="p-3 bg-light border rounded">
+                <ul class="pagination justify-content-center mb-0">
                     {% if upcoming_has_previous %}
                         <li class="page-item">
                             <a class="page-link" 
                                href="#" 
-                               hx-get="{% url 'films_app:filter_cinema_films' %}?query={{ query }}&now_playing_page={{ now_playing_page }}&upcoming_page={{ upcoming_previous_page }}&section=both"
+                               hx-get="{% url 'films_app:filter_cinema_films' %}?query={{ query|default:'' }}&upcoming_page={{ upcoming_previous_page }}&now_playing_page={{ now_playing_page }}&section=both"
                                hx-target="#cinema-films-container"
                                hx-indicator="#pagination-indicator-upcoming"
-                               hx-swap="innerHTML scroll:top">
+                               hx-swap="innerHTML">
                                 <i class="fas fa-chevron-left"></i>
                             </a>
                         </li>
@@ -242,10 +272,10 @@
                         <li class="page-item">
                             <a class="page-link" 
                                href="#" 
-                               hx-get="{% url 'films_app:filter_cinema_films' %}?query={{ query }}&now_playing_page={{ now_playing_page }}&upcoming_page={{ upcoming_next_page }}&section=both"
+                               hx-get="{% url 'films_app:filter_cinema_films' %}?query={{ query|default:'' }}&upcoming_page={{ upcoming_next_page }}&now_playing_page={{ now_playing_page }}&section=both"
                                hx-target="#cinema-films-container"
                                hx-indicator="#pagination-indicator-upcoming"
-                               hx-swap="innerHTML scroll:top">
+                               hx-swap="innerHTML">
                                 <i class="fas fa-chevron-right"></i>
                             </a>
                         </li>
