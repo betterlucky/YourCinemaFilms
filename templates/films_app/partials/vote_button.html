@@ -1,6 +1,6 @@
 {% load i18n %}
 
-<div id="vote-button-container-{{ film.imdb_id }}">
+<div id="vote-button-container-{{ film.imdb_id }}" class="flex-shrink-0">
     <button class="btn btn-sm btn-outline-primary"
             hx-post="{% url 'films_app:vote' film.imdb_id %}"
             hx-target="#vote-button-container-{{ film.imdb_id }}"
