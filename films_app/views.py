@@ -2030,9 +2030,27 @@ def update_cinema_cache(request):
         logger.info("Cleaning up cache files before update")
         cleanup_output = cleanup_cache_files()
         
-        # Run the management command with limited pages
-        logger.info("Starting cinema cache update with max_pages=2 and force=True")
-        call_command('update_movie_cache', force=True, max_pages=2)
+        # First run the update_release_status command to flag films that need checking
+        logger.info("Running update_release_status command to flag films for status checks")
+        call_command(
+            'update_release_status',
+            days=7,
+            batch_size=50,
+            use_parallel=True
+        )
+        
+        # Run the management command with optimized parameters
+        logger.info("Starting cinema cache update with optimized parameters")
+        call_command(
+            'update_movie_cache',
+            force=True,
+            max_pages=2,         # Limited to 2 pages for web UI to avoid timeouts
+            batch_size=15,       # Increased batch size for better performance
+            batch_delay=1,       # Reduced delay between batches
+            prioritize_flags=True,
+            time_window_months=6, # 6 months for upcoming films
+            use_parallel=True     # Enable parallel processing
+        )
         
         result = f"{cleanup_output}\n\n{output.getvalue()}"
         status = 'success'

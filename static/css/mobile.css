@@ -91,11 +91,11 @@
     
     /* Hide desktop pagination and show mobile pagination */
     .desktop-pagination {
-        display: none;
+        display: none !important;
     }
     
     .mobile-pagination {
-        display: block;
+        display: block !important;
     }
     
     /* Optimize vote badges */
@@ -113,4 +113,13 @@
     .card-body-actions .btn {
         font-size: 0.8rem;
     }
+}
+
+/* Ensure pagination is visible by default */
+.desktop-pagination {
+    display: block;
+}
+
+.mobile-pagination {
+    display: none;
 } 
