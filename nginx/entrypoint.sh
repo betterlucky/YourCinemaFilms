@@ -21,10 +21,12 @@ if [ "$ENVIRONMENT" = "prod" ]; then
     echo "Using production nginx configuration"
     cp /etc/nginx/conf.d/prod.conf /etc/nginx/conf.d/default.conf
     rm /etc/nginx/conf.d/dev.conf
+    rm /etc/nginx/conf.d/prod.conf
 else
     echo "Using development nginx configuration"
     cp /etc/nginx/conf.d/dev.conf /etc/nginx/conf.d/default.conf
     rm /etc/nginx/conf.d/prod.conf
+    rm /etc/nginx/conf.d/dev.conf
 fi
 
 # Start nginx
