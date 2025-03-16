@@ -247,7 +247,9 @@ def profile(request):
     logger = logging.getLogger(__name__)
     
     # Get user's votes and remaining votes
-    user_votes, votes_remaining = get_user_votes_and_remaining(request.user)
+    user_votes = Vote.objects.filter(user=request.user).select_related('film')
+    user_cinema_votes = CinemaVote.objects.filter(user=request.user).select_related('film')
+    votes_remaining = max(0, 10 - user_votes.count())
     
     # Get user achievements
     achievements = Achievement.objects.filter(user=request.user)
@@ -274,10 +276,12 @@ def profile(request):
     context = {
         'profile': request.user.profile,
         'user_votes': user_votes,
+        'user_cinema_votes': user_cinema_votes,
         'votes_remaining': votes_remaining,
         'social_accounts': social_accounts,
         'has_google_account': has_google_account,
         'achievements': achievements,
+        'total_achievements': len(Achievement.ACHIEVEMENT_TYPES),
     }
     
     return render(request, 'films_app/profile.html', context)

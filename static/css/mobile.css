@@ -2,22 +2,13 @@
 
 /* General mobile optimizations */
 @media (max-width: 768px) {
-    /* Reduce padding and margins */
+    /* Container spacing */
     .container {
         padding-left: 10px;
         padding-right: 10px;
     }
     
-    .py-5 {
-        padding-top: 2rem !important;
-        padding-bottom: 2rem !important;
-    }
-    
-    .mb-5 {
-        margin-bottom: 2rem !important;
-    }
-    
-    /* Improve text readability */
+    /* Typography */
     body {
         font-size: 16px;
     }
@@ -34,53 +25,43 @@
         font-size: 1rem;
     }
     
-    /* Film card optimizations */
-    .film-card {
-        min-height: 420px;
+    /* Profile Statistics Cards */
+    .row .col-md-3 .card {
+        margin-bottom: 1rem;
     }
     
-    .film-poster {
-        height: 200px;
+    .row .col-md-3 {
+        width: 50%;
+        padding: 0 8px;
     }
     
-    .card-title {
-        font-size: 1rem;
-        line-height: 1.3;
+    .card .card-body {
+        padding: 1rem;
     }
     
-    .card-text {
+    .card .fa-3x {
+        font-size: 2em;
+    }
+    
+    /* Achievement Cards */
+    .achievement-card {
+        padding: 0.75rem !important;
+    }
+    
+    .achievement-card .achievement-icon {
+        width: 40px !important;
+        height: 40px !important;
+    }
+    
+    .achievement-card h6 {
         font-size: 0.9rem;
     }
     
-    .uk-release-date {
+    .achievement-card p {
         font-size: 0.8rem;
     }
     
-    /* Pagination optimizations */
-    .pagination {
-        flex-wrap: wrap;
-        justify-content: center;
-    }
-    
-    .pagination .page-link {
-        margin: 0.1rem;
-    }
-}
-
-/* Small mobile devices */
-@media (max-width: 576px) {
-    /* Further reduce spacing */
-    .container {
-        padding-left: 8px;
-        padding-right: 8px;
-    }
-    
-    .py-5 {
-        padding-top: 1.5rem !important;
-        padding-bottom: 1.5rem !important;
-    }
-    
-    /* Optimize film cards for very small screens */
+    /* Film cards */
     .film-card {
         min-height: 380px;
     }
@@ -89,29 +70,70 @@
         height: 180px;
     }
     
-    /* Hide desktop pagination and show mobile pagination */
-    .desktop-pagination {
-        display: none !important;
+    .card-title {
+        font-size: 0.9rem;
+        line-height: 1.2;
     }
     
-    .mobile-pagination {
-        display: block !important;
+    /* Card actions */
+    .card-body-actions {
+        padding: 10px;
     }
     
-    /* Optimize vote badges */
-    .vote-badge {
-        font-size: 0.7rem;
-        padding: 3px 6px;
+    .card-body-actions .btn {
+        padding-left: 0.5rem;
+        padding-right: 0.5rem;
+        min-width: 70px;
+        font-size: 0.8rem;
     }
     
+    /* Grid layout - more specific selectors */
+    #user-cinema-votes-container .col-md-3,
+    #user-votes-container .col-md-3,
+    #classics-films-container .col-md-3,
+    #cinema-films-container .col-md-3 {
+        width: 50%;
+        padding: 0 8px;
+    }
+    
+    /* Certification badge */
     .certification-badge {
         width: 30px;
         height: 30px;
     }
     
-    /* Optimize buttons */
-    .card-body-actions .btn {
-        font-size: 0.8rem;
+    /* Vote badge */
+    .vote-badge {
+        font-size: 0.7rem;
+        padding: 3px 6px;
+    }
+}
+
+/* Small mobile devices */
+@media (max-width: 576px) {
+    .container {
+        padding-left: 8px;
+        padding-right: 8px;
+    }
+    
+    /* Profile Statistics Cards - Stack on very small screens */
+    .row .col-md-3 {
+        width: 100%;
+    }
+    
+    .film-card {
+        min-height: 340px;
+    }
+    
+    .film-poster {
+        height: 160px;
+    }
+    
+    /* Achievement Cards - Full width on very small screens */
+    .achievement-card {
+        margin-left: -8px;
+        margin-right: -8px;
+        border-radius: 0;
     }
 }
 
