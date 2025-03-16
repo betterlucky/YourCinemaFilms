@@ -10,8 +10,8 @@ done
 ENVIRONMENT=$(python3 -c '
 import sys
 sys.path.append("/etc/yourcinemafilms")
-from env import production
-print("prod" if production else "dev")
+from env import PRODUCTION
+print("prod" if PRODUCTION else "dev")
 ')
 
 echo "Environment detected from env.py: $ENVIRONMENT"
@@ -20,9 +20,11 @@ echo "Environment detected from env.py: $ENVIRONMENT"
 if [ "$ENVIRONMENT" = "prod" ]; then
     echo "Using production nginx configuration"
     cp /etc/nginx/conf.d/prod.conf /etc/nginx/conf.d/default.conf
+    rm /etc/nginx/conf.d/dev.conf
 else
     echo "Using development nginx configuration"
     cp /etc/nginx/conf.d/dev.conf /etc/nginx/conf.d/default.conf
+    rm /etc/nginx/conf.d/prod.conf
 fi
 
 # Start nginx

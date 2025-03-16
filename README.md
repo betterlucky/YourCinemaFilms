@@ -40,13 +40,14 @@ A web platform designed to identify which films people would actually go to the 
 
 ## Technology Stack
 
-- **Backend**: Django 5.1 (Python web framework)
-- **Frontend**: Bootstrap 5, jQuery, HTMX
+- **Backend**: Django 5.1.1 (Python web framework)
+- **Frontend**: Bootstrap 5, jQuery, HTMX 1.22.0
 - **Database**: PostgreSQL (production), SQLite (development)
-- **Authentication**: django-allauth for social authentication
-- **API**: Django REST Framework for API endpoints
-- **Visualization**: Chart.js for data visualization
-- **Deployment**: Render.com for cloud hosting
+- **Authentication**: django-allauth 0.61.0 for social authentication
+- **API**: Django REST Framework 3.15.0 for API endpoints
+- **Visualization**: Chart.js 2.3.0 for data visualization
+- **Image Processing**: Pillow 11.1.0
+- **Deployment**: Docker and Render.com for cloud hosting
 
 ## Installation
 
@@ -128,6 +129,8 @@ The application is configured for deployment on Render.com:
 ## Project Structure
 
 - `films_project/`: Main project settings
+  - `settings.py`: Project settings and configuration
+  - `env_loader.py`: Environment variable management
 - `films_app/`: Main application code
   - `models.py`: Database models
   - `views.py`: View functions
@@ -135,33 +138,92 @@ The application is configured for deployment on Render.com:
   - `api/`: REST API endpoints
   - `templatetags/`: Custom template tags
   - `utils.py`: Utility functions
+  - `management/`: Custom management commands
 - `templates/`: HTML templates
   - `films_app/`: Application templates
   - `account/`: Authentication templates
 - `static/`: Static files (CSS, JS, images)
+- `media/`: User-uploaded media files
 - `profile_images/`: User-uploaded profile images
+- `cache/`: Cache files for film data
+- `nginx/`: Nginx configuration for Docker
+- `db/`: Database files (development)
+- `fixtures/`: Initial data fixtures
+- `docker-compose.yml`: Docker Compose configuration
+- `Dockerfile`: Docker container configuration
 - `build.sh`: Deployment build script
-- `render.yaml`: Render.com configuration
+- `entrypoint.sh`: Docker container entrypoint
+- `setup_google_oauth.py`: Google OAuth setup script
+- `update_cinema_cache.py`: Cinema data update script
+- `update_release_status.py`: Film release status update
 
-## Contributing
+## Environment Variables
 
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature-name`
-3. Commit your changes: `git commit -m 'Add some feature'`
-4. Push to the branch: `git push origin feature-name`
-5. Submit a pull request
+Required environment variables in your `.env` file:
 
-## License
+```
+# Django Settings
+DJANGO_SECRET_KEY=your_secret_key
+DJANGO_DEBUG=True  # Set to False in production
+PRODUCTION=false   # Set to true in production
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+# Database Settings (Optional for development)
+DATABASE_URL=your_database_url  # Required for production
 
-## Acknowledgments
+# API Keys
+TMDB_API_KEY=your_tmdb_api_key
 
-- [TMDB API](https://www.themoviedb.org/) for film data with UK-specific parameters
-- [Bootstrap](https://getbootstrap.com/) for the UI framework
-- [Django](https://www.djangoproject.com/) for the web framework
-- [django-allauth](https://django-allauth.readthedocs.io/) for authentication
-- [Chart.js](https://www.chartjs.org/) for data visualization
+# OAuth Settings
+GOOGLE_CLIENT_ID=your_google_client_id
+GOOGLE_CLIENT_SECRET=your_google_client_secret
+
+# Email Settings (Optional for development)
+EMAIL_HOST=your_email_host
+EMAIL_PORT=587
+EMAIL_USE_TLS=True
+EMAIL_HOST_USER=your_email_user
+EMAIL_HOST_PASSWORD=your_email_password
+DEFAULT_FROM_EMAIL=your_default_email
+
+# Application Settings
+UPCOMING_FILMS_MONTHS=6
+MAX_CINEMA_FILMS=20
+CACHE_UPDATE_INTERVAL_MINUTES=15
+FILMS_PER_PAGE=8
+CONTACT_EMAIL=your_contact_email
+```
+
+## Docker Support
+
+The application includes Docker support for both development and production:
+
+1. Build the Docker image:
+   ```
+   docker build -t yourcinemafilms .
+   ```
+
+2. Run with Docker Compose:
+   ```
+   docker-compose up
+   ```
+
+3. Access the application at http://localhost:8080
+
+The Docker setup includes:
+- Nginx as reverse proxy
+- Gunicorn as WSGI server
+- PostgreSQL database (optional)
+- Automatic environment configuration
+- Volume mounts for persistent data
+
+See `READMEDOCKER.md` for detailed Docker instructions.
+
+## Additional Documentation
+
+- `GOOGLE_OAUTH_README.md`: Detailed Google OAuth setup instructions
+- `CRON_SETUP_README.md`: Cron job configuration for scheduled tasks
+- `PROJECT_CONTEXT.md`: Project overview and context
+- `TMDB_UK_CINEMA_EXPLORER_CONTEXT.md`: TMDB API integration details
 
 ## Scheduled Tasks
 
@@ -209,3 +271,27 @@ If the Cinema page shows no films or outdated information:
 3. Click the "Update Cinema Cache" button
 4. Check the output for any errors
 5. If errors persist, check the Render logs for the cron job
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature-name`
+3. Commit your changes: `git commit -m 'Add some feature'`
+4. Push to the branch: `git push origin feature-name`
+5. Submit a pull request
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Acknowledgments
+
+- [TMDB API](https://www.themoviedb.org/) for film data with UK-specific parameters
+- [Bootstrap](https://getbootstrap.com/) for the UI framework
+- [Django](https://www.djangoproject.com/) for the web framework
+- [django-allauth](https://django-allauth.readthedocs.io/) for authentication
+- [Chart.js](https://www.chartjs.org/) for data visualization
+- [HTMX](https://htmx.org/) for dynamic UI updates
+- [Docker](https://www.docker.com/) for containerization
+- [Nginx](https://nginx.org/) for reverse proxy
+- [Gunicorn](https://gunicorn.org/) for WSGI server
