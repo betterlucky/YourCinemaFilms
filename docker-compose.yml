@@ -21,9 +21,9 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./nginx/conf.d:/etc/nginx/conf.d
       - /etc/letsencrypt:/etc/letsencrypt # Mount Let's Encrypt certificates
       - static_volume:/app/staticfiles # Mount static files at the same path as in the Nginx config
+      - /etc/yourcinemafilms/env.py:/etc/yourcinemafilms/env.py:ro  # Mount env.py to read production value
     depends_on:
       - web
 
