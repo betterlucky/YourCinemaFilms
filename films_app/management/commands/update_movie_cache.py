@@ -58,6 +58,12 @@ class Command(BaseCommand):
             default=False,
             help='Use parallel processing for API calls and database operations',
         )
+        parser.add_argument(
+            '--max_workers',
+            type=int,
+            default=None,
+            help='Maximum number of worker threads for parallel processing',
+        )
 
     def handle(self, *args, **options):
         """Handle the command."""
@@ -68,6 +74,7 @@ class Command(BaseCommand):
         time_window_months = options['time_window_months']
         prioritize_flags = options['prioritize_flags']
         use_parallel = options['use_parallel']
+        max_workers = options['max_workers']
         
         self.options = options  # Store options for use in other methods
         
@@ -148,7 +155,8 @@ class Command(BaseCommand):
                         self.stdout.write(f'Processing batch {i//batch_size + 1} of {(flagged_count-1)//batch_size + 1} ({len(batch)} films)')
                         
                         # Use ThreadPoolExecutor for parallel processing
-                        with concurrent.futures.ThreadPoolExecutor(max_workers=min(8, len(batch))) as executor:
+                        max_workers = self.options.get('max_workers') or max(1, min(8, len(batch)))  # Use provided max_workers or calculate based on batch size
+                        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
                             # Submit all films for processing
                             future_to_film = {executor.submit(self.update_film_status, film, self.options.get('force', False)): film for film in batch}
                             
@@ -491,7 +499,8 @@ class Command(BaseCommand):
                             return None
                     
                     # Use ThreadPoolExecutor for parallel processing
-                    with concurrent.futures.ThreadPoolExecutor(max_workers=min(8, len(batch))) as executor:
+                    max_workers = self.options.get('max_workers') or max(1, min(8, len(batch)))  # Use provided max_workers or calculate based on batch size
+                    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
                         # Submit all movies for processing
                         future_to_movie = {executor.submit(process_movie, movie_data): movie_data for movie_data in batch}
                         

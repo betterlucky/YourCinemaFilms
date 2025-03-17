@@ -219,7 +219,7 @@ def main():
             logger.info("Starting cinema cache update with optimized parameters")
             
             # Add explicit ThreadPoolExecutor configuration
-            max_workers = min(32, (os.cpu_count() or 1) * 4)  # Limit max workers
+            max_workers = max(1, min(32, (os.cpu_count() or 1) * 4))  # Ensure at least 1 worker, max 32
             
             # Process all films with optimized parameters
             call_command(
