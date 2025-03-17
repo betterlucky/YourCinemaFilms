@@ -218,16 +218,20 @@ def main():
             # Run the management command with improved parameters
             logger.info("Starting cinema cache update with optimized parameters")
             
+            # Add explicit ThreadPoolExecutor configuration
+            max_workers = min(32, (os.cpu_count() or 1) * 4)  # Limit max workers
+            
             # Process all films with optimized parameters
             call_command(
                 'update_movie_cache',
                 force=True,
                 max_pages=0,         # Process all available pages (0 means all)
-                batch_size=15,       # Increased batch size for better performance
-                batch_delay=1,       # Reduced delay between batches
+                batch_size=15,       # Batch size for processing
+                batch_delay=1,       # Delay between batches
                 prioritize_flags=True,
                 time_window_months=6, # 6 months for upcoming films
-                use_parallel=True     # Enable parallel processing
+                use_parallel=True,    # Enable parallel processing
+                max_workers=max_workers  # Add explicit max_workers parameter
             )
             
             end_time = timezone.now()

@@ -8,6 +8,22 @@ import sys
 import platform
 from pathlib import Path
 
+def convert_value(name, value):
+    """
+    Convert environment variable values to the appropriate type based on the variable name.
+    """
+    # Integer variables
+    if name in {'UPCOMING_FILMS_MONTHS', 'MAX_CINEMA_FILMS', 'CACHE_UPDATE_INTERVAL_MINUTES', 'FILMS_PER_PAGE', 'EMAIL_PORT'}:
+        return str(int(value))
+    
+    # Boolean variables
+    if name in {'DJANGO_DEBUG', 'PRODUCTION', 'EMAIL_USE_TLS'}:
+        # Convert Python boolean to string 'True' or 'False'
+        return str(value).lower() == 'true'
+    
+    # All other variables should be strings
+    return str(value)
+
 def load_environment_variables():
     """
     Load environment variables from a secure location outside the project directory.
@@ -43,9 +59,9 @@ def load_environment_variables():
             if var_name.startswith('__') or callable(getattr(env_module, var_name)):
                 continue
             
-            # Get the value and set it as an environment variable
+            # Get the value and convert it to the appropriate type
             value = getattr(env_module, var_name)
-            os.environ[var_name] = value
+            os.environ[var_name] = str(convert_value(var_name, value))
         
         return True
     except ImportError as e:
