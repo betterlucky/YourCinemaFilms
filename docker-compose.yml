@@ -17,9 +17,9 @@ services:
     build:
       context: ./nginx
       dockerfile: Dockerfile
-    ports:
-      - "80:80"
-      - "443:443"
+#    ports:
+#      - "80:80"
+#      - "443:443"
     volumes:
       - /etc/letsencrypt:/etc/letsencrypt # Mount Let's Encrypt certificates
       - static_volume:/app/staticfiles # Mount static files at the same path as in the Nginx config
