@@ -1,7 +1,7 @@
 {% load i18n %}
 
 <div id="vote-button-container-{{ film.imdb_id }}" class="flex-shrink-0">
-    <button class="btn btn-sm btn-outline-primary"
+    <button class="btn btn-primary"
             hx-post="{% url 'films_app:vote' film.imdb_id %}"
             hx-target="#vote-button-container-{{ film.imdb_id }}"
             hx-swap="outerHTML"
@@ -10,8 +10,7 @@
             hx-trigger="click"
             hx-push-url="false"
             onclick="event.stopPropagation();">
-        <i class="fas fa-thumbs-up"></i>
-        <span class="vote-btn-text">Vote</span>
+        <i class="fas fa-thumbs-up"></i> Pick
         <span id="vote-indicator-{{ film.imdb_id }}" class="htmx-indicator">
             <i class="fas fa-spinner fa-spin"></i>
         </span>

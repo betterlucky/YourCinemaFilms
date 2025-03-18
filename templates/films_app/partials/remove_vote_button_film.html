@@ -1,19 +1,12 @@
 {% load i18n %}
 
 <div id="vote-button-container-{{ film.imdb_id }}">
-    <button class="btn btn-sm btn-outline-danger"
-            hx-post="{% url 'films_app:remove_vote' imdb_id=film.imdb_id %}"
+    <button class="btn btn-danger"
+            hx-delete="{% url 'films_app:remove_vote' film.imdb_id %}"
             hx-target="#vote-button-container-{{ film.imdb_id }}"
             hx-swap="outerHTML"
-            hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
-            hx-indicator="#remove-vote-indicator-{{ film.imdb_id }}"
             hx-trigger="click"
-            hx-push-url="false"
             onclick="event.stopPropagation();">
-        <i class="fas fa-times"></i>
-        <span class="vote-btn-text">Remove Vote</span>
-        <span id="remove-vote-indicator-{{ film.imdb_id }}" class="htmx-indicator">
-            <i class="fas fa-spinner fa-spin"></i>
-        </span>
+        <i class="fas fa-times"></i> Remove Pick
     </button>
 </div> 

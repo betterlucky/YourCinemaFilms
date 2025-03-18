@@ -142,7 +142,7 @@
             {% if user_votes %}
             <div class="card shadow {% if profile.bio %}mt-4{% endif %}">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">{% trans "Votes" %}</h5>
+                    <h5 class="mb-0">{% trans "Picks" %}</h5>
                     <span class="badge bg-primary">{{ user_votes.count }}</span>
                 </div>
                 <div class="card-body">
@@ -167,10 +167,10 @@
             {% elif is_owner %}
             <div class="card shadow {% if profile.bio %}mt-4{% endif %}">
                 <div class="card-header">
-                    <h5 class="mb-0">{% trans "Votes" %}</h5>
+                    <h5 class="mb-0">{% trans "Picks" %}</h5>
                 </div>
                 <div class="card-body text-center">
-                    <p class="text-muted">{% trans "You haven't voted for any films yet." %}</p>
+                    <p class="text-muted">{% trans "You haven't picked any films yet." %}</p>
                     <a href="{% url 'films_app:classics' %}" class="btn btn-primary">
                         <i class="fas fa-film me-2"></i>{% trans "Discover Films" %}
                     </a>
@@ -179,10 +179,10 @@
             {% elif profile.votes_privacy == 'public' or profile.votes_privacy == 'users' and user.is_authenticated %}
             <div class="card shadow {% if profile.bio %}mt-4{% endif %}">
                 <div class="card-header">
-                    <h5 class="mb-0">{% trans "Votes" %}</h5>
+                    <h5 class="mb-0">{% trans "Picks" %}</h5>
                 </div>
                 <div class="card-body text-center">
-                    <p class="text-muted">{% trans "This user hasn't voted for any films yet." %}</p>
+                    <p class="text-muted">{% trans "This user hasn't picked any films yet." %}</p>
                 </div>
             </div>
             {% endif %}
