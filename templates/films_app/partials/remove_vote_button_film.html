@@ -1,0 +1,12 @@
+{% load i18n %}
+
+<div id="vote-button-container-{{ film.imdb_id }}">
+    <button class="btn btn-danger"
+            hx-delete="{% url 'films_app:remove_vote' film.imdb_id %}"
+            hx-target="#vote-button-container-{{ film.imdb_id }}"
+            hx-swap="outerHTML"
+            hx-trigger="click"
+            onclick="event.stopPropagation();">
+        <i class="fas fa-times"></i> Remove Pick
+    </button>
+</div> 

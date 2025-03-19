@@ -1,9 +1,12 @@
-{% extends "base.html" %}
+{% extends 'base.html' %}
+{% load static %}
 {% load i18n %}
 
 {% block title %}{% trans "Profile" %} | YourCinemaFilms{% endblock %}
 
 {% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/shared.css' %}">
+<link rel="stylesheet" href="{% static 'css/mobile.css' %}">
 <style>
     .hover-effect {
         transition: all 0.3s ease;
@@ -18,12 +21,86 @@
     .card-header {
         border-bottom: 2px solid rgba(0,0,0,.05);
     }
+    
+    /* Film Card Styles */
+    .film-card {
+        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        height: 100%;
+        cursor: pointer;
+    }
+    
+    .film-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    
+    .film-card .card-img-top {
+        height: 300px;
+        object-fit: cover;
+    }
+    
+    .film-card .card-body {
+        padding: 1rem;
+    }
+    
+    .film-card .card-title {
+        font-size: 1rem;
+        margin-bottom: 0.25rem;
+        line-height: 1.2;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+    
+    .certification-badge {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        z-index: 2;
+        background: white;
+        border-radius: 50%;
+        padding: 2px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
+    
+    .card-content-link {
+        text-decoration: none;
+        color: inherit;
+    }
+    
+    .card-content-link:hover {
+        text-decoration: none;
+        color: inherit;
+    }
+    
+    .uk-release-date {
+        font-size: 0.8rem;
+        color: #6c757d;
+        margin-bottom: 0;
+    }
+    
+    .card-body-content {
+        padding-bottom: 0.5rem;
+    }
+    
+    .card-body-actions {
+        padding-top: 0;
+        border-top: 1px solid rgba(0,0,0,.125);
+    }
+    
+    @media (max-width: 768px) {
+        .film-card .card-img-top {
+            height: 250px;
+        }
+    }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="container py-5">
-    <div class="row">
+    <!-- Profile Info Section -->
+    <div class="row mb-5">
         <div class="col-md-4">
             <div class="card shadow">
                 <div class="card-body text-center">
@@ -70,6 +147,7 @@
                 </div>
             </div>
             
+            <!-- Account Information Card -->
             <div class="card shadow mt-4">
                 <div class="card-header">
                     <h5 class="mb-0">{% trans "Account Information" %}</h5>
@@ -117,6 +195,7 @@
         </div>
         
         <div class="col-md-8">
+            <!-- Profile Information Card -->
             <div class="card shadow">
                 <div class="card-header bg-light">
                     <h5 class="mb-0"><i class="fas fa-user-circle me-2"></i>{% trans "Profile Information" %}</h5>
@@ -374,10 +453,15 @@
                     {% endif %}
                 </div>
             </div>
-            
-            <div class="card shadow mt-4">
+        </div>
+    </div>
+
+    <!-- Classic Film Votes Section -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="card shadow">
                 <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0"><i class="fas fa-thumbs-up me-2"></i>{% trans "My Votes" %}</h5>
+                    <h5 class="mb-0"><i class="fas fa-thumbs-up me-2"></i>{% trans "Classic Film Votes" %}</h5>
                     <span class="badge bg-primary rounded-pill" id="votes-count-badge">{{ user_votes.count }}</span>
                 </div>
                 <div class="card-body">
@@ -421,6 +505,106 @@
                             </div>
                         {% endif %}
                     {% endwith %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cinema Votes Section -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0">Your Cinema Votes</h3>
+                </div>
+                <div class="card-body">
+                    {% if user_cinema_votes %}
+                        <div class="row">
+                            {% for vote in user_cinema_votes %}
+                                <div class="col-6 col-md-3 mb-4">
+                                    <div class="card film-card" 
+                                         onclick="navigateToFilmDetails(event, '{{ vote.film.imdb_id }}')"
+                                         data-imdb-id="{{ vote.film.imdb_id }}"
+                                         data-film-title="{{ vote.film.title }}">
+                                        {% if vote.film.uk_certification %}
+                                            <div class="certification-badge">
+                                                <img src="{% static 'img/bbfc_' %}{{ vote.film.uk_certification|lower }}{% if vote.film.uk_certification == '12a' %}A{% endif %}.svg" alt="{{ vote.film.uk_certification }}" width="40" height="40">
+                                            </div>
+                                        {% else %}
+                                            <div class="certification-badge">
+                                                <img src="{% static 'img/bbfc_tbc.svg' %}" alt="TBC" width="40" height="40">
+                                            </div>
+                                        {% endif %}
+                                        <a href="{% url 'films_app:film_detail' vote.film.imdb_id %}" class="card-content-link">
+                                            <img src="{{ vote.film.poster_url|default:'https://via.placeholder.com/300x450?text=No+Poster' }}" 
+                                                 class="card-img-top film-poster" alt="{{ vote.film.title }}">
+                                            <div class="card-body card-body-content">
+                                                <h5 class="card-title">{{ vote.film.title }}</h5>
+                                                <p class="card-text text-muted">{{ vote.film.year }}</p>
+                                                {% if vote.film.uk_release_date %}
+                                                    <p class="uk-release-date">
+                                                        UK Release: {{ vote.film.uk_release_date|date:"j M Y" }}
+                                                    </p>
+                                                {% endif %}
+                                            </div>
+                                        </a>
+                                        <div class="card-body card-body-actions">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <a href="{% url 'films_app:film_detail' vote.film.imdb_id %}" class="btn btn-sm btn-outline-primary flex-grow-1" onclick="event.stopPropagation();">View Details</a>
+                                                {% include 'films_app/partials/cinema_remove_vote_button.html' with vote=vote %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-film fa-3x text-muted mb-3"></i>
+                            <h4>You haven't voted for any cinema releases yet</h4>
+                            <p>Visit the <a href="{% url 'films_app:cinema' %}">Cinema page</a> to vote for upcoming releases!</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Vote Statistics -->
+    <div class="row mb-5">
+        <div class="col-6 col-md-3">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-film fa-3x text-primary mb-3"></i>
+                    <h3>{{ user_votes.count }}</h3>
+                    <p class="text-muted mb-0">Classic Film Votes</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-ticket-alt fa-3x text-success mb-3"></i>
+                    <h3>{{ user_cinema_votes.count }}</h3>
+                    <p class="text-muted mb-0">Cinema Votes</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-trophy fa-3x text-warning mb-3"></i>
+                    <h3>{{ achievements|length }} / {{ total_achievements }}</h3>
+                    <p class="text-muted mb-0">Achievements Earned</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-calendar-alt fa-3x text-info mb-3"></i>
+                    <h3>{{ user.date_joined|timesince }}</h3>
+                    <p class="text-muted mb-0">Member For</p>
                 </div>
             </div>
         </div>
@@ -510,6 +694,20 @@
         if (newCount === 0) {
             window.location.reload();
         }
+    }
+    
+    // Navigate to film details page
+    function navigateToFilmDetails(event, imdbId) {
+        // Don't navigate if the click was on a button or a link
+        if (event.target.tagName === 'BUTTON' || 
+            event.target.tagName === 'A' || 
+            event.target.closest('button') || 
+            event.target.closest('a')) {
+            return;
+        }
+        
+        // Navigate to film details page
+        window.location.href = '{% url "films_app:film_detail" imdb_id="PLACEHOLDER" %}'.replace('PLACEHOLDER', imdbId);
     }
 </script>
 {% endblock %} 

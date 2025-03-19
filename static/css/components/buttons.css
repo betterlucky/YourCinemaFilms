@@ -236,12 +236,6 @@
         margin-left: 0.25rem;
     }
     
-    /* Simplify pagination on very small screens */
-    .pagination .page-item:not(.active):not(:first-child):not(:last-child) {
-        display: none;
-    }
-    
-    .pagination .page-item.active {
-        display: inline-block;
-    }
+    /* We're now using desktop-pagination and mobile-pagination classes instead */
+    /* Removed the rule that hides pagination items on small screens */
 } 

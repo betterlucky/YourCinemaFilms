@@ -1,1 +1,1 @@
-[{"model": "films_app.vote", "pk": 2, "fields": {"user": 4, "film": 3, "created_at": "2025-03-07T22:38:06.180Z", "updated_at": "2025-03-07T22:38:06.180Z"}}, {"model": "films_app.vote", "pk": 1, "fields": {"user": 4, "film": 2, "created_at": "2025-03-07T22:32:09.055Z", "updated_at": "2025-03-07T22:32:09.055Z"}}]
+[{"model": "films_app.vote", "pk": 41, "fields": {"user": 4, "film": 429, "created_at": "2025-03-11T21:02:55.544Z", "updated_at": "2025-03-11T21:02:55.544Z", "commitment_level": "interested", "preferred_format": "any", "social_preference": "undecided"}}]

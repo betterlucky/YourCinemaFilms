@@ -7,221 +7,39 @@
     </div>
 {% endif %}
 
-<!-- Classic Films -->
+<!-- Filter for paginated classics -->
+<div class="row mb-4">
+    <div class="col-md-6 mx-auto">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Filter Classic Films</h5>
+                <form id="classics-filter-form" class="d-flex">
+                    <input type="text" 
+                           id="classics-filter-input" 
+                           class="form-control me-2" 
+                           placeholder="Filter by title..." 
+                           aria-label="Filter"
+                           hx-get="{% url 'films_app:filter_classics_films' %}"
+                           hx-trigger="keyup changed delay:500ms, search"
+                           hx-target="#classics-films-container"
+                           hx-indicator="#classics-filter-loading"
+                           name="query"
+                           value="{{ query|default:'' }}">
+                    <button class="btn btn-outline-primary" type="submit">
+                        Filter
+                    </button>
+                    <div id="classics-filter-loading" class="htmx-indicator ms-2">
+                        <div class="spinner-border spinner-border-sm text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% if classic_films %}
-    <div class="row mb-4">
-        <div class="col-12">
-            <h2 class="border-bottom pb-2">Top Classic Films</h2>
-            <p class="text-muted">
-                {% if query %}
-                    Showing {{ classic_films|length }} films out of {{ total_films }} matching "{{ query }}".
-                    <span class="badge bg-primary">Filtered by: {{ query }}</span>
-                {% else %}
-                    Showing page {{ page }} of {{ num_pages }} ({{ classic_films|length }} films out of {{ total_films }} total).
-                {% endif %}
-            </p>
-        </div>
-    </div>
-    
-    <!-- Filter for paginated classics -->
-    <div class="row mb-4">
-        <div class="col-md-6 mx-auto">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">Filter Classic Films</h5>
-                    <form id="classics-filter-form" class="d-flex">
-                        <input type="text" 
-                               id="classics-filter-input" 
-                               class="form-control me-2" 
-                               placeholder="Filter by title..." 
-                               aria-label="Filter"
-                               hx-get="{% url 'films_app:filter_classics_films' %}"
-                               hx-trigger="keyup changed delay:500ms, search"
-                               hx-target="#classics-films-container"
-                               hx-indicator="#classics-filter-loading"
-                               name="query"
-                               value="{{ query|default:'' }}">
-                        <button class="btn btn-outline-primary" type="submit">
-                            Filter
-                        </button>
-                        <div id="classics-filter-loading" class="htmx-indicator ms-2">
-                            <div class="spinner-border spinner-border-sm text-primary" role="status">
-                                <span class="visually-hidden">Loading...</span>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <div class="row mb-4" id="classics-container">
-        {% for film in classic_films %}
-            <div class="col-6 col-md-3 mb-4">
-                <div class="card film-card" 
-                     onclick="navigateToFilmDetails(event, '{{ film.imdb_id }}')"
-                     data-imdb-id="{{ film.imdb_id }}"
-                     data-film-title="{{ film.title }}">
-                    <div id="film-vote-count-{{ film.imdb_id }}" class="vote-badge">
-                        {{ film.total_votes }} vote{{ film.total_votes|pluralize }}
-                    </div>
-                    {% if film.uk_certification %}
-                        <div class="certification-badge">
-                            <img src="{% static 'img/BBFC_' %}{{ film.uk_certification|upper }}{% if film.uk_certification == '12a' %}A{% endif %}_(2019).svg" alt="{{ film.uk_certification }}" width="40" height="40">
-                        </div>
-                    {% else %}
-                        <div class="certification-badge">
-                            <img src="{% static 'img/BBFC_TBC.svg' %}" alt="TBC" width="40" height="40">
-                        </div>
-                    {% endif %}
-                    <img src="{{ film.poster_url|default:'https://via.placeholder.com/300x450?text=No+Poster' }}" 
-                         class="card-img-top film-poster" alt="{{ film.title }}"
-                         loading="lazy"
-                         srcset="{{ film.poster_url|default:'https://via.placeholder.com/300x450?text=No+Poster' }} 300w,
-                                 {{ film.poster_url|default:'https://via.placeholder.com/200x300?text=No+Poster' }} 200w"
-                         sizes="(max-width: 576px) 200px, 300px">
-                    <div class="card-body card-body-content">
-                        <h5 class="card-title">{{ film.title }}</h5>
-                        <p class="card-text text-muted">{{ film.year }}</p>
-                    </div>
-                    <div class="card-body card-body-actions pt-0">
-                        <div class="d-flex align-items-center gap-2">
-                            <a href="{% url 'films_app:film_detail' film.imdb_id %}" class="btn btn-sm btn-outline-primary flex-grow-1" onclick="event.stopPropagation();">View Details</a>
-                            <div id="vote-button-container-{{ film.imdb_id }}" class="flex-shrink-0">
-                                {% if user.is_authenticated %}
-                                    {% if film.imdb_id in user_voted_films %}
-                                        {% with vote=user_votes|get_vote_by_imdb_id:film.imdb_id %}
-                                            {% include 'films_app/partials/remove_vote_button.html' with vote=vote %}
-                                        {% endwith %}
-                                    {% else %}
-                                        {% if can_vote %}
-                                            {% include 'films_app/partials/vote_button.html' with film=film %}
-                                        {% endif %}
-                                    {% endif %}
-                                {% endif %}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        {% endfor %}
-    </div>
-    
-    <!-- Pagination -->
-    <div class="row mb-5">
-        <div class="col-12">
-            <!-- Desktop Pagination -->
-            <nav aria-label="Classic films pagination" class="desktop-pagination d-none d-md-block">
-                <ul class="pagination justify-content-center">
-                    {% if has_previous %}
-                        <li class="page-item">
-                            <a class="page-link" 
-                               href="#" 
-                               hx-get="{% url 'films_app:filter_classics_films' %}?query={{ query }}&page={{ previous_page }}"
-                               hx-target="#classics-films-container"
-                               hx-indicator="#pagination-indicator"
-                               hx-swap="innerHTML scroll:#classics-container">
-                                Previous
-                            </a>
-                        </li>
-                    {% else %}
-                        <li class="page-item disabled">
-                            <span class="page-link">Previous</span>
-                        </li>
-                    {% endif %}
-                    
-                    {% for p in num_pages|get_page_range:page %}
-                        {% if p == page %}
-                            <li class="page-item active">
-                                <span class="page-link">{{ p }}</span>
-                            </li>
-                        {% elif p == '...' %}
-                            <li class="page-item disabled">
-                                <span class="page-link">{{ p }}</span>
-                            </li>
-                        {% else %}
-                            <li class="page-item">
-                                <a class="page-link" 
-                                   href="#" 
-                                   hx-get="{% url 'films_app:filter_classics_films' %}?query={{ query }}&page={{ p }}"
-                                   hx-target="#classics-films-container"
-                                   hx-indicator="#pagination-indicator"
-                                   hx-swap="innerHTML scroll:#classics-container">
-                                    {{ p }}
-                                </a>
-                            </li>
-                        {% endif %}
-                    {% endfor %}
-                    
-                    {% if has_next %}
-                        <li class="page-item">
-                            <a class="page-link" 
-                               href="#" 
-                               hx-get="{% url 'films_app:filter_classics_films' %}?query={{ query }}&page={{ next_page }}"
-                               hx-target="#classics-films-container"
-                               hx-indicator="#pagination-indicator"
-                               hx-swap="innerHTML scroll:#classics-container">
-                                Next
-                            </a>
-                        </li>
-                    {% else %}
-                        <li class="page-item disabled">
-                            <span class="page-link">Next</span>
-                        </li>
-                    {% endif %}
-                </ul>
-            </nav>
-            
-            <!-- Mobile Pagination -->
-            <nav aria-label="Classic films pagination" class="mobile-pagination d-md-none">
-                <ul class="pagination justify-content-center">
-                    {% if has_previous %}
-                        <li class="page-item">
-                            <a class="page-link" 
-                               href="#" 
-                               hx-get="{% url 'films_app:filter_classics_films' %}?query={{ query }}&page={{ previous_page }}"
-                               hx-target="#classics-films-container"
-                               hx-indicator="#pagination-indicator"
-                               hx-swap="innerHTML scroll:#classics-container">
-                                <i class="fas fa-chevron-left"></i>
-                            </a>
-                        </li>
-                    {% else %}
-                        <li class="page-item disabled">
-                            <span class="page-link"><i class="fas fa-chevron-left"></i></span>
-                        </li>
-                    {% endif %}
-                    
-                    <li class="page-item active">
-                        <span class="page-link">{{ page }} / {{ num_pages }}</span>
-                    </li>
-                    
-                    {% if has_next %}
-                        <li class="page-item">
-                            <a class="page-link" 
-                               href="#" 
-                               hx-get="{% url 'films_app:filter_classics_films' %}?query={{ query }}&page={{ next_page }}"
-                               hx-target="#classics-films-container"
-                               hx-indicator="#pagination-indicator"
-                               hx-swap="innerHTML scroll:#classics-container">
-                                <i class="fas fa-chevron-right"></i>
-                            </a>
-                        </li>
-                    {% else %}
-                        <li class="page-item disabled">
-                            <span class="page-link"><i class="fas fa-chevron-right"></i></span>
-                        </li>
-                    {% endif %}
-                </ul>
-            </nav>
-            
-            <div class="text-center mt-2">
-                <span id="pagination-indicator" class="htmx-indicator">
-                    <i class="fas fa-spinner fa-spin"></i> Loading...
-                </span>
-            </div>
-        </div>
-    </div>
 {% else %}
     <div class="row mb-5">
         <div class="col-12">
@@ -230,4 +48,139 @@
             </div>
         </div>
     </div>
-{% endif %} 
+{% endif %}
+
+<!-- Classic Films Section -->
+<div class="row mb-4">
+    <div class="col-12">
+        <h2 class="border-bottom pb-2">Top Classic Films</h2>
+        <p class="text-muted">
+            {% if query %}
+                Showing page {{ page }} of {{ num_pages }} 
+                ({{ classic_films|length }} films out of {{ total_films }} total) matching "{{ query }}".
+                <span class="badge bg-primary">Filtered by: {{ query }}</span>
+            {% else %}
+                Showing page {{ page }} of {{ num_pages }} 
+                ({{ classic_films|length }} films out of {{ total_films }} total).
+            {% endif %}
+        </p>
+    </div>
+</div>
+
+<!-- Classic Films Grid -->
+<div class="row mb-4">
+    {% for film in classic_films %}
+        <div class="col-6 col-md-3 mb-4">
+            <div class="card film-card" 
+                 onclick="navigateToFilmDetails(event, '{{ film.imdb_id }}')"
+                 data-imdb-id="{{ film.imdb_id }}"
+                 data-film-title="{{ film.title }}">
+                
+                <!-- Vote Badge -->
+                <div id="film-vote-count-{{ film.imdb_id }}" class="vote-badge">
+                    {{ film.total_votes }} pick{{ film.total_votes|pluralize }}
+                </div>
+                
+                <!-- Certification Badge -->
+                {% if film.uk_certification %}
+                    <div class="certification-badge">
+                        <img src="{% static 'img/bbfc_' %}{{ film.uk_certification|lower }}{% if film.uk_certification == '12a' %}A{% endif %}.svg" alt="{{ film.uk_certification }}" width="40" height="40">
+                    </div>
+                {% else %}
+                    <div class="certification-badge">
+                        <img src="{% static 'img/bbfc_tbc.svg' %}" alt="TBC" width="40" height="40">
+                    </div>
+                {% endif %}
+                
+                <!-- Film Poster -->
+                <img src="{{ film.poster_url|default:'https://via.placeholder.com/300x450?text=No+Poster' }}" 
+                     class="card-img-top film-poster" alt="{{ film.title }}"
+                     loading="lazy"
+                     srcset="{{ film.poster_url|default:'https://via.placeholder.com/300x450?text=No+Poster' }} 300w,
+                             {{ film.poster_url|default:'https://via.placeholder.com/200x300?text=No+Poster' }} 200w"
+                     sizes="(max-width: 576px) 200px, 300px">
+                
+                <!-- Film Info -->
+                <div class="card-body card-body-content">
+                    <h5 class="card-title">{{ film.title }}</h5>
+                    <p class="card-text text-muted">{{ film.year }}</p>
+                </div>
+                
+                <!-- Card Actions -->
+                <div class="card-body card-body-actions pt-0">
+                    <div class="d-flex align-items-center gap-2">
+                        <a href="{% url 'films_app:film_detail' film.imdb_id %}" class="btn btn-sm btn-outline-primary flex-grow-1" onclick="event.stopPropagation();">View Details</a>
+                        
+                        <!-- Vote Buttons -->
+                        <div id="vote-button-container-{{ film.imdb_id }}" class="flex-shrink-0">
+                            {% if user.is_authenticated %}
+                                {% if film.imdb_id in user_voted_films %}
+                                    {% with vote=user_votes|get_vote_by_imdb_id:film.imdb_id %}
+                                        {% include 'films_app/partials/remove_vote_button.html' with vote=vote %}
+                                    {% endwith %}
+                                {% else %}
+                                    {% if can_vote %}
+                                        {% include 'films_app/partials/vote_button.html' with film=film %}
+                                    {% endif %}
+                                {% endif %}
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endfor %}
+</div>
+
+<!-- Pagination -->
+<div class="row mb-5">
+    <div class="col-12">
+        <nav aria-label="Page navigation" class="p-3 bg-light border rounded">
+            <ul class="pagination justify-content-center mb-0">
+                {% if has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" 
+                           href="#" 
+                           hx-get="{% url 'films_app:filter_classics_films' %}?query={{ query|default:'' }}&page={{ previous_page }}"
+                           hx-target="#classics-films-container"
+                           hx-indicator="#pagination-indicator-main"
+                           hx-swap="innerHTML">
+                            <i class="fas fa-chevron-left"></i>
+                        </a>
+                    </li>
+                {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link"><i class="fas fa-chevron-left"></i></span>
+                    </li>
+                {% endif %}
+                
+                <li class="page-item active">
+                    <span class="page-link">{{ page }} / {{ num_pages }}</span>
+                </li>
+                
+                {% if has_next %}
+                    <li class="page-item">
+                        <a class="page-link" 
+                           href="#" 
+                           hx-get="{% url 'films_app:filter_classics_films' %}?query={{ query|default:'' }}&page={{ next_page }}"
+                           hx-target="#classics-films-container"
+                           hx-indicator="#pagination-indicator-main"
+                           hx-swap="innerHTML">
+                            <i class="fas fa-chevron-right"></i>
+                        </a>
+                    </li>
+                {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link"><i class="fas fa-chevron-right"></i></span>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+        
+        <div class="text-center mt-2">
+            <span id="pagination-indicator-main" class="htmx-indicator">
+                <i class="fas fa-spinner fa-spin"></i> Loading...
+            </span>
+        </div>
+    </div>
+</div> 

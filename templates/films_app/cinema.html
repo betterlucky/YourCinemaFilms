@@ -5,99 +5,8 @@
 {% block title %}Current & Upcoming Releases - Your Cinema Films{% endblock %}
 
 {% block extra_css %}
-<style>
-    .film-card {
-        height: 100%;
-        position: relative;
-        cursor: pointer;
-        min-height: 500px;
-        border: 1px solid #dee2e6;
-    }
-    
-    .film-card:hover {
-        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-    }
-    
-    .film-poster {
-        height: 300px;
-        object-fit: cover;
-    }
-    
-    .vote-badge {
-        position: absolute;
-        top: 10px;
-        right: 10px;
-        background-color: rgba(13, 110, 253, 0.9);
-        color: white;
-        padding: 5px 10px;
-        border-radius: 20px;
-        font-weight: bold;
-        z-index: 10;
-    }
-    
-    .certification-badge {
-        position: absolute;
-        top: 10px;
-        left: 10px;
-        z-index: 10;
-        width: 40px;
-        height: 40px;
-    }
-    
-    .card-content-link {
-        color: inherit;
-        text-decoration: none;
-        display: block;
-        padding-bottom: 60px;
-    }
-    
-    .card-body-content {
-        padding-bottom: 0;
-    }
-    
-    .card-body-actions {
-        position: absolute;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        padding: 15px;
-        border-top: 1px solid rgba(0,0,0,0.1);
-        background-color: #fff;
-        z-index: 5;
-    }
-    
-    .uk-release-date {
-        font-size: 0.9rem;
-        color: #6c757d;
-    }
-    
-    /* BBFC certification styles are now in a shared CSS file */
-    
-    /* Vote button styles */
-    .card-body-actions .btn {
-        min-width: 90px;
-        height: 31px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-    }
-    
-    .card-body-actions .flex-grow-1 {
-        flex-grow: 3 !important;
-    }
-    
-    .vote-btn-text {
-        margin-left: 5px;
-    }
-    
-    @media (max-width: 767.98px) {
-        .card-body-actions .btn {
-            padding-left: 0.5rem;
-            padding-right: 0.5rem;
-            min-width: 70px;
-        }
-    }
-</style>
+<link rel="stylesheet" href="{% static 'css/shared.css' %}">
+<link rel="stylesheet" href="{% static 'css/mobile.css' %}">
 {% endblock %}
 
 {% block content %}
@@ -128,29 +37,29 @@
     </div>
     
     {% if user.is_authenticated %}
-        <!-- User's Cinema Votes Section -->
+        <!-- User's Cinema Picks Section -->
         {% if user_cinema_votes %}
             <div class="row mb-5" id="user-votes-section">
                 <div class="col-12">
                     <div class="card">
                         <div class="card-header bg-primary text-white">
-                            <h3 class="mb-0">Your Cinema Votes</h3>
+                            <h3 class="mb-0">Your Cinema Picks</h3>
                         </div>
                         <div class="card-body">
                             <div class="row" id="user-cinema-votes-container">
                                 {% for vote in user_cinema_votes %}
-                                    <div class="col-md-3 mb-4">
+                                    <div class="col-6 col-md-3 mb-4">
                                         <div class="card film-card" 
                                              onclick="navigateToFilmDetails(event, '{{ vote.film.imdb_id }}')"
                                              data-imdb-id="{{ vote.film.imdb_id }}"
                                              data-film-title="{{ vote.film.title }}">
                                             {% if vote.film.uk_certification %}
                                                 <div class="certification-badge">
-                                                    <img src="{% static 'img/BBFC_' %}{{ vote.film.uk_certification|upper }}{% if vote.film.uk_certification == '12a' %}A{% endif %}_(2019).svg" alt="{{ vote.film.uk_certification }}" width="40" height="40">
+                                                    <img src="{% static 'img/bbfc_' %}{{ vote.film.uk_certification|lower }}{% if vote.film.uk_certification == '12a' %}A{% endif %}.svg" alt="{{ vote.film.uk_certification }}" width="40" height="40">
                                                 </div>
                                             {% else %}
                                                 <div class="certification-badge">
-                                                    <img src="{% static 'img/BBFC_TBC.svg' %}" alt="TBC" width="40" height="40">
+                                                    <img src="{% static 'img/bbfc_tbc.svg' %}" alt="TBC" width="40" height="40">
                                                 </div>
                                             {% endif %}
                                             <a href="{% url 'films_app:film_detail' vote.film.imdb_id %}" class="card-content-link">
@@ -250,6 +159,11 @@
                     <div class="card-body">
                         <h5>Update Cinema Cache</h5>
                         <p>Run this command to update the cache of current and upcoming UK cinema releases.</p>
+                        {% if last_update %}
+                            <div class="alert alert-info mb-3">
+                                <small><i class="fas fa-clock me-1"></i> Last updated: {{ last_update|date:"F j, Y, g:i a" }}</small>
+                            </div>
+                        {% endif %}
                         <button class="btn btn-primary"
                                 hx-post="{% url 'films_app:update_cinema_cache' %}"
                                 hx-target="#cache-update-result"

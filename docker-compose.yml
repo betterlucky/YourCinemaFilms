@@ -1,66 +1,34 @@
-version: '3'
-
 services:
   web:
-    build: .
-    restart: always
-    depends_on:
-      - db
-    environment:
-      - DEBUG=False
-      - SECRET_KEY=${SECRET_KEY}
-      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost,127.0.0.1}
-      - DJANGO_SETTINGS_MODULE=films_project.settings
-      - TMDB_API_KEY=${TMDB_API_KEY}
-      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
-      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
-      - DATABASE_URL=postgres://${POSTGRES_USER:-yourcinemafilms}:${POSTGRES_PASSWORD:-yourcinemafilms}@db:5432/${POSTGRES_DB:-yourcinemafilms}
-      - UPCOMING_FILMS_MONTHS=${UPCOMING_FILMS_MONTHS:-6}
-      - TMDB_SORT_BY=${TMDB_SORT_BY:-popularity.desc}
+    build:
+      context: .
+      args:
+        - HOST_UID=${HOST_UID:-1000}  # Pass host user ID to Dockerfile
     volumes:
-      - ./static:/app/static
-      - ./media:/app/media
-      - ./profile_images:/app/profile_images
-    command: >
-      bash -c "./build.sh && gunicorn films_project.wsgi:application --bind 0.0.0.0:8000"
-
-  db:
-    image: postgres:15
-    restart: always
-    volumes:
-      - postgres_data:/var/lib/postgresql/data/
+      - ./db:/app/db
+      - static_volume:/app/staticfiles
+      - /etc/yourcinemafilms/env.py:/etc/yourcinemafilms/env.py:ro  # Mount only the environment file as read-only
     environment:
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-yourcinemafilms}
-      - POSTGRES_USER=${POSTGRES_USER:-yourcinemafilms}
-      - POSTGRES_DB=${POSTGRES_DB:-yourcinemafilms}
+      - DJANGO_DB_PATH=/app/db/db.sqlite3
+      - HOST_UID=${HOST_UID:-1000}  # Make HOST_UID available in container
+    restart: on-failure
 
   nginx:
-    image: nginx:latest
-    restart: always
-    ports:
-      - "80:80"
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+#    ports:
+#      - "80:80"
+#      - "443:443"
     volumes:
-      - ./nginx/conf.d:/etc/nginx/conf.d
-      - ./static:/var/www/static
-      - ./media:/var/www/media
-      - ./profile_images:/var/www/profile_images
+      - /etc/letsencrypt:/etc/letsencrypt # Mount Let's Encrypt certificates
+      - static_volume:/app/staticfiles # Mount static files at the same path as in the Nginx config
+      - /etc/yourcinemafilms/env.py:/etc/yourcinemafilms/env.py:ro  # Mount env.py to read production value
     depends_on:
       - web
 
-  # Cron service for scheduled tasks
-  cron:
-    build: .
-    restart: always
-    depends_on:
-      - db
-    environment:
-      - DJANGO_SETTINGS_MODULE=films_project.settings
-      - TMDB_API_KEY=${TMDB_API_KEY}
-      - DATABASE_URL=postgres://${POSTGRES_USER:-yourcinemafilms}:${POSTGRES_PASSWORD:-yourcinemafilms}@db:5432/${POSTGRES_DB:-yourcinemafilms}
-      - UPCOMING_FILMS_MONTHS=${UPCOMING_FILMS_MONTHS:-6}
-      - TMDB_SORT_BY=${TMDB_SORT_BY:-popularity.desc}
-    command: >
-      bash -c "pip install -r requirements.txt && python update_cinema_cache.py"
-
 volumes:
-  postgres_data: 
+  static_volume:
+    driver: local  # For storing static files
+  sqlite_data:
+    driver: local  # For storing database files

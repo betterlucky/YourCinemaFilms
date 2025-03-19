@@ -1,159 +1,130 @@
-#!/usr/bin/env python
-"""
-Script to set up Google OAuth in the database.
-This script creates or updates the Google OAuth app configuration.
-"""
-
 import os
 import django
-import logging
+import sys
+import socket
+from dotenv import load_dotenv
 
-# Set up logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s [%(levelname)s] %(message)s',
-    handlers=[
-        logging.StreamHandler()
-    ]
-)
-logger = logging.getLogger(__name__)
+# Load environment variables from .env file
+load_dotenv()
 
 # Set up Django
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'films_project.settings')
 django.setup()
 
+# Import the necessary models
 from django.contrib.sites.models import Site
 from allauth.socialaccount.models import SocialApp
-from django.db import connection, DatabaseError
+from django.conf import settings
 
-def check_socialapp_schema():
-    """Check the schema of the SocialApp table to determine the provider column name."""
-    try:
-        with connection.cursor() as cursor:
-            cursor.execute("""
-                SELECT column_name 
-                FROM information_schema.columns 
-                WHERE table_name = 'socialaccount_socialapp' 
-                AND column_name LIKE '%provider%';
-            """)
-            columns = [row[0] for row in cursor.fetchall()]
-            
-            if 'provider' in columns:
-                return 'provider'
-            elif 'provider_id' in columns:
-                return 'provider_id'
-            else:
-                logger.warning("Could not find provider column in socialaccount_socialapp table")
-                return None
-    except DatabaseError as e:
-        logger.error(f"Error checking SocialApp schema: {e}")
-        return None
-
-def create_socialapp_manually():
-    """Create the SocialApp record using direct SQL to bypass ORM issues."""
-    try:
-        client_id = os.environ.get('GOOGLE_CLIENT_ID')
-        client_secret = os.environ.get('GOOGLE_CLIENT_SECRET')
-        
-        if not client_id or not client_secret:
-            logger.error("GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET environment variables must be set.")
-            return False
-        
-        with connection.cursor() as cursor:
-            # Check if the app already exists
-            cursor.execute("""
-                SELECT id FROM socialaccount_socialapp 
-                WHERE provider = 'google';
-            """)
-            existing = cursor.fetchone()
-            
-            if existing:
-                app_id = existing[0]
-                logger.info(f"Updating existing Google social app (ID: {app_id})")
-                cursor.execute("""
-                    UPDATE socialaccount_socialapp 
-                    SET client_id = %s, secret = %s 
-                    WHERE id = %s;
-                """, [client_id, client_secret, app_id])
-            else:
-                logger.info("Creating new Google social app")
-                cursor.execute("""
-                    INSERT INTO socialaccount_socialapp 
-                    (provider, name, client_id, secret, key) 
-                    VALUES ('google', 'Google', %s, %s, '');
-                """, [client_id, client_secret])
-                
-                # Get the ID of the newly created app
-                cursor.execute("SELECT lastval();")
-                app_id = cursor.fetchone()[0]
-            
-            # Get the current site ID
-            cursor.execute("SELECT id FROM django_site WHERE id = 1;")
-            site_id = cursor.fetchone()[0]
-            
-            # Check if the site association exists
-            cursor.execute("""
-                SELECT * FROM socialaccount_socialapp_sites 
-                WHERE socialapp_id = %s AND site_id = %s;
-            """, [app_id, site_id])
-            
-            if not cursor.fetchone():
-                logger.info(f"Associating Google social app with site ID: {site_id}")
-                cursor.execute("""
-                    INSERT INTO socialaccount_socialapp_sites 
-                    (socialapp_id, site_id) 
-                    VALUES (%s, %s);
-                """, [app_id, site_id])
-            
-            logger.info("Google OAuth setup completed successfully!")
-            return True
-    except Exception as e:
-        logger.error(f"Error creating SocialApp manually: {e}")
-        return False
+def get_current_domain():
+    """
+    Determine the current domain based on environment variables or settings.
+    """
+    # Check if we're in a production environment
+    # Explicitly check for PRODUCTION=true/false first
+    production_env = os.environ.get('PRODUCTION', '').lower()
+    
+    if production_env == 'true':
+        return 'yourcinemafilms.theworkpc.com'
+    elif production_env == 'false':
+        # For development, use localhost with the appropriate port
+        port = os.environ.get('PORT', '8000')
+        return f'localhost:{port}'
+    
+    # If PRODUCTION is not explicitly set, fall back to DEBUG setting
+    if not settings.DEBUG:
+        return 'yourcinemafilms.theworkpc.com'
+    else:
+        port = os.environ.get('PORT', '8000')
+        return f'localhost:{port}'
 
 def setup_google_oauth():
-    """Set up Google OAuth in the database."""
-    # Get required environment variables
+    """
+    Set up Google OAuth by:
+    1. Updating the Site model with the correct domain
+    2. Creating a Google SocialApp if it doesn't exist
+    """
+    # Get the Google client ID and secret from .env file
     client_id = os.environ.get('GOOGLE_CLIENT_ID')
     client_secret = os.environ.get('GOOGLE_CLIENT_SECRET')
     
     if not client_id or not client_secret:
-        logger.error("GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET environment variables must be set.")
-        logger.error("Please set these variables in the Render dashboard.")
-        return False
+        print("Error: GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET not found in .env file.")
+        print("Please add these variables to your .env file and try again.")
+        print("Example:")
+        print("GOOGLE_CLIENT_ID=your_client_id")
+        print("GOOGLE_CLIENT_SECRET=your_client_secret")
+        sys.exit(1)
     
+    # Determine the current domain
+    current_domain = get_current_domain()
+    is_production = current_domain == 'yourcinemafilms.theworkpc.com'
+    
+    print(f"Detected environment: {'Production' if is_production else 'Development'}")
+    print(f"Using domain: {current_domain}")
+    
+    # Update the Site model
     try:
-        # Try using the ORM approach first
-        try:
-            social_app = SocialApp.objects.get(provider='google')
-            logger.info(f"Found existing Google social app: {social_app.name}")
-        except SocialApp.DoesNotExist:
-            social_app = SocialApp(provider='google', name='Google')
-            logger.info("Creating new Google social app")
-        except Exception as e:
-            logger.warning(f"Error using ORM to get/create SocialApp: {e}")
-            logger.info("Falling back to manual SQL approach")
-            return create_socialapp_manually()
+        site = Site.objects.get(id=1)
+        print(f"Found existing site: {site.domain}")
         
-        # Update the client ID and secret
-        social_app.client_id = client_id
-        social_app.secret = client_secret
-        social_app.key = ''  # Not used for Google OAuth
-        social_app.save()
-        logger.info(f"Updated Google social app with client ID: {client_id[:5]}...{client_id[-5:]}")
+        # Update the site domain and name
+        site.domain = current_domain
+        site.name = 'Your Cinema Films'
+        site.save()
+        print(f"Updated site domain to {site.domain} and name to {site.name}")
+    except Site.DoesNotExist:
+        # Create a new site if it doesn't exist
+        site = Site.objects.create(
+            id=1,
+            domain=current_domain,
+            name='Your Cinema Films'
+        )
+        print(f"Created new site with domain {site.domain} and name {site.name}")
+    
+    # Check if a Google SocialApp already exists
+    google_app = SocialApp.objects.filter(provider='google').first()
+    
+    if google_app:
+        print(f"Found existing Google SocialApp: {google_app.name}")
         
-        # Make sure the social app is associated with the site
-        site = Site.objects.get_current()
-        if site not in social_app.sites.all():
-            social_app.sites.add(site)
-            logger.info(f"Associated Google social app with site: {site.domain}")
+        # Update the app with the new credentials
+        google_app.client_id = client_id
+        google_app.secret = client_secret
+        google_app.save()
         
-        logger.info("Google OAuth setup completed successfully!")
-        return True
-    except Exception as e:
-        logger.error(f"Error in setup_google_oauth: {e}")
-        logger.info("Falling back to manual SQL approach")
-        return create_socialapp_manually()
+        # Make sure the app is associated with the site
+        if site not in google_app.sites.all():
+            google_app.sites.add(site)
+            print(f"Associated Google SocialApp with site {site.domain}")
+        
+        print(f"Updated Google SocialApp with new credentials")
+    else:
+        # Create a new Google SocialApp
+        google_app = SocialApp.objects.create(
+            provider='google',
+            name='Google',
+            client_id=client_id,
+            secret=client_secret
+        )
+        
+        # Associate the app with the site
+        google_app.sites.add(site)
+        
+        print(f"Created new Google SocialApp and associated it with site {site.domain}")
+    
+    # Update the callback URL in settings if needed
+    callback_url = f"{'https' if is_production else 'http'}://{current_domain}/accounts/google/login/callback/"
+    print(f"Callback URL should be set to: {callback_url}")
+    print("You may need to update SOCIALACCOUNT_CALLBACK_URL in settings.py if it doesn't match.")
+    
+    print("\nGoogle OAuth setup complete!")
+    
+    if not is_production:
+        print("\nWhen deploying to production:")
+        print("1. Set the PRODUCTION environment variable to 'true' in your .env file")
+        print("2. Run this script again to update the site domain")
+        print("3. Make sure your Google OAuth credentials in the Google Cloud Console include the production domain")
 
 if __name__ == "__main__":
     setup_google_oauth() 

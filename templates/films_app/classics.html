@@ -4,179 +4,8 @@
 {% block title %}Classic Films - Your Cinema Films{% endblock %}
 
 {% block extra_css %}
-<style>
-    /* Main search container styles */
-    .main-search-container {
-        position: relative;
-        z-index: 1050;
-    }
-    
-    /* Search form styles */
-    #main-search-form {
-        position: relative;
-        width: 100%;
-    }
-    
-    /* Search results dropdown styles */
-    #main-search-results {
-        position: absolute;
-        top: 100%;
-        left: 0;
-        width: 100%;
-        background-color: white;
-        border: 1px solid rgba(0,0,0,.125);
-        border-radius: 0.25rem;
-        box-shadow: 0 0.5rem 1rem rgba(0,0,0,.15);
-        max-height: 400px;
-        overflow-y: auto;
-        z-index: 9999;
-        display: none;
-    }
-    
-    #main-search-results:not(:empty) {
-        display: block;
-    }
-    
-    /* Search result item styles */
-    .search-result-link {
-        display: block;
-        padding: 0.75rem;
-        text-decoration: none;
-        color: #212529;
-        border-bottom: 1px solid rgba(0,0,0,.125);
-    }
-    
-    .search-result-link:hover {
-        background-color: #f8f9fa;
-    }
-    
-    .search-result-item {
-        display: flex;
-        align-items: center;
-    }
-    
-    .search-result-poster {
-        width: 50px;
-        height: 75px;
-        object-fit: cover;
-        margin-right: 1rem;
-    }
-    
-    .search-result-info {
-        flex: 1;
-    }
-    
-    .search-result-title {
-        font-weight: bold;
-        margin-bottom: 0.25rem;
-    }
-    
-    .search-result-year {
-        font-size: 0.875rem;
-        color: #6c757d;
-    }
-    
-    /* Search input field styles */
-    #main-search-input.search-input-field {
-        background-color: #fff;
-        border: 2px solid #ced4da;
-        color: #212529;
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-        transition: all 0.3s ease;
-    }
-    
-    #main-search-input.search-input-field::placeholder {
-        color: #6c757d;
-    }
-    
-    #main-search-input.search-input-field:focus {
-        border-color: #0d6efd;
-        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
-    }
-    
-    /* Animation for search highlight */
-    #main-search-input.search-highlight {
-        border-color: #0d6efd;
-        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
-        transform: scale(1.02);
-    }
-    
-    /* Pulsing effect for the search container */
-    .pulse-animation {
-        animation: pulse 2s infinite;
-    }
-    
-    @keyframes pulse {
-        0% {
-            box-shadow: 0 0 0 0 rgba(13, 110, 253, 0.4);
-        }
-        70% {
-            box-shadow: 0 0 0 10px rgba(13, 110, 253, 0);
-        }
-        100% {
-            box-shadow: 0 0 0 0 rgba(13, 110, 253, 0);
-        }
-    }
-    
-    /* Film card styles */
-    .film-card {
-        position: relative;
-        height: 100%;
-    }
-    
-    .film-poster {
-        height: 300px;
-        object-fit: cover;
-    }
-    
-    .vote-badge {
-        position: absolute;
-        top: 10px;
-        right: 10px;
-        background-color: rgba(13, 110, 253, 0.9);
-        color: white;
-        padding: 5px 10px;
-        border-radius: 20px;
-        font-weight: bold;
-        z-index: 10;
-    }
-    
-    .certification-badge {
-        position: absolute;
-        top: 10px;
-        left: 10px;
-        z-index: 10;
-        width: 40px;
-        height: 40px;
-    }
-    
-    .card-link {
-        color: inherit;
-        text-decoration: none;
-    }
-    
-    .card-content-link {
-        color: inherit;
-        text-decoration: none;
-        display: block;
-        padding-bottom: 60px;
-    }
-    
-    .card-body-content {
-        padding-bottom: 0;
-    }
-    
-    .card-body-actions {
-        position: absolute;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        padding: 15px;
-        border-top: 1px solid rgba(0,0,0,0.1);
-        background-color: #fff;
-        z-index: 5;
-    }
-</style>
+<link rel="stylesheet" href="{% static 'css/shared.css' %}">
+<link rel="stylesheet" href="{% static 'css/mobile.css' %}">
 {% endblock %}
 
 {% block content %}
@@ -269,15 +98,15 @@
                         {% if user_votes %}
                             <div class="row" id="user-votes-container">
                                 {% for vote in user_votes %}
-                                    <div class="col-md-3 mb-4">
+                                    <div class="col-6 col-md-3 mb-4">
                                         <div class="card film-card">
                                             {% if vote.film.uk_certification %}
                                                 <div class="certification-badge">
-                                                    <img src="{% static 'img/BBFC_' %}{{ vote.film.uk_certification|upper }}{% if vote.film.uk_certification == '12a' %}A{% endif %}_(2019).svg" alt="{{ vote.film.uk_certification }}" width="40" height="40">
+                                                    <img src="{% static 'img/bbfc_' %}{{ vote.film.uk_certification|lower }}{% if vote.film.uk_certification == '12a' %}A{% endif %}.svg" alt="{{ vote.film.uk_certification }}" width="40" height="40">
                                                 </div>
                                             {% else %}
                                                 <div class="certification-badge">
-                                                    <img src="{% static 'img/BBFC_TBC.svg' %}" alt="TBC" width="40" height="40">
+                                                    <img src="{% static 'img/bbfc_tbc.svg' %}" alt="TBC" width="40" height="40">
                                                 </div>
                                             {% endif %}
                                             <a href="{% url 'films_app:film_detail' vote.film.imdb_id %}" class="card-content-link">
@@ -289,8 +118,10 @@
                                                 </div>
                                             </a>
                                             <div class="card-body card-body-actions pt-0">
-                                                <a href="{% url 'films_app:film_detail' vote.film.imdb_id %}" class="btn btn-sm btn-outline-primary">View Details</a>
-                                                {% include 'films_app/partials/remove_vote_button.html' with vote=vote %}
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <a href="{% url 'films_app:film_detail' vote.film.imdb_id %}" class="btn btn-sm btn-outline-primary flex-grow-1">View Details</a>
+                                                    {% include 'films_app/partials/remove_vote_button.html' with vote=vote %}
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -338,6 +169,48 @@
         // Navigate to film details page
         window.location.href = "{% url 'films_app:film_detail' 'placeholder' %}".replace('placeholder', imdbId);
     }
+
+    // HTMX debugging
+    document.addEventListener('htmx:beforeRequest', function(event) {
+        console.log('HTMX request starting:', event.detail);
+    });
+    
+    document.addEventListener('htmx:afterRequest', function(event) {
+        console.log('HTMX request completed:', event.detail);
+    });
+    
+    document.addEventListener('htmx:responseError', function(event) {
+        console.error('HTMX response error:', event.detail);
+    });
+    
+    document.addEventListener('htmx:afterSwap', function(event) {
+        console.log('HTMX content swapped:', event.detail);
+        
+        // If the target is the search results, handle visibility
+        if (event.detail.target.id === 'main-search-results') {
+            console.log('Search results content:', event.detail.target.innerHTML);
+            // If there's no content, hide the results container
+            if (event.detail.target.innerHTML.trim() === '') {
+                event.detail.target.style.display = 'none';
+            } else {
+                event.detail.target.style.display = 'block';
+            }
+        }
+    });
+    
+    // Add event listener for htmx:beforeRequest to show loading indicator
+    document.addEventListener('htmx:beforeRequest', function(event) {
+        if (event.detail.target.id === 'main-search-input') {
+            document.getElementById('main-search-loading').style.display = 'block';
+        }
+    });
+    
+    // Add event listener for htmx:afterRequest to hide loading indicator
+    document.addEventListener('htmx:afterRequest', function(event) {
+        if (event.detail.target.id === 'main-search-input') {
+            document.getElementById('main-search-loading').style.display = 'none';
+        }
+    });
 
     document.addEventListener('DOMContentLoaded', function() {
         // Handle search focus links
@@ -487,44 +360,6 @@
         // Function to show cinema release modal - no longer needed
         function showCinemaReleaseModal(filmTitle, filmUrl) {
             // This function is no longer needed as we're showing the prompt on the film detail page
-        }
-    });
-    
-    // HTMX events
-    document.addEventListener('htmx:beforeSend', function(event) {
-        console.log('HTMX request being sent:', event.detail);
-        if (event.detail.target.id === 'main-search-input') {
-            console.log('Search request for:', event.detail.requestConfig.parameters.query);
-        }
-    });
-    
-    document.addEventListener('htmx:afterSwap', function(event) {
-        console.log('HTMX response received:', event.detail);
-        if (event.detail.target.id === 'main-search-results') {
-            console.log('Search results content:', event.detail.target.innerHTML);
-            // If there's no content, hide the results container
-            if (event.detail.target.innerHTML.trim() === '') {
-                event.detail.target.style.display = 'none';
-            } else {
-                event.detail.target.style.display = 'block';
-                
-                // No need to add click event listeners to search result links anymore
-                // since we've removed the authentication requirement from the film_detail view
-            }
-        }
-    });
-    
-    // Add event listener for htmx:beforeRequest to show loading indicator
-    document.addEventListener('htmx:beforeRequest', function(event) {
-        if (event.detail.target.id === 'main-search-input') {
-            document.getElementById('main-search-loading').style.display = 'block';
-        }
-    });
-    
-    // Add event listener for htmx:afterRequest to hide loading indicator
-    document.addEventListener('htmx:afterRequest', function(event) {
-        if (event.detail.target.id === 'main-search-input') {
-            document.getElementById('main-search-loading').style.display = 'none';
         }
     });
 </script>

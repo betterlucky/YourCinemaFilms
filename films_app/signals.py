@@ -3,7 +3,7 @@ from django.dispatch import receiver
 from django.contrib.auth.models import User
 from django.contrib.auth.signals import user_logged_in
 from allauth.socialaccount.models import SocialAccount
-from .models import UserProfile
+from films_app.models import UserProfile
 import logging
 
 logger = logging.getLogger(__name__)
@@ -14,7 +14,7 @@ def create_user_profile(sender, instance, created, **kwargs):
     Create a UserProfile instance for all newly created User instances.
     """
     if created:
-        UserProfile.objects.get_or_create(user=instance)
+        UserProfile.objects.create(user=instance)
         logger.info(f"Created profile for new user: {instance.username}")
 
 @receiver(post_save, sender=User)
@@ -22,7 +22,10 @@ def save_user_profile(sender, instance, **kwargs):
     """
     Save the UserProfile instance whenever the User instance is saved.
     """
-    instance.profile.save()
+    # Check if profile exists using a query
+    profile, created = UserProfile.objects.get_or_create(user=instance)
+    if not created:
+        profile.save()
 
 @receiver(user_logged_in)
 def update_profile_on_login(sender, request, user, **kwargs):

@@ -13,4 +13,4 @@ def site_context(request):
         return {'site': site}
     except Site.DoesNotExist:
         # Fallback if no site exists
-        return {'site': {'name': 'YourCinemaFilms', 'domain': 'yourcinemafilms.onrender.com'}} 
+        return {'site': {'name': 'YourCinemaFilms', 'domain': 'localhost:8080'}} 

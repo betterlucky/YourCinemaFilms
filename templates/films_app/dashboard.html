@@ -52,7 +52,7 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <h6 class="text-uppercase">{% if period != 'all' %}{{ period|title }} Votes{% else %}Total Votes{% endif %}</h6>
+                            <h6 class="text-uppercase">{% if period != 'all' %}{{ period|title }} Picks{% else %}Total Picks{% endif %}</h6>
                             <h2 class="mb-0">{% if period != 'all' %}{{ period_votes }}{% else %}{{ total_votes }}{% endif %}</h2>
                         </div>
                         <i class="fas fa-thumbs-up fa-3x"></i>
@@ -183,11 +183,7 @@
                                     <small>{{ activity.timestamp|timesince }} ago</small>
                                 </div>
                                 <p class="mb-1">
-                                    {% if activity.action == 'voted for' %}
-                                        <a href="{% url 'films_app:film_detail' activity.film.imdb_id %}">{{ activity.description }}</a>
-                                    {% else %}
-                                        {{ activity.description }}
-                                    {% endif %}
+                                    {% if activity.action == 'voted for' %}picked{% else %}{{ activity.action }}{% endif %}
                                 </p>
                             </div>
                         {% empty %}
@@ -219,13 +215,13 @@
                                          alt="{{ film.title }}" class="me-3" style="width: 50px; height: 75px; object-fit: cover;">
                                     <div>
                                         <h6 class="mb-1">{{ film.title }} ({{ film.year }})</h6>
-                                        <p class="mb-0 text-muted">{{ film.total_votes }} vote{{ film.total_votes|pluralize }}</p>
+                                        <p class="mb-0 text-muted">{{ film.total_votes }} pick{{ film.total_votes|pluralize }}</p>
                                     </div>
                                 </div>
                             </a>
                         {% empty %}
                             <div class="list-group-item text-center py-4">
-                                <p class="text-muted mb-0">No films have been voted for during this time period</p>
+                                <p class="text-muted mb-0">No films have been picked during this time period</p>
                             </div>
                         {% endfor %}
                     </div>
@@ -248,7 +244,7 @@
                                 <div class="d-flex w-100 justify-content-between align-items-center">
                                     <div>
                                         <h6 class="mb-1">{{ user_data.user.username }}</h6>
-                                        <p class="mb-0 text-muted">{{ user_data.vote_count }} vote{{ user_data.vote_count|pluralize }}</p>
+                                        <p class="mb-0 text-muted">{{ user_data.vote_count }} pick{{ user_data.vote_count|pluralize }}</p>
                                     </div>
                                     <span class="badge bg-primary rounded-pill">{{ user_data.rank }}</span>
                                 </div>
@@ -275,10 +271,10 @@
 
 <script>
     // Define data from Django templates as global variables
-    var activityDates = {{ activity_dates|safe }};
-    var activityCounts = {{ activity_counts|safe }};
-    var genreLabels = {{ genre_labels|safe }};
-    var genreData = {{ genre_data|safe }};
+    const activityDates = JSON.parse('{{ activity_dates|safe }}');
+    const activityCounts = JSON.parse('{{ activity_counts|safe }}');
+    const genreLabels = JSON.parse('{{ genre_labels|safe }}');
+    const genreData = JSON.parse('{{ genre_data|safe }}');
     
     $(document).ready(function() {
         // Activity timeline chart
@@ -320,7 +316,7 @@
             data: {
                 labels: displayDates,
                 datasets: [{
-                    label: 'Votes',
+                    label: 'Picks',
                     data: displayCounts,
                     backgroundColor: 'rgba(13, 110, 253, 0.1)',
                     borderColor: 'rgba(13, 110, 253, 1)',
@@ -365,7 +361,7 @@
                         callbacks: {
                             label: function(context) {
                                 const value = context.raw;
-                                return `${value} vote${value !== 1 ? 's' : ''}`;
+                                return `${value} pick${value !== 1 ? 's' : ''}`;
                             }
                         }
                     }

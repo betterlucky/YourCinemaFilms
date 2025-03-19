@@ -48,16 +48,52 @@
             <div class="poster-container">
                 {% if film.uk_certification %}
                     <div class="certification-badge">
-                        <img src="{% static 'img/BBFC_' %}{{ film.uk_certification|upper }}{% if film.uk_certification == '12a' %}A{% endif %}_(2019).svg" alt="{{ film.uk_certification }}" width="40" height="40">
+                        <img src="{% static 'img/bbfc_' %}{{ film.uk_certification|lower }}{% if film.uk_certification == '12a' %}A{% endif %}.svg" alt="{{ film.uk_certification }}" width="40" height="40">
                     </div>
                 {% else %}
                     <div class="certification-badge">
-                        <img src="{% static 'img/BBFC_TBC.svg' %}" alt="TBC" width="40" height="40">
+                        <img src="{% static 'img/bbfc_tbc.svg' %}" alt="TBC" width="40" height="40">
                     </div>
                 {% endif %}
                 <img src="{{ film.poster_url|default:'https://via.placeholder.com/500x750?text=No+Poster' }}" 
                      class="img-fluid rounded shadow" alt="{{ film.title }}">
             </div>
+            
+            <!-- Pick section -->
+            {% if user.is_authenticated %}
+                <div class="mt-3 text-center">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Pick this film</h5>
+                            <p class="card-text">
+                                <span id="film-vote-count-{{ film.imdb_id }}">
+                                    {{ vote_count }} {% if vote_count == 1 %}pick{% else %}picks{% endif %}
+                                </span>
+                            </p>
+                            
+                            {% if has_voted %}
+                                {% include 'films_app/partials/remove_vote_button_film.html' with film=film %}
+                            {% elif can_vote %}
+                                {% include 'films_app/partials/vote_button.html' with film=film %}
+                            {% else %}
+                                {% if votes_remaining <= 0 %}
+                                    {% include 'films_app/partials/max_votes_button.html' %}
+                                {% else %}
+                                    <button class="btn btn-secondary" disabled>
+                                        <i class="fas fa-thumbs-up"></i> Pick
+                                    </button>
+                                {% endif %}
+                            {% endif %}
+                            
+                            <p class="card-text mt-2">
+                                <small class="text-muted">
+                                    You have {{ votes_remaining }} {% if votes_remaining == 1 %}pick{% else %}picks{% endif %} remaining
+                                </small>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
         </div>
         <div class="col-md-8">
             <h1 class="mb-3">{{ film.title }} <span class="text-muted">({{ film.year }})</span></h1>
@@ -111,7 +147,6 @@
                             {% else %}
                                 TBC
                             {% endif %}
-                            (see badge on poster)
                         </div>
                     </div>
                 </div>
@@ -161,7 +196,15 @@
 {% block extra_js %}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Voting-related event handlers have been removed
+        // Listen for vote count changes
+        document.body.addEventListener('filmVoteCountChanged', function(event) {
+            const detail = event.detail;
+            const voteCountElement = document.getElementById(`film-vote-count-${detail.imdb_id}`);
+            if (voteCountElement) {
+                const voteText = detail.vote_count === 1 ? 'pick' : 'picks';
+                voteCountElement.innerHTML = `${detail.vote_count} ${voteText}`;
+            }
+        });
     });
 </script>
 {% endblock %} 
